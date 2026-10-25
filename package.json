@@ -15,6 +15,7 @@
     "api:test": "npm run api:test --workspace @geotreasure/cloudbase --",
     "api:test:development": "npm run api:test:development --workspace @geotreasure/cloudbase --",
     "api:test:database": "npm run api:test:database --workspace @geotreasure/cloudbase",
+    "api:test:live": "npm run api:test:live --workspace @geotreasure/cloudbase",
     "api:smoke": "npm run api:smoke --workspace @geotreasure/cloudbase"
   }
 }
