@@ -138,8 +138,8 @@ SOUTH 4  {0,1,2,3}
 - 函数 ID：`lam-btbif7il`
 - 状态：`Active`
 - 运行时：`Nodejs20.19`
-- 部署更新时间：`2026-10-25 23:35:25`（Asia/Shanghai）
-- 部署代码提交：`71c5ca5`
+- 首次部署：`2026-10-25 23:35:25`（Asia/Shanghai），运行时提交 `71c5ca5`
+- 最终重建部署：`2026-10-25 23:37:16`（Asia/Shanghai），head 为 `da32d08`；仅后续文档变化
 
 线上 health：
 
