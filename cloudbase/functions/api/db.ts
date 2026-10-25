@@ -92,6 +92,16 @@ export async function updateRows<T>(
   });
 }
 
+export async function deleteRows(
+  table: string,
+  query: Record<string, string>,
+): Promise<void> {
+  await restRequest(table, {
+    method: "DELETE",
+    query,
+  });
+}
+
 export async function insertRowIfAbsent<T>(table: string, body: unknown): Promise<T | null> {
   try {
     return await insertRow<T>(table, body);

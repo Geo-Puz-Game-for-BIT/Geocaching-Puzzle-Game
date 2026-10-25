@@ -146,11 +146,16 @@ function installFetch(state: FakeState): void {
       }
 
       if (table === "checkins" && method === "POST") {
+        const challengeId = String(body?.challenge_id);
+        if (!state.validChallenges.has(challengeId)) {
+          return jsonResponse({ message: "CHALLENGE_EXPIRED" }, 409);
+        }
         const checkIn = {
           ...body,
           id: String(body?.id),
           created_at: "2026-10-20T08:17:21.000Z",
         } as FakeCheckIn;
+        state.validChallenges.delete(challengeId);
         state.checkins.push(checkIn);
         if (state.failCheckInOnce) {
           state.failCheckInOnce = false;
@@ -279,7 +284,7 @@ describe("submitCheckIn", () => {
 
     expect(first.checkInId).toBe(second.checkInId);
     expect(second.checkInId).toBe(third.checkInId);
-    expect(second.status).toBe("ALREADY_COMPLETED");
+    expect(second.status).toBe("COMPLETED");
     expect(state.checkins).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
   });
@@ -301,18 +306,15 @@ describe("submitCheckIn", () => {
     expect(state.grants).toHaveLength(1);
   });
 
-  it("givenTimeoutAfterInsert_whenRetry_thenRepairsWithoutDuplicate", async () => {
+  it("givenTimeoutAfterInsert_whenResponseIsRecovered_thenKeepsOneAuditedResult", async () => {
     const state = newState({ failCheckInOnce: true });
     installFetch(state);
 
-    await expect(
-      submitCheckIn("usr_demo01", "req_1", "idem_test", validBody()),
-    ).rejects.toThrow("simulated timeout");
+    const receipt = await submitCheckIn("usr_demo01", "req_1", "idem_test", validBody());
 
-    const receipt = await submitCheckIn("usr_demo01", "req_2", "idem_test", validBody());
-
-    expect(receipt.status).toBe("ALREADY_COMPLETED");
+    expect(receipt.status).toBe("COMPLETED");
     expect(state.checkins).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
+    expect(state.audits).toHaveLength(1);
   });
 });

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { distanceMeters, isWithinRadius } from "../functions/api/geo.ts";
+import {
+  distanceMeters,
+  isWithinCheckInArea,
+  isWithinRadius,
+  toLocalOffsetMeters,
+} from "../functions/api/geo.ts";
 
 describe("distanceMeters", () => {
   it("givenSamePoint_whenCalculateDistance_thenReturnsZero", () => {
@@ -25,5 +30,49 @@ describe("isWithinRadius", () => {
 
   it("givenInaccurateSample_whenCheckRadius_thenReturnsFalse", () => {
     expect(isWithinRadius(40, 100, 51)).toBe(false);
+  });
+});
+
+describe("CheckInArea", () => {
+  const origin = { latitude: 39.7366, longitude: 116.1666 };
+
+  it("givenCircleArea_whenPointIsInside_thenReturnsTrue", () => {
+    expect(
+      isWithinCheckInArea(origin, origin, {
+        type: "circle",
+        radiusMeters: 55,
+      }),
+    ).toBe(true);
+  });
+
+  it("givenCircleArea_whenPointIsOutside_thenReturnsFalse", () => {
+    const point = { latitude: 39.7372, longitude: 116.1666 };
+    expect(
+      isWithinCheckInArea(origin, point, {
+        type: "circle",
+        radiusMeters: 55,
+      }),
+    ).toBe(false);
+  });
+
+  it("givenPolygonArea_whenPointIsInside_thenReturnsTrue", () => {
+    const point = {
+      latitude: 39.7367,
+      longitude: 116.1667,
+    };
+    const offset = toLocalOffsetMeters(origin, point);
+    expect(offset.eastMeters).toBeGreaterThan(0);
+    expect(offset.northMeters).toBeGreaterThan(0);
+    expect(
+      isWithinCheckInArea(origin, point, {
+        type: "polygon",
+        vertices: [
+          { eastMeters: -20, northMeters: -20 },
+          { eastMeters: 20, northMeters: -20 },
+          { eastMeters: 20, northMeters: 20 },
+          { eastMeters: -20, northMeters: 20 },
+        ],
+      }),
+    ).toBe(true);
   });
 });

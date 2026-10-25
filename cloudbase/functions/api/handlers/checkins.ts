@@ -2,10 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { z } from "zod";
 
-import { insertRow, insertRowIfAbsent, PostgrestError, selectRows, updateRows } from "../db.ts";
-import { writeAuditLog } from "../audit.ts";
+import { insertRow, insertRowIfAbsent, PostgrestError, selectRows } from "../db.ts";
 import { ApiError } from "../errors.ts";
-import { assertWithinRadius, distanceMeters, validateLocationAccuracy } from "../geo.ts";
+import {
+  assertWithinCheckInArea,
+  distanceMeters,
+  validateLocationAccuracy,
+} from "../geo.ts";
 import { requireActiveLandmark } from "./landmarks.ts";
 
 const checkInSchema = z.object({
@@ -32,6 +35,7 @@ interface CheckInRow {
   accuracy_meters: number;
   idempotency_key: string;
   request_hash: string;
+  request_id: string;
   created_at: string;
 }
 
@@ -84,7 +88,7 @@ async function findCheckIn(
 ): Promise<CheckInRow | null> {
   const rows = await selectRows<CheckInRow>("checkins", {
     select:
-      "id,user_id,landmark_id,challenge_id,photo_id,distance_meters,accuracy_meters,idempotency_key,request_hash,created_at",
+      "id,user_id,landmark_id,challenge_id,photo_id,distance_meters,accuracy_meters,idempotency_key,request_hash,request_id,created_at",
     user_id: `eq.${userId}`,
     [field]: `eq.${value}`,
     limit: "1",
@@ -153,6 +157,7 @@ export async function grantFragmentOnce(checkIn: CheckInRow): Promise<GrantRow> 
 async function toReceipt(
   checkIn: CheckInRow,
   status: CheckInReceipt["status"],
+  requestId: string,
 ): Promise<CheckInReceipt> {
   const grant = await grantFragmentOnce(checkIn);
   const fragment = await getFragment(grant.fragment_id);
@@ -160,7 +165,7 @@ async function toReceipt(
     throw new ApiError("INTERNAL_ERROR", "The granted fragment is missing");
   }
 
-  return {
+  const receipt: CheckInReceipt = {
     checkInId: checkIn.id,
     status,
     fragmentGrant: {
@@ -170,25 +175,59 @@ async function toReceipt(
       grantedAt: new Date(grant.granted_at).toISOString(),
     },
   };
+
+  await ensureCheckInGrantedAudit(checkIn, receipt, requestId);
+  return receipt;
 }
 
-async function claimChallenge(
-  challengeId: string,
-  userId: string,
-  landmarkId: string,
-): Promise<boolean> {
-  const claimed = await updateRows<{ id: string }>(
-    "challenges",
-    {
-      id: `eq.${challengeId}`,
-      user_id: `eq.${userId}`,
-      landmark_id: `eq.${landmarkId}`,
-      used_at: "is.null",
-      expires_at: `gt.${new Date().toISOString()}`,
-    },
-    { used_at: new Date().toISOString() },
-  );
-  return claimed.length > 0;
+async function ensureCheckInGrantedAudit(
+  checkIn: CheckInRow,
+  receipt: CheckInReceipt,
+  requestId: string,
+): Promise<void> {
+  const existing = await selectRows<{ id: number }>("audit_logs", {
+    select: "id",
+    event_type: "eq.CHECKIN_GRANTED",
+    entity_id: `eq.${checkIn.id}`,
+    limit: "1",
+  });
+  if (existing[0]) {
+    return;
+  }
+
+  try {
+    await insertRow("audit_logs", {
+      request_id: requestId,
+      event_type: "CHECKIN_GRANTED",
+      user_id: checkIn.user_id,
+      entity_id: checkIn.id,
+      metadata: {
+        landmarkId: checkIn.landmark_id,
+        challengeId: checkIn.challenge_id,
+        photoId: checkIn.photo_id,
+        fragmentId: receipt.fragmentGrant.fragmentId,
+        distanceMeters: checkIn.distance_meters,
+        accuracyMeters: checkIn.accuracy_meters,
+        recovered: true,
+      },
+    });
+  } catch (error) {
+    if (error instanceof PostgrestError && error.status === 409) {
+      return;
+    }
+    console.error("Audit log write failed", { requestId, error });
+  }
+}
+
+function translateChallengeError(error: unknown): void {
+  if (
+    error instanceof PostgrestError &&
+    /CHALLENGE_EXPIRED/i.test(error.message)
+  ) {
+    throw new ApiError("CHALLENGE_EXPIRED", "Challenge is expired or already used", {
+      retryable: true,
+    });
+  }
 }
 
 export async function submitCheckIn(
@@ -210,11 +249,6 @@ export async function submitCheckIn(
     throw new ApiError("INVALID_REQUEST", "A valid Idempotency-Key header is required");
   }
 
-  const completed = await findCheckIn("landmark_id", userId, input.landmarkId);
-  if (completed) {
-    return toReceipt(completed, "ALREADY_COMPLETED");
-  }
-
   const prior = await findCheckIn("idempotency_key", userId, idempotencyKey);
   if (prior) {
     if (prior.request_hash !== hash) {
@@ -223,18 +257,12 @@ export async function submitCheckIn(
         "The Idempotency-Key was already used with a different request",
       );
     }
-    return toReceipt(prior, "COMPLETED");
+    return toReceipt(prior, "COMPLETED", requestId);
   }
 
-  const claimed = await claimChallenge(input.challengeId, userId, input.landmarkId);
-  if (!claimed) {
-    const raced = await findCheckIn("idempotency_key", userId, idempotencyKey);
-    if (raced) {
-      return toReceipt(raced, "COMPLETED");
-    }
-    throw new ApiError("CHALLENGE_EXPIRED", "Challenge is expired or already used", {
-      retryable: true,
-    });
+  const completed = await findCheckIn("landmark_id", userId, input.landmarkId);
+  if (completed) {
+    return toReceipt(completed, "ALREADY_COMPLETED", requestId);
   }
 
   const photoRows = await selectRows<{ id: string }>("photos", {
@@ -254,7 +282,20 @@ export async function submitCheckIn(
     latitude: landmark.latitude,
     longitude: landmark.longitude,
   });
-  assertWithinRadius(distance, landmark.check_in_radius_meters, input.location.accuracyMeters);
+  const checkInArea =
+    landmark.check_in_area ?? {
+      type: "circle" as const,
+      radiusMeters: landmark.check_in_radius_meters,
+    };
+  assertWithinCheckInArea(
+    {
+      latitude: landmark.latitude,
+      longitude: landmark.longitude,
+    },
+    input.location.point,
+    input.location.accuracyMeters,
+    checkInArea,
+  );
 
   let checkIn: CheckInRow;
   try {
@@ -268,44 +309,28 @@ export async function submitCheckIn(
       accuracy_meters: input.location.accuracyMeters,
       idempotency_key: idempotencyKey,
       request_hash: hash,
+      request_id: requestId,
     });
   } catch (error) {
-    if (error instanceof PostgrestError && error.status === 409) {
-      const existing =
-        (await findCheckIn("idempotency_key", userId, idempotencyKey)) ??
-        (await findCheckIn("landmark_id", userId, input.landmarkId));
-      if (existing) {
-        if (existing.idempotency_key === idempotencyKey && existing.request_hash !== hash) {
-          throw new ApiError(
-            "IDEMPOTENCY_CONFLICT",
-            "The Idempotency-Key was already used with a different request",
-          );
-        }
-        return toReceipt(
-          existing,
-          existing.idempotency_key === idempotencyKey ? "COMPLETED" : "ALREADY_COMPLETED",
+    const sameKey = await findCheckIn("idempotency_key", userId, idempotencyKey);
+    if (sameKey) {
+      if (sameKey.request_hash !== hash) {
+        throw new ApiError(
+          "IDEMPOTENCY_CONFLICT",
+          "The Idempotency-Key was already used with a different request",
         );
       }
+      return toReceipt(sameKey, "COMPLETED", requestId);
     }
+
+    const sameLandmark = await findCheckIn("landmark_id", userId, input.landmarkId);
+    if (sameLandmark) {
+      return toReceipt(sameLandmark, "ALREADY_COMPLETED", requestId);
+    }
+
+    translateChallengeError(error);
     throw error;
   }
 
-  const receipt = await toReceipt(checkIn, "COMPLETED");
-
-  await writeAuditLog({
-    requestId,
-    eventType: "CHECKIN_GRANTED",
-    userId,
-    entityId: checkIn.id,
-    metadata: {
-      landmarkId: input.landmarkId,
-      challengeId: input.challengeId,
-      photoId: input.photoId,
-      fragmentId: receipt.fragmentGrant.fragmentId,
-      distanceMeters: distance,
-      accuracyMeters: input.location.accuracyMeters,
-    },
-  });
-
-  return receipt;
+  return toReceipt(checkIn, "COMPLETED", requestId);
 }

@@ -1,6 +1,6 @@
 import { selectRows } from "../db.ts";
 import { ApiError } from "../errors.ts";
-import { distanceMeters } from "../geo.ts";
+import { distanceMeters, type CheckInArea } from "../geo.ts";
 
 interface LandmarkRow {
   id: string;
@@ -9,6 +9,11 @@ interface LandmarkRow {
   longitude: number;
   coordinate_system: string;
   check_in_radius_meters: number;
+  campus_zone: string | null;
+  piece_index: number | null;
+  fragment_id: string | null;
+  coordinate_verified: boolean;
+  check_in_area: CheckInArea | null;
   difficulty: number;
   terrain: number;
   hint: string | null;
@@ -34,7 +39,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
   const [landmarks, tasks] = await Promise.all([
     selectRows<LandmarkRow>("landmarks", {
       select:
-        "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,difficulty,terrain,hint,status",
+        "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,difficulty,terrain,hint,status",
       status: "eq.active",
       order: "id.asc",
     }),
@@ -57,7 +62,15 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
           longitude: landmark.longitude,
         },
         coordinateSystem: landmark.coordinate_system,
-        checkInRadiusMeters: landmark.check_in_radius_meters,
+        campusZone: landmark.campus_zone,
+        fragmentId: landmark.fragment_id,
+        pieceIndex: landmark.piece_index,
+        coordinateVerified: landmark.coordinate_verified,
+        checkInArea:
+          landmark.check_in_area ?? {
+            type: "circle" as const,
+            radiusMeters: landmark.check_in_radius_meters,
+          },
         difficulty: landmark.difficulty,
         terrain: landmark.terrain,
         hint: landmark.hint,
@@ -88,7 +101,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
 export async function requireActiveLandmark(landmarkId: string): Promise<LandmarkRow> {
   const rows = await selectRows<LandmarkRow>("landmarks", {
     select:
-      "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,difficulty,terrain,hint,status",
+      "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,difficulty,terrain,hint,status",
     id: `eq.${landmarkId}`,
     status: "eq.active",
     limit: "1",

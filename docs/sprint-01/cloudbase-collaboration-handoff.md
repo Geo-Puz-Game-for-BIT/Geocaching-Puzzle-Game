@@ -22,7 +22,7 @@
 | PostgreSQL 实例 | `postgres-fvpp0eu8` |
 | 数据库名 | `postgres-fvpp0eu8` |
 | 照片桶 ID | `checkin-photos` |
-| 契约版本 | `1.0.0-poc` |
+| 契约版本 | `1.1.0-poc` |
 
 `API 基础地址`只用于客户端、Postman 或 Bruno 拼接接口路径，不是可直接浏览的页面。浏览器验证服务时请打开“健康检查地址”。
 
@@ -31,16 +31,16 @@
 | 对象 | ID / 值 |
 |---|---|
 | 测试用户 | `usr_demo01` |
-| 测试地标 | `lmk_library` |
-| 测试任务 | `tsk_library_photo` |
-| 测试拼图 | `pzl_campus_01` |
-| 测试碎片 | `frg_campus_01_01` |
+| 测试地标 | `lmk_north_lake` |
+| 测试任务 | `task_north_lake` |
+| 测试拼图 | `puzzle_liangxiang_campus` |
+| 测试碎片 | `fragment_north_lake` |
 | 测试打卡 | `chk_1a264070-7cef-4718-b66a-73aa985986ef` |
 | 测试照片 | `pho_11ed3ebb-c223-4cc3-81c0-ae77c0b9c3b3` |
 | 测试碎片发放 | `grant_8aed6f71-c3f7-4756-8295-072b870c5ec6` |
-| 地标坐标 | `39.9592, 116.3083` |
+| 地标坐标 | `39.7366, 116.1666` |
 | 坐标系 | `GCJ02` |
-| 打卡半径 | `100 Meters` |
+| 打卡区域 | `circle / 55 Meters` |
 
 ## 数据编辑器字段分享规则
 
@@ -144,15 +144,16 @@ https://cloud-d0g0u4r64556b8177-1510671296.ap-shanghai.app.tcloudbase.com/api/v1
 云函数：api（lam-btbif7il）
 数据库：postgres-fvpp0eu8 / postgres-fvpp0eu8
 照片桶：checkin-photos
-契约版本：1.0.0-poc
+契约版本：1.1.0-poc
 
 测试用户：usr_demo01
-测试地标：lmk_library
-测试任务：tsk_library_photo
-测试拼图：pzl_campus_01
-测试碎片：frg_campus_01_01
-坐标：39.9592, 116.3083（GCJ02）
-打卡半径：100 Meters
+测试地标：lmk_north_lake
+测试任务：task_north_lake
+测试拼图：puzzle_liangxiang_campus
+测试碎片：fragment_north_lake
+坐标：39.7366, 116.1666（GCJ02）
+打卡区域：circle / 55 Meters
+拼图布局：北、东、南三个 section，每区 2x2，共 12 个地标和 12 个碎片
 
 接口：
 GET /health

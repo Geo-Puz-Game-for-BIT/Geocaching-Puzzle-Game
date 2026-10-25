@@ -16,6 +16,7 @@
     "api:contract": "node scripts/check-contract.mjs",
     "api:test": "cd ../api-tests && bru run health --env local --bail",
     "api:test:development": "cd ../api-tests && bru run health --env-file environments/private/development.bru --bail",
+    "api:test:database": "node --env-file-if-exists=.env scripts/run-database-integration.mjs",
     "api:smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
