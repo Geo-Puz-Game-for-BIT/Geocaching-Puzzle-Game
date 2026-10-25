@@ -57,7 +57,7 @@
 契约流程：
 
 - Issue #6：`[S1][Contract] 三组 2x2 校园地标与拼图模型`
-- PR #7：仅包含契约与流程记录，等待 B/C/E 审核后先合入
+- PR #5 的首个修复提交 `7b79d20`：只包含契约与流程记录，供 B/C/E 先审核
 
 ## 验证结果
 
@@ -138,8 +138,8 @@ SOUTH 4  {0,1,2,3}
 - 函数 ID：`lam-btbif7il`
 - 状态：`Active`
 - 运行时：`Nodejs20.19`
-- 部署更新时间：`2026-10-25 23:32:33`（Asia/Shanghai）
-- 部署代码提交：`130b6a9`
+- 部署更新时间：`2026-10-25 23:35:25`（Asia/Shanghai）
+- 部署代码提交：`71c5ca5`
 
 线上 health：
 
@@ -153,7 +153,6 @@ X-Request-Id == response.requestId
 请求 ID 证据：
 
 ```text
-随机 UUID：44e2168d-aeff-4d95-acb9-fc5cac4a22e2
 固定 UUID：8d7f1f6b-3ea3-4ad0-9d74-ecd851e0d880
 ```
 
@@ -162,9 +161,9 @@ X-Request-Id == response.requestId
 ```json
 {
   "requestIds": {
-    "first": "d7f88dbf-3a2f-45f4-81b0-8c3cfc8db852",
-    "conflict": "83ee475f-a908-4acc-807d-7e33d89baa97",
-    "replay": "08543bd0-8f25-4470-9c86-cb6e747a0b2b"
+    "first": "a648c75c-ff53-4e19-a7b1-9b2d8f121c1d",
+    "conflict": "c119d16c-6593-4628-aa59-134d61ea8bb4",
+    "replay": "0e71b6e2-ab70-4bc8-a573-e4292a87a4a3"
   },
   "landmarkId": "lmk_east_gantang",
   "firstStatus": "COMPLETED",
