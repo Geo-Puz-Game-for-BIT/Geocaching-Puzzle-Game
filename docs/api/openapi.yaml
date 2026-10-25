@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: GeoTreasure CloudBase HTTP API
-  version: 1.0.0-poc
+  version: 1.1.0-poc
   license:
     name: Course Project
     url: https://github.com/Geo-Puz-Game-for-BIT/Geocaching-Puzzle-Game
@@ -13,8 +13,10 @@ info:
     - Timestamps use UTC ISO 8601.
     - Distance fields end with `Meters`.
     - JSON fields use camelCase.
+    - The canonical campus puzzle is `puzzle_liangxiang_campus` with three 2x2
+      campus sections and twelve landmark-bound fragments.
     - Errors always use the unified response envelope.
-  x-contract-version: 1.0.0-poc
+  x-contract-version: 1.1.0-poc
 servers:
   - url: https://cloud-d0g0u4r64556b8177-1510671296.ap-shanghai.app.tcloudbase.com/api/v1
     description: First-week development environment
@@ -110,22 +112,28 @@ paths:
               example:
                 requestId: 123e4567-e89b-42d3-a456-426614174000
                 data:
-                  - id: lmk_library
-                    name: BIT Library
+                  - id: lmk_north_lake
+                    name: 北湖
                     point:
-                      latitude: 39.9592
-                      longitude: 116.3083
+                      latitude: 39.7366
+                      longitude: 116.1666
                     coordinateSystem: GCJ02
-                    checkInRadiusMeters: 100
-                    difficulty: 2
+                    campusZone: NORTH
+                    fragmentId: fragment_north_lake
+                    pieceIndex: 0
+                    coordinateVerified: false
+                    checkInArea:
+                      type: circle
+                      radiusMeters: 55
+                    difficulty: 1
                     terrain: 1
-                    hint: Look near the main entrance.
+                    hint: 沿湖岸寻找具有校园辨识度的取景点。当前坐标仅用于开发演示，正式打卡前需要实地核验。
                     task:
-                      id: tsk_library_photo
+                      id: task_north_lake
                       type: photo
-                      instructions: Take a photo of the library entrance and submit it from the marker.
-                      puzzleId: pzl_campus_01
-                      fragmentId: frg_campus_01_01
+                      instructions: 在北湖完成现场拍照并上传。
+                      puzzleId: puzzle_liangxiang_campus
+                      fragmentId: fragment_north_lake
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "401":
@@ -147,7 +155,7 @@ paths:
               properties:
                 landmarkId:
                   type: string
-                  example: lmk_library
+                  example: lmk_north_lake
       responses:
         "200":
           description: Challenge created
@@ -168,7 +176,7 @@ paths:
                 requestId: 123e4567-e89b-42d3-a456-426614174000
                 data:
                   id: chl_01JTEST
-                  landmarkId: lmk_library
+                  landmarkId: lmk_north_lake
                   expiresAt: "2026-10-20T08:22:00.000Z"
         "400":
           $ref: "#/components/responses/InvalidRequest"
@@ -266,13 +274,13 @@ paths:
             schema:
               $ref: "#/components/schemas/SubmitCheckInRequest"
             example:
-              landmarkId: lmk_library
+              landmarkId: lmk_north_lake
               challengeId: chl_01JTEST
               photoId: pho_01JTEST
               location:
                 point:
-                  latitude: 39.9592
-                  longitude: 116.3083
+                  latitude: 39.7366
+                  longitude: 116.1666
                 accuracyMeters: 10
                 capturedAt: "2026-10-20T08:17:21.000Z"
       responses:
@@ -299,8 +307,8 @@ paths:
                       checkInId: chk_01JTEST
                       status: COMPLETED
                       fragmentGrant:
-                        fragmentId: frg_campus_01_01
-                        puzzleId: pzl_campus_01
+                        fragmentId: fragment_north_lake
+                        puzzleId: puzzle_liangxiang_campus
                         pieceIndex: 0
                         grantedAt: "2026-10-20T08:17:21.000Z"
                 alreadyCompleted:
@@ -310,8 +318,8 @@ paths:
                       checkInId: chk_01JTEST
                       status: ALREADY_COMPLETED
                       fragmentGrant:
-                        fragmentId: frg_campus_01_01
-                        puzzleId: pzl_campus_01
+                        fragmentId: fragment_north_lake
+                        puzzleId: puzzle_liangxiang_campus
                         pieceIndex: 0
                         grantedAt: "2026-10-20T08:17:21.000Z"
         "400":
@@ -360,11 +368,13 @@ paths:
                     requestId: 123e4567-e89b-42d3-a456-426614174000
                     error:
                       code: OUT_OF_RANGE
-                      message: Current location is outside the check-in radius
+                      message: Current location is outside the check-in area
                       retryable: false
                       details:
                         distanceMeters: 240
-                        radiusMeters: 100
+                        checkInArea:
+                          type: circle
+                          radiusMeters: 55
                 photoRequired:
                   value:
                     requestId: 123e4567-e89b-42d3-a456-426614174000
@@ -386,7 +396,7 @@ paths:
           required: true
           schema:
             type: string
-          example: pzl_campus_01
+          example: puzzle_liangxiang_campus
       responses:
         "200":
           description: Puzzle progress
@@ -406,15 +416,28 @@ paths:
               example:
                 requestId: 123e4567-e89b-42d3-a456-426614174000
                 data:
-                  puzzleId: pzl_campus_01
-                  name: Campus Puzzle 01
-                  rows: 3
-                  columns: 3
-                  ownedFragmentIds: [frg_campus_01_01]
-                  fragments:
-                    - fragmentId: frg_campus_01_01
-                      pieceIndex: 0
-                      imageKey: puzzles/pzl_campus_01/frg_campus_01_01.png
+                  puzzleId: puzzle_liangxiang_campus
+                  title: 良乡校区探索图
+                  defaultRevealMode: FOG_OF_WAR
+                  ownedFragmentIds: [fragment_north_lake]
+                  sections:
+                    - id: section_north
+                      campusZone: NORTH
+                      rows: 2
+                      columns: 2
+                      fragments:
+                        - id: fragment_north_lake
+                          landmarkId: lmk_north_lake
+                          title: 北湖
+                          pieceIndex: 0
+                          imageKey: puzzles/puzzle_liangxiang_campus/fragment_north_lake.png
+                          owned: true
+                        - id: fragment_north_zongjiao
+                          landmarkId: lmk_north_zongjiao
+                          title: 综教
+                          pieceIndex: 1
+                          imageKey: puzzles/puzzle_liangxiang_campus/fragment_north_zongjiao.png
+                          owned: false
                   completed: false
         "401":
           $ref: "#/components/responses/AuthRequired"
@@ -571,6 +594,51 @@ components:
           format: double
           minimum: -180
           maximum: 180
+    LocalOffsetMeters:
+      type: object
+      required: [eastMeters, northMeters]
+      properties:
+        eastMeters:
+          type: number
+          format: double
+        northMeters:
+          type: number
+          format: double
+    CampusZone:
+      type: string
+      enum: [NORTH, EAST, SOUTH]
+    CheckInArea:
+      oneOf:
+        - $ref: "#/components/schemas/CircularCheckInArea"
+        - $ref: "#/components/schemas/PolygonCheckInArea"
+      discriminator:
+        propertyName: type
+        mapping:
+          circle: "#/components/schemas/CircularCheckInArea"
+          polygon: "#/components/schemas/PolygonCheckInArea"
+    CircularCheckInArea:
+      type: object
+      required: [type, radiusMeters]
+      properties:
+        type:
+          type: string
+          enum: [circle]
+        radiusMeters:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+    PolygonCheckInArea:
+      type: object
+      required: [type, vertices]
+      properties:
+        type:
+          type: string
+          enum: [polygon]
+        vertices:
+          type: array
+          minItems: 3
+          items:
+            $ref: "#/components/schemas/LocalOffsetMeters"
     Task:
       type: object
       required: [id, type, instructions, puzzleId, fragmentId]
@@ -594,7 +662,11 @@ components:
           name,
           point,
           coordinateSystem,
-          checkInRadiusMeters,
+          campusZone,
+          fragmentId,
+          pieceIndex,
+          coordinateVerified,
+          checkInArea,
           difficulty,
           terrain,
           hint,
@@ -610,9 +682,18 @@ components:
         coordinateSystem:
           type: string
           enum: [GCJ02]
-        checkInRadiusMeters:
-          type: number
-          description: Check-in radius in meters
+        campusZone:
+          $ref: "#/components/schemas/CampusZone"
+        fragmentId:
+          type: string
+        pieceIndex:
+          type: integer
+          minimum: 0
+          maximum: 3
+        coordinateVerified:
+          type: boolean
+        checkInArea:
+          $ref: "#/components/schemas/CheckInArea"
         difficulty:
           type: integer
           minimum: 1
@@ -688,7 +769,7 @@ components:
         pieceIndex:
           type: integer
           minimum: 0
-          maximum: 8
+          maximum: 3
         grantedAt:
           type: string
           format: date-time
@@ -706,33 +787,61 @@ components:
     PuzzleProgress:
       type: object
       required:
-        [puzzleId, name, rows, columns, ownedFragmentIds, fragments, completed]
+        [
+          puzzleId,
+          title,
+          defaultRevealMode,
+          sections,
+          ownedFragmentIds,
+          completed,
+        ]
       properties:
         puzzleId:
           type: string
-        name:
+        title:
           type: string
-        rows:
-          type: integer
-        columns:
-          type: integer
+        defaultRevealMode:
+          type: string
+          enum: [GRID, FOG_OF_WAR]
         ownedFragmentIds:
           type: array
           items:
             type: string
-        fragments:
+        sections:
           type: array
           items:
             type: object
-            required: [fragmentId, pieceIndex, imageKey]
+            required: [id, campusZone, rows, columns, fragments]
             properties:
-              fragmentId:
+              id:
                 type: string
-              pieceIndex:
+              campusZone:
+                $ref: "#/components/schemas/CampusZone"
+              rows:
                 type: integer
-                minimum: 0
-                maximum: 8
-              imageKey:
-                type: string
+                minimum: 1
+              columns:
+                type: integer
+                minimum: 1
+              fragments:
+                type: array
+                items:
+                  type: object
+                  required: [id, landmarkId, title, pieceIndex, imageKey, owned]
+                  properties:
+                    id:
+                      type: string
+                    landmarkId:
+                      type: string
+                    title:
+                      type: string
+                    pieceIndex:
+                      type: integer
+                      minimum: 0
+                      maximum: 3
+                    imageKey:
+                      type: string
+                    owned:
+                      type: boolean
         completed:
           type: boolean

@@ -7,7 +7,7 @@
   "requestId": "123e4567-e89b-42d3-a456-426614174000",
   "error": {
     "code": "OUT_OF_RANGE",
-    "message": "Current location is outside the check-in radius",
+    "message": "Current location is outside the check-in area",
     "retryable": false,
     "details": {}
   }
@@ -24,7 +24,7 @@
 | 409 | `CHALLENGE_EXPIRED` | challenge 已过期或已使用 |
 | 409 | `IDEMPOTENCY_CONFLICT` | 同一幂等键对应不同请求 |
 | 422 | `LOCATION_ACCURACY_TOO_LOW` | 定位精度差于 50 Meters |
-| 422 | `OUT_OF_RANGE` | 位置超出打卡半径 |
+| 422 | `OUT_OF_RANGE` | 位置超出地标的圆形或多边形打卡区域 |
 | 422 | `PHOTO_REQUIRED` | 照片缺失或不属于当前用户 |
 | 422 | `PHOTO_INVALID` | MIME、大小或 JPEG 内容不合法 |
 | 200 | `CHECKIN_ALREADY_COMPLETED` | 已打卡，返回原打卡和碎片 |
