@@ -33,7 +33,7 @@
 
 ```text
 Test Files  7 passed | 1 skipped
-Tests       32 passed | 6 skipped
+Tests       33 passed | 6 skipped
 Real DB     6 passed
 OpenAPI     valid
 ```

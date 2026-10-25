@@ -192,6 +192,22 @@ beforeEach(() => {
 });
 
 describe("PR #5 check-in regressions", () => {
+  it("invalid input leaves the challenge and database untouched", async () => {
+    const state = newState();
+    installFetch(state);
+
+    await expect(
+      submitCheckIn("usr_demo01", "req_1", "idem_test", {
+        landmarkId: "lmk_library",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+
+    expect(state.validChallenges.has("chl_test")).toBe(true);
+    expect(state.checkins).toHaveLength(0);
+    expect(state.grants).toHaveLength(0);
+    expect(state.audits).toHaveLength(0);
+  });
+
   it("same idempotency key with a changed photo returns IDEMPOTENCY_CONFLICT", async () => {
     const state = newState();
     installFetch(state);

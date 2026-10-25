@@ -66,7 +66,7 @@ Node.js：`v24.20.0`
 ```text
 npm run api:check
 Test Files  7 passed | 1 skipped
-Tests       32 passed | 6 skipped
+Tests       33 passed | 6 skipped
 OpenAPI contract is valid
 
 npm run api:test:database
@@ -120,6 +120,9 @@ SOUTH 4  {0,1,2,3}
 - 恢复路径补齐 audit 且 checkin/grant/audit 均为 1
 - 并发不同 key 最终只有 1 个 checkin、1 个 grant
 - 真实 API 模型返回 12 个地标、3 个 section、12 个 fragment
+
+`review-checkin-regression.test.ts` 额外覆盖无效输入：不消耗 challenge，
+且不会写入 checkin、grant 或 audit。
 
 测试后清理检查：
 
