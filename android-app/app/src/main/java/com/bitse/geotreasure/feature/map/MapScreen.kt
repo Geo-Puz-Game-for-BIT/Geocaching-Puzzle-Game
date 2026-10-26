@@ -2,6 +2,8 @@ package com.bitse.geotreasure.feature.map
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -26,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.LocationDisabled
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Map
@@ -37,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +71,7 @@ import com.bitse.geotreasure.core.model.MapEvent
 import com.bitse.geotreasure.core.ui.compactDescription
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,6 +193,19 @@ fun MapScreen(
                     DeveloperMapDebugPanel(
                         state = uiState,
                         onAction = viewModel::onAction,
+                        onCopyLocation = {
+                            val location = uiState.userLocation ?: return@DeveloperMapDebugPanel
+                            val landmarkId = uiState.selectedLandmarkId ?: return@DeveloperMapDebugPanel
+                            val row = listOf(
+                                landmarkId,
+                                "%.6f".format(Locale.US, location.point.latitude),
+                                "%.6f".format(Locale.US, location.point.longitude),
+                                location.accuracyMeters.toString(),
+                                location.capturedAt.toString(),
+                            ).joinToString(",")
+                            context.getSystemService(ClipboardManager::class.java)
+                                ?.setPrimaryClip(ClipData.newPlainText("地标坐标", row))
+                        },
                     )
                 }
             }
@@ -264,6 +282,7 @@ fun MapScreen(
 private fun DeveloperMapDebugPanel(
     state: MapUiState,
     onAction: (MapAction) -> Unit,
+    onCopyLocation: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -275,6 +294,27 @@ private fun DeveloperMapDebugPanel(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text("地图调试", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            val location = state.userLocation
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (location == null) {
+                        "已探索 ${state.exploredCenters.size} 点 · 等待定位"
+                    } else {
+                        "已探索 ${state.exploredCenters.size} 点 · ${location.source.displayName()} ±${location.accuracyMeters.roundToInt()}m\n" +
+                            "${"%.6f".format(Locale.US, location.point.latitude)}, ${"%.6f".format(Locale.US, location.point.longitude)}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onCopyLocation,
+                    enabled = !state.usingDemoMap && state.locationSignalActive &&
+                        location?.source == LocationSourceKind.GPS && location.accuracyMeters <= 20f &&
+                        state.selectedLandmarkId != null,
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = "复制选中地标的当前 GCJ-02 坐标")
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Button(onClick = { onAction(MapAction.ToggleDebugRevealAll) }) {
                     Text(if (state.debugRevealAll) "恢复迷雾" else "显示全图")

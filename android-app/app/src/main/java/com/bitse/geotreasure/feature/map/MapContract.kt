@@ -32,6 +32,7 @@ data class MapUiState(
     val exploredCenters: List<GeoPoint> = emptyList(),
     val locationSignalActive: Boolean = false,
     val completedLandmarkIds: Set<String> = emptySet(),
+    val revealedLandmarkIds: Set<String> = emptySet(),
     val debugEnabled: Boolean = false,
     val debugPanelExpanded: Boolean = false,
     val debugRevealAll: Boolean = false,
@@ -46,6 +47,10 @@ data class MapUiState(
     val selectedLandmark: Landmark?
         get() = landmarksWithDebugOverrides.firstOrNull { it.id == selectedLandmarkId }
 
+    val visibleLandmarkIds: Set<String>
+        get() = if (debugRevealAll) landmarks.mapTo(mutableSetOf()) { it.id }
+            else revealedLandmarkIds + completedLandmarkIds
+
     val renderState: MapRenderState
         get() = MapRenderState(
             userLocation = userLocation,
@@ -54,6 +59,8 @@ data class MapUiState(
             exploredCenters = exploredCenters,
             liveScoutCenter = if (locationSignalActive) userLocation?.point else null,
             completedLandmarkIds = completedLandmarkIds,
+            revealedLandmarkIds = revealedLandmarkIds,
+            visibleLandmarkIds = visibleLandmarkIds,
             debugRevealAll = debugRevealAll,
             debugShowScoutRange = debugShowScoutRange,
         )

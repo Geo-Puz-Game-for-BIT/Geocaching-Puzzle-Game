@@ -9,6 +9,7 @@ import com.bitse.geotreasure.core.location.LocationPrivacyManager
 import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.location.distanceMeters
 import com.bitse.geotreasure.core.model.CheckInArea
+import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.LocalOffsetMeters
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
@@ -129,12 +130,10 @@ class MapViewModel(
             mutableUiState.update { it.copy(isLoading = true, message = null) }
             when (val result = landmarkRepository.listLandmarks(center = null, radiusMeters = null)) {
                 is AppResult.Success -> mutableUiState.update { state ->
-                    val selectedId = state.selectedLandmarkId ?: result.data.firstOrNull()?.id
                     state.copy(
                         isLoading = false,
                         landmarks = result.data,
-                        selectedLandmarkId = selectedId,
-                    ).withUpdatedDistance()
+                    ).withDiscoveredLandmarks().withUpdatedDistance()
                 }
 
                 is AppResult.Failure -> mutableUiState.update {
@@ -146,6 +145,7 @@ class MapViewModel(
 
     private fun selectLandmark(landmarkId: String) {
         mutableUiState.update {
+            if (landmarkId !in it.visibleLandmarkIds) return@update it
             it.copy(selectedLandmarkId = landmarkId).withUpdatedDistance()
         }
     }
@@ -199,7 +199,7 @@ class MapViewModel(
                             locationSignalActive = true,
                             message = null,
                             exploredCenters = updatedExploredCenters(it.exploredCenters, location),
-                        ).withUpdatedDistance()
+                        ).withDiscoveredLandmarks().withUpdatedDistance()
                     }
                 }
         }
@@ -237,6 +237,16 @@ class MapViewModel(
         val location = userLocation ?: return copy(distanceToSelectedMeters = null)
         val landmark = selectedLandmark ?: return copy(distanceToSelectedMeters = null)
         return copy(distanceToSelectedMeters = distanceMeters(location.point, landmark.point))
+    }
+
+    private fun MapUiState.withDiscoveredLandmarks(): MapUiState {
+        val location = userLocation ?: return this
+        val newlyFound = discoverLandmarks(landmarks, revealedLandmarkIds, location)
+        if (newlyFound.isEmpty()) return this
+        return copy(
+            revealedLandmarkIds = revealedLandmarkIds + newlyFound.map { it.id },
+            selectedLandmarkId = newlyFound.first().id,
+        )
     }
 
     companion object {

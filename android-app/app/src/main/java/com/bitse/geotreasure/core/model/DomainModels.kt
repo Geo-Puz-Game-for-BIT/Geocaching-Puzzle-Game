@@ -172,6 +172,8 @@ data class MapRenderState(
     val selectedLandmarkId: String?,
     val exploredCenters: List<GeoPoint> = emptyList(),
     val liveScoutCenter: GeoPoint? = null,
+    val revealedLandmarkIds: Set<String> = emptySet(),
+    val visibleLandmarkIds: Set<String> = emptySet(),
     val completedLandmarkIds: Set<String> = emptySet(),
     val debugRevealAll: Boolean = false,
     val debugShowScoutRange: Boolean = false,

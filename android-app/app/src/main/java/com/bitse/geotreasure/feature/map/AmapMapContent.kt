@@ -32,7 +32,6 @@ fun AmapMapContent(
     }
     val locationSource = remember { AmapRenderLocationSource() }
     val adapter = remember(mapView, locationSource) { AmapMapAdapter(mapView.map, locationSource) }
-
     LaunchedEffect(adapter) {
         adapter.observeEvents().collect(onEvent)
     }
