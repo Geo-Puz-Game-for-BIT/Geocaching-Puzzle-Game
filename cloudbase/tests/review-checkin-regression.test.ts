@@ -30,6 +30,7 @@ interface FakeState {
   validChallenges: Set<string>;
   photos: Set<string>;
   failCheckInBeforeInsertOnce: boolean;
+  failAuditInsertOnce: boolean;
 }
 
 const landmark = {
@@ -151,6 +152,10 @@ function installFetch(state: FakeState): void {
       }
 
       if (table === "audit_logs" && method === "POST") {
+        if (state.failAuditInsertOnce) {
+          state.failAuditInsertOnce = false;
+          return jsonResponse({ message: "simulated audit outage" }, 503);
+        }
         state.audits.push(body ?? {});
         return jsonResponse([{ id: 1 }]);
       }
@@ -168,6 +173,7 @@ function newState(overrides: Partial<FakeState> = {}): FakeState {
     validChallenges: new Set(["chl_test"]),
     photos: new Set(["pho_test", "pho_other"]),
     failCheckInBeforeInsertOnce: false,
+    failAuditInsertOnce: false,
     ...overrides,
   };
 }
@@ -266,6 +272,29 @@ describe("PR #5 check-in regressions", () => {
 
     await submitCheckIn("usr_demo01", "req_1", "idem_test", validBody());
     state.audits.length = 0;
+
+    const receipt = await submitCheckIn("usr_demo01", "req_2", "idem_test", validBody());
+
+    expect(receipt.status).toBe("COMPLETED");
+    expect(state.checkins).toHaveLength(1);
+    expect(state.grants).toHaveLength(1);
+    expect(state.audits).toHaveLength(1);
+  });
+
+  it("audit persistence failure is retryable and recovery leaves exactly one audit", async () => {
+    const state = newState({ failAuditInsertOnce: true });
+    installFetch(state);
+
+    await expect(
+      submitCheckIn("usr_demo01", "req_1", "idem_test", validBody()),
+    ).rejects.toMatchObject({
+      code: "AUDIT_WRITE_FAILED",
+      retryable: true,
+    });
+
+    expect(state.checkins).toHaveLength(1);
+    expect(state.grants).toHaveLength(1);
+    expect(state.audits).toHaveLength(0);
 
     const receipt = await submitCheckIn("usr_demo01", "req_2", "idem_test", validBody());
 

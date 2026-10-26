@@ -43,4 +43,16 @@ describe("backend contract helpers", () => {
     });
     expect(statusForErrorCode(failure.error.code)).toBe(409);
   });
+
+  it("givenAuditWriteFailure_whenMapStatus_thenReturnsServiceUnavailable", () => {
+    const failure = toApiError(
+      new ApiError("AUDIT_WRITE_FAILED", "audit unavailable", {
+        retryable: true,
+      }),
+      "123e4567-e89b-42d3-a456-426614174000",
+    );
+    expect(failure.error.code).toBe("AUDIT_WRITE_FAILED");
+    expect(failure.error.retryable).toBe(true);
+    expect(statusForErrorCode(failure.error.code)).toBe(503);
+  });
 });

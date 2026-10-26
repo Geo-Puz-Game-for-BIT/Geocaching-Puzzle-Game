@@ -3,7 +3,7 @@
 | 代号 | 姓名 | 主责 | 结对成员 | 工作分支 | 主要目录 |
 |---|---|---|---|---|---|
 | A | 待填写 | 产品、流程、UI/UX | B / C | `docs/product-ux-baseline` | `docs/design/`、`design/` |
-| B | 待填写 | Android 架构、地图 | A / E | `feat/android-foundation` | `android-app/`、`docs/adr/` |
+| B | 余 | Android 架构、地图 | A / E | `feat/map-fog-of-war` | `android-app/`、`docs/adr/` |
 | C | 待填写 | 相机、图像、拼图 | A / E | `feat/camera-puzzle-poc` | `android-app/`、`docs/testing/` |
 | D | 张博淳 | API、联网、云端 | B / E | `feat/cloudbase-api-poc` | `cloudbase/`、`docs/api/` |
 | E | 用户（E） | 测试、集成、CI、发布检查 | 全员 | `chore/quality-baseline` | `.github/`、`docs/testing/`、`docs/sprint-01/` |

@@ -216,6 +216,11 @@ async function ensureCheckInGrantedAudit(
       return;
     }
     console.error("Audit log write failed", { requestId, error });
+    throw new ApiError(
+      "AUDIT_WRITE_FAILED",
+      "Check-in audit is not yet available; retry with the same Idempotency-Key",
+      { retryable: true },
+    );
   }
 }
 

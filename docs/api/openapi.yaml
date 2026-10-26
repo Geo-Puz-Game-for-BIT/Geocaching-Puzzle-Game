@@ -48,6 +48,11 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            Cache-Control:
+              description: Health responses must not be cached
+              schema:
+                type: string
+                enum: [no-store]
           content:
             application/json:
               schema:
@@ -382,6 +387,18 @@ paths:
                       code: PHOTO_REQUIRED
                       message: A valid uploaded photo is required
                       retryable: false
+        "503":
+          description: Check-in is persisted but the audit record is not yet available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                error:
+                  code: AUDIT_WRITE_FAILED
+                  message: Check-in audit is not yet available; retry with the same Idempotency-Key
+                  retryable: true
         "500":
           $ref: "#/components/responses/InternalError"
   /puzzles/{puzzleId}:
@@ -548,8 +565,8 @@ components:
                 - CHALLENGE_EXPIRED
                 - PHOTO_REQUIRED
                 - PHOTO_INVALID
-                - CHECKIN_ALREADY_COMPLETED
                 - IDEMPOTENCY_CONFLICT
+                - AUDIT_WRITE_FAILED
                 - INTERNAL_ERROR
             message:
               type: string
@@ -561,25 +578,31 @@ components:
     HealthResponse:
       type: object
       required: [requestId, data]
+      additionalProperties: false
       properties:
         requestId:
           type: string
+          format: uuid
         data:
           type: object
           required: [status, service, version, environment, timestamp]
+          additionalProperties: false
           properties:
             status:
               type: string
               enum: [ok]
             service:
               type: string
+              enum: [geotreasure-api]
             version:
               type: string
+              pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
             environment:
               type: string
             timestamp:
               type: string
               format: date-time
+              pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
     GeoPoint:
       type: object
       required: [latitude, longitude]
@@ -798,49 +821,61 @@ components:
       properties:
         puzzleId:
           type: string
+          enum: [puzzle_liangxiang_campus]
         title:
           type: string
+          enum: [良乡校区探索图]
         defaultRevealMode:
           type: string
           enum: [GRID, FOG_OF_WAR]
         ownedFragmentIds:
           type: array
+          uniqueItems: true
           items:
             type: string
         sections:
           type: array
+          minItems: 3
+          maxItems: 3
           items:
             type: object
             required: [id, campusZone, rows, columns, fragments]
+            additionalProperties: false
             properties:
               id:
                 type: string
+                enum: [section_north, section_east, section_south]
               campusZone:
                 $ref: "#/components/schemas/CampusZone"
               rows:
                 type: integer
-                minimum: 1
+                enum: [2]
               columns:
                 type: integer
-                minimum: 1
+                enum: [2]
               fragments:
                 type: array
+                minItems: 4
+                maxItems: 4
                 items:
                   type: object
                   required: [id, landmarkId, title, pieceIndex, imageKey, owned]
+                  additionalProperties: false
                   properties:
                     id:
                       type: string
+                      pattern: "^fragment_[a-z0-9_]+$"
                     landmarkId:
                       type: string
+                      pattern: "^lmk_[a-z0-9_]+$"
                     title:
                       type: string
                     pieceIndex:
                       type: integer
-                      minimum: 0
-                      maximum: 3
+                      enum: [0, 1, 2, 3]
                     imageKey:
                       type: string
+                      pattern: "^puzzles/puzzle_liangxiang_campus/fragment_[a-z0-9_]+\\.png$"
                     owned:
                       type: boolean
         completed:

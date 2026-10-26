@@ -281,10 +281,20 @@ describe("submitCheckIn", () => {
     const first = await submitCheckIn("usr_demo01", "req_1", "idem_test", validBody());
     const second = await submitCheckIn("usr_demo01", "req_2", "idem_test", validBody());
     const third = await submitCheckIn("usr_demo01", "req_3", "idem_test", validBody());
+    const duplicateWithNewKey = await submitCheckIn(
+      "usr_demo01",
+      "req_4",
+      "idem_other",
+      validBody(),
+    );
 
     expect(first.checkInId).toBe(second.checkInId);
     expect(second.checkInId).toBe(third.checkInId);
+    expect(duplicateWithNewKey.checkInId).toBe(first.checkInId);
+    expect(first.status).toBe("COMPLETED");
     expect(second.status).toBe("COMPLETED");
+    expect(third.status).toBe("COMPLETED");
+    expect(duplicateWithNewKey.status).toBe("ALREADY_COMPLETED");
     expect(state.checkins).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
   });

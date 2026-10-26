@@ -33,7 +33,7 @@
 
 ```text
 Test Files  7 passed | 1 skipped
-Tests       33 passed | 6 skipped
+Tests       35 passed | 6 skipped
 Real DB     6 passed
 OpenAPI     valid
 ```
@@ -56,5 +56,5 @@ OpenAPI     valid
 
 ## 已知边界
 
-- 契约 PR #7 先合入后，实现 PR #5 rebase 到 `develop` 再合并。
+- 契约阶段作为 PR #5 的首个修复提交 `7b79d20`，与实现一起按提交顺序审核。
 - 测试账号、照片和临时 checkin 在真实数据库回归后已清理。

@@ -51,4 +51,4 @@
 
 ## 备注
 
-契约 PR #7 先合入后，实现 PR #5 rebase 到 `develop` 再合并，不直接修改 `main` 或 `develop`。
+契约阶段作为 PR #5 的首个修复提交 `7b79d20`，实现与契约在同一 PR 按提交顺序审核，不直接修改 `main` 或 `develop`。

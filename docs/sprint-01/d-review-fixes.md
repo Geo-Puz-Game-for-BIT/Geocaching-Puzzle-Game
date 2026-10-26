@@ -1,7 +1,7 @@
 # PR #5 审核修复记录
 
 负责人：张博淳（D）
-修复日期：2026-10-25
+修复日期：2026-10-25；复审补充：2026-10-26
 
 ## 修复任务
 
@@ -12,6 +12,16 @@
 | `S1-D-R03` | P2 | 完成 | `CHECKIN_GRANTED` 由事务 trigger 写入，并保留幂等补偿路径修复历史缺失审计 |
 | `S1-D-R04` | P1 | 完成 | 契约、迁移和 API 统一为三个 2x2 section、12 个地标、12 个 fragment |
 | `S1-D-R05` | P1 | 完成 | 部署最终云函数并验证 UUID requestId 的响应头与响应体一致 |
+
+### 2026-10-26 复审补充
+
+| 编号 | 优先级 | 结果 | 修复 |
+|---|---|---|---|
+| `S1-D-R03A` | P2 | 完成 | 审计补写失败返回 `503 AUDIT_WRITE_FAILED`，原幂等键重试后审计恰一条 |
+| `S1-D-R01A` | P2 | 完成 | 统一首次、同 key 重放、新 key 重复地标和同 key 不同请求的响应矩阵 |
+| `S1-D-R04A` | P2 | 完成 | 增加完整 12 片校园目录夹具和 Android stable ID/2x2/0..3 校验 |
+| `S1-D-R05A` | P2 | 完成 | 收紧 health UUID、service、版本、UTC 毫秒和 no-store 契约 |
+| `S1-D-R06` | P2 | 完成 | 线上回归改为真实 challenge、照片上传和 checkin HTTP 全链路，并增加清理失败断言 |
 
 ## 根因与修复
 
@@ -42,6 +52,8 @@
 
 修复：新增 `uq_audit_logs_checkin_granted(event_type, entity_id)` 唯一约束；
 事务 trigger 正常写入审计，恢复路径通过 `ensureCheckInGrantedAudit()` 做幂等补偿。
+如果补偿写入仍失败，接口现在返回可重试的
+`503 AUDIT_WRITE_FAILED`，不再把缺审计的打卡报告为成功。
 
 ### S1-D-R04
 
@@ -58,6 +70,17 @@
 
 - Issue #6：`[S1][Contract] 三组 2x2 校园地标与拼图模型`
 - PR #5 的首个修复提交 `7b79d20`：只包含契约与流程记录，供 B/C/E 先审核
+- B 的固定实施基线：`feat/map-fog-of-war@1320ce3e45dec8ea3c811761d7e27c435b3f0e90`
+- 完整目录夹具：`docs/api/fixtures/campus-catalog.json`
+
+重复打卡响应矩阵：
+
+| 场景 | HTTP | 结果 |
+|---|---:|---|
+| 首次 | 200 | `data.status=COMPLETED` |
+| 同 key、同请求 | 200 | 原 receipt，`data.status=COMPLETED` |
+| 新 key、同用户同地标 | 200 | 原 receipt，`data.status=ALREADY_COMPLETED` |
+| 同 key、不同请求 | 409 | `IDEMPOTENCY_CONFLICT` |
 
 ## 验证结果
 
@@ -66,8 +89,8 @@ Node.js：`v24.20.0`
 ```text
 npm run api:check
 Test Files  7 passed | 1 skipped
-Tests       33 passed | 6 skipped
-OpenAPI contract is valid
+Tests       35 passed | 6 skipped
+OpenAPI contract and canonical campus fixture are valid
 
 npm run api:test:database
 Test Files  1 passed
@@ -120,9 +143,12 @@ SOUTH 4  {0,1,2,3}
 - 恢复路径补齐 audit 且 checkin/grant/audit 均为 1
 - 并发不同 key 最终只有 1 个 checkin、1 个 grant
 - 真实 API 模型返回 12 个地标、3 个 section、12 个 fragment
+- 完整夹具与 Android 稳定 ID、三个唯一校区、每区 2x2、索引 0..3 一致
 
-`review-checkin-regression.test.ts` 额外覆盖无效输入：不消耗 challenge，
-且不会写入 checkin、grant 或 audit。
+`review-checkin-regression.test.ts` 额外覆盖：
+
+- 无效输入不消耗 challenge，不写 checkin、grant 或 audit
+- 审计补写首次失败后返回可重试错误，同 key 恢复后审计恰一条
 
 测试后清理检查：
 
@@ -164,13 +190,16 @@ X-Request-Id == response.requestId
 ```json
 {
   "requestIds": {
-    "first": "a648c75c-ff53-4e19-a7b1-9b2d8f121c1d",
-    "conflict": "c119d16c-6593-4628-aa59-134d61ea8bb4",
-    "replay": "0e71b6e2-ab70-4bc8-a573-e4292a87a4a3"
+    "challenge": "ea90a39d-7a1f-40b2-89d5-f0476f15eb06",
+    "first": "faf881a1-b7fb-4ee7-a6d3-b4240aaf0131",
+    "replay": "31031fa8-e988-4289-8235-7a90feb5693d",
+    "conflict": "797c8771-58d8-4744-b20e-9faf25789e26",
+    "duplicate": "96516dc4-caa5-410f-a608-4fda79e379d7"
   },
   "landmarkId": "lmk_east_gantang",
   "firstStatus": "COMPLETED",
   "replayStatus": "COMPLETED",
+  "duplicateStatus": "ALREADY_COMPLETED",
   "conflictCode": "IDEMPOTENCY_CONFLICT",
   "challengeUsed": true,
   "databaseCounts": {

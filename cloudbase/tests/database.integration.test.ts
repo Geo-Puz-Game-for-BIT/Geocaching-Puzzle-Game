@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -13,6 +14,45 @@ import { listNearbyLandmarks } from "../functions/api/handlers/landmarks.ts";
 import { getPuzzleProgress } from "../functions/api/handlers/puzzles.ts";
 
 const runDatabaseIntegration = process.env.RUN_DATABASE_INTEGRATION === "1";
+interface CanonicalFragment {
+  id: string;
+  landmarkId: string;
+  title: string;
+  pieceIndex: number;
+  imageKey: string;
+}
+
+interface CanonicalSection {
+  id: string;
+  campusZone: string;
+  rows: number;
+  columns: number;
+  fragments: CanonicalFragment[];
+}
+
+interface CanonicalLandmark {
+  id: string;
+  name: string;
+  sectionId: string;
+  pieceIndex: number;
+  latitude: number;
+  longitude: number;
+  coordinateSystem: string;
+  coordinateVerified: boolean;
+  checkInArea: unknown;
+}
+
+interface CanonicalCatalog {
+  sections: CanonicalSection[];
+  landmarks: CanonicalLandmark[];
+}
+
+const canonicalCatalog = JSON.parse(
+  readFileSync(
+    new URL("../../docs/api/fixtures/campus-catalog.json", import.meta.url),
+    "utf8",
+  ),
+) as CanonicalCatalog;
 
 interface Fixture {
   userId: string;
@@ -186,13 +226,67 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
     expect(new Set(landmarks.map((landmark) => landmark.campusZone))).toEqual(
       new Set(["NORTH", "EAST", "SOUTH"]),
     );
-    expect(puzzle.sections).toHaveLength(3);
-    expect(puzzle.sections.map((section) => section.campusZone)).toEqual([
-      "NORTH",
-      "EAST",
-      "SOUTH",
-    ]);
-    expect(puzzle.sections.flatMap((section) => section.fragments)).toHaveLength(12);
+    expect(
+      puzzle.sections.map((section) => ({
+        id: section.id,
+        campusZone: section.campusZone,
+        rows: section.rows,
+        columns: section.columns,
+        fragments: section.fragments.map((fragment) => ({
+          id: fragment.id,
+          landmarkId: fragment.landmarkId,
+          title: fragment.title,
+          pieceIndex: fragment.pieceIndex,
+          imageKey: fragment.imageKey,
+        })),
+      })),
+    ).toEqual(
+      canonicalCatalog.sections.map((section) => ({
+        id: section.id,
+        campusZone: section.campusZone,
+        rows: section.rows,
+        columns: section.columns,
+        fragments: section.fragments.map((fragment) => ({
+          id: fragment.id,
+          landmarkId: fragment.landmarkId,
+          title: fragment.title,
+          pieceIndex: fragment.pieceIndex,
+          imageKey: fragment.imageKey,
+        })),
+      })),
+    );
+    const actualLandmarks = landmarks
+      .map((landmark) => ({
+        id: landmark.id,
+        name: landmark.name,
+        campusZone: landmark.campusZone,
+        fragmentId: landmark.fragmentId,
+        pieceIndex: landmark.pieceIndex,
+        point: landmark.point,
+        coordinateVerified: landmark.coordinateVerified,
+        checkInArea: landmark.checkInArea,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    const expectedLandmarks = canonicalCatalog.landmarks
+      .map((landmark) => ({
+        id: landmark.id,
+        name: landmark.name,
+        campusZone: canonicalCatalog.sections.find(
+          (section) => section.id === landmark.sectionId,
+        )!.campusZone,
+        fragmentId: canonicalCatalog.sections
+          .flatMap((section) => section.fragments)
+          .find((fragment) => fragment.landmarkId === landmark.id)!.id,
+        pieceIndex: landmark.pieceIndex,
+        point: {
+          latitude: landmark.latitude,
+          longitude: landmark.longitude,
+        },
+        coordinateVerified: landmark.coordinateVerified,
+        checkInArea: landmark.checkInArea,
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    expect(actualLandmarks).toEqual(expectedLandmarks);
   });
 
   it("same key with a changed photo is a conflict and keeps one persisted result", async () => {
