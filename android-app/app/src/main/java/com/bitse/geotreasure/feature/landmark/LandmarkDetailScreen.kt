@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitse.geotreasure.core.ui.compactDescription
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +97,7 @@ fun LandmarkDetailScreen(
                             Spacer(Modifier.height(14.dp))
                             Text(landmark.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(
-                                "到达 ${landmark.checkInRadiusMeters.toInt()} 米范围后完成拍照任务",
+                                "进入${landmark.checkInArea.compactDescription()}后完成拍照任务",
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }

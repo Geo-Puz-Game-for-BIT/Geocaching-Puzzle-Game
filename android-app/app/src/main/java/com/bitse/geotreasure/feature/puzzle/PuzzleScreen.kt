@@ -42,7 +42,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import com.bitse.geotreasure.core.model.PuzzleFragmentDefinition
@@ -52,16 +54,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class PuzzleUiState(
     val puzzleId: String,
     val revealMode: PuzzleRevealMode = LiangxiangTreasureCatalog.puzzle.defaultRevealMode,
-    val ownedFragmentIds: Set<String> = setOf(
-        "fragment_north_lake",
-        "fragment_north_library",
-        "fragment_east_wencui",
-    ),
+    val ownedFragmentIds: Set<String> = DEMO_OWNED_FRAGMENT_IDS,
 )
+
+private val DEMO_OWNED_FRAGMENT_IDS = setOf(
+    "fragment_north_lake",
+    "fragment_north_library",
+    "fragment_east_wencui",
+)
+
+internal fun ownedFragmentIdsFor(completedLandmarkIds: Set<String>): Set<String> =
+    DEMO_OWNED_FRAGMENT_IDS + LiangxiangTreasureCatalog.landmarks
+        .filter { it.id in completedLandmarkIds }
+        .map { it.fragmentId }
 
 sealed interface PuzzleAction {
     data class ChangeRevealMode(val revealMode: PuzzleRevealMode) : PuzzleAction
@@ -70,9 +80,17 @@ sealed interface PuzzleAction {
 
 sealed interface PuzzleEffect
 
-class PuzzleViewModel(puzzleId: String) : ViewModel() {
+class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore) : ViewModel() {
     private val mutableUiState = MutableStateFlow(PuzzleUiState(puzzleId))
     val uiState: StateFlow<PuzzleUiState> = mutableUiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            progressStore.completedLandmarkIds.collect { completedIds ->
+                mutableUiState.update { it.copy(ownedFragmentIds = ownedFragmentIdsFor(completedIds)) }
+            }
+        }
+    }
 
     fun onAction(action: PuzzleAction) {
         when (action) {
@@ -87,9 +105,11 @@ class PuzzleViewModel(puzzleId: String) : ViewModel() {
     }
 
     companion object {
-        fun factory(puzzleId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(puzzleId: String, progressStore: ExplorationProgressStore): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = PuzzleViewModel(puzzleId) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                PuzzleViewModel(puzzleId, progressStore) as T
         }
     }
 }
