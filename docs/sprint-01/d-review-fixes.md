@@ -163,12 +163,15 @@ SOUTH 4  {0,1,2,3}
 
 ## 线上部署与回归
 
+线上脚本通过真实 HTTP 依次创建 challenge、上传两个合成 JPEG、提交 checkin，
+再执行同 key 重放、同 key 修改照片冲突和新 key 重复地标，不只直接写数据库。
+
 - 云函数：`api`
 - 函数 ID：`lam-btbif7il`
 - 状态：`Active`
 - 运行时：`Nodejs20.19`
-- 首次部署：`2026-10-25 23:35:25`（Asia/Shanghai），运行时提交 `71c5ca5`
-- 最终重建部署：`2026-10-25 23:37:16`（Asia/Shanghai），head 为 `da32d08`；仅后续文档变化
+- 最终部署：`2026-10-26 18:56:50`（Asia/Shanghai）
+- 运行时提交：`08ee4aa`
 
 线上 health：
 
@@ -177,6 +180,7 @@ HTTP 200
 UUID requestId
 X-Request-Id == response.requestId
 固定请求 UUID 被原样回传
+Cache-Control 包含 no-store
 ```
 
 请求 ID 证据：
@@ -190,11 +194,11 @@ X-Request-Id == response.requestId
 ```json
 {
   "requestIds": {
-    "challenge": "ea90a39d-7a1f-40b2-89d5-f0476f15eb06",
-    "first": "faf881a1-b7fb-4ee7-a6d3-b4240aaf0131",
-    "replay": "31031fa8-e988-4289-8235-7a90feb5693d",
-    "conflict": "797c8771-58d8-4744-b20e-9faf25789e26",
-    "duplicate": "96516dc4-caa5-410f-a608-4fda79e379d7"
+    "challenge": "abc7c370-3cd0-4af2-875b-917f52fe9d93",
+    "first": "349092c9-a5e6-4de9-988a-f32a5beb9084",
+    "replay": "f4c90a32-0ac5-45cb-8e98-e08764a3ec46",
+    "conflict": "62c4d096-9bc0-444f-8f64-5b7d77512ce6",
+    "duplicate": "66dfb5e9-b5a0-43b4-be09-c8593dcfa5af"
   },
   "landmarkId": "lmk_east_gantang",
   "firstStatus": "COMPLETED",

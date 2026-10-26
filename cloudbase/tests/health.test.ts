@@ -56,7 +56,7 @@ describe("health handler", () => {
     expect(body.requestId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("cache-control")).toMatch(/(^|,\s*)no-store(,|$)/);
     expect(body.data.status).toBe("ok");
     expect(body.data.service).toBe("geotreasure-api");
     expect(body.data.version).toMatch(/^\d+\.\d+\.\d+$/);

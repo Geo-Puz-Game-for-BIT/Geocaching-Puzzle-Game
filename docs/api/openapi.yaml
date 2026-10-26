@@ -49,10 +49,10 @@ paths:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
             Cache-Control:
-              description: Health responses must not be cached
+              description: Health responses must include no-store among cache directives
               schema:
                 type: string
-                enum: [no-store]
+                pattern: "(^|,\\s*)no-store(,|$)"
           content:
             application/json:
               schema:
