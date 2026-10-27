@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.datetime)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.amap.map.location.search)
 
     testImplementation(libs.junit)
