@@ -12,7 +12,6 @@ import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.maps.model.Polygon
 import com.amap.api.maps.model.PolygonOptions
-import com.amap.api.maps.model.TileOverlayOptions
 import com.bitse.geotreasure.core.location.offsetPoint
 import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.FogOfWarRules
@@ -40,14 +39,9 @@ internal class AmapMapAdapter(
     private var renderedLiveScoutCenter: GeoPoint? = null
     private var renderedDebugShowScoutRange = false
     private var scoutCircle: Circle? = null
-    private val fogTiles = FogTileProvider()
-    private val fogOverlay = map.addTileOverlay(
-        TileOverlayOptions()
-            .tileProvider(fogTiles)
-            .zIndex(FOG_Z_INDEX)
-            .memoryCacheEnabled(false)
-            .diskCacheEnabled(false),
-    )
+    private val fogOverlay = FogPolygonOverlay(map)
+    private var debugDraggableLandmarkId: String? = null
+    private var selectedLandmarkId: String? = null
 
     init {
         map.setLocationSource(locationSource)
@@ -63,10 +57,22 @@ internal class AmapMapAdapter(
         map.uiSettings.isCompassEnabled = true
         map.setOnMarkerClickListener { marker ->
             val landmarkId = marker.`object` as? String ?: return@setOnMarkerClickListener false
-            focusOn(GeoPoint(marker.position.latitude, marker.position.longitude))
+            if (selectedLandmarkId != landmarkId) focusOn(GeoPoint(marker.position.latitude, marker.position.longitude))
             events.tryEmit(MapEvent.LandmarkSelected(landmarkId))
             true
         }
+        map.setOnMarkerDragListener(object : AMap.OnMarkerDragListener {
+            override fun onMarkerDragStart(marker: Marker?) = Unit
+            override fun onMarkerDrag(marker: Marker?) = Unit
+            override fun onMarkerDragEnd(marker: Marker?) {
+                val landmarkId = marker?.`object` as? String ?: return
+                if (landmarkId != debugDraggableLandmarkId) return
+                events.tryEmit(MapEvent.LandmarkMoved(
+                    landmarkId,
+                    GeoPoint(marker.position.latitude, marker.position.longitude),
+                ))
+            }
+        })
         map.setOnCameraChangeListener(object : AMap.OnCameraChangeListener {
             override fun onCameraChange(position: com.amap.api.maps.model.CameraPosition?) {
                 position?.target?.let { target ->
@@ -83,9 +89,10 @@ internal class AmapMapAdapter(
     }
 
     override fun render(state: MapRenderState) {
+        selectedLandmarkId = state.selectedLandmarkId
+        debugDraggableLandmarkId = state.debugDraggableLandmarkId
         reconcileLandmarks(state.landmarks.filter { it.id in state.visibleLandmarkIds }, state.selectedLandmarkId)
-        if (fogTiles.update(state)) fogOverlay.clearTileCache()
-        fogOverlay.isVisible = !state.debugRevealAll
+        fogOverlay.render(state)
         if (
             state.userLocation != renderedLocation ||
             state.liveScoutCenter != renderedLiveScoutCenter ||
@@ -129,7 +136,8 @@ internal class AmapMapAdapter(
             val existing = landmarkOverlays[landmark.id]
             if (existing == null) {
                 landmarkOverlays[landmark.id] = createLandmarkOverlay(landmark, selected)
-            } else if (existing.landmark != landmark || existing.selected != selected) {
+            } else if (existing.landmark != landmark || existing.selected != selected ||
+                existing.marker.isDraggable != (landmark.id == debugDraggableLandmarkId)) {
                 existing.update(landmark, selected)
             }
         }
@@ -143,7 +151,8 @@ internal class AmapMapAdapter(
             MarkerOptions()
                 .position(LatLng(landmark.point.latitude, landmark.point.longitude))
                 .title(landmark.name)
-                .icon(iconFor(selected)),
+                .icon(iconFor(selected))
+                .draggable(landmark.id == debugDraggableLandmarkId),
         ).apply {
             `object` = landmark.id
         }
@@ -245,6 +254,7 @@ internal class AmapMapAdapter(
         marker.position = position
         marker.title = landmark.name
         marker.setIcon(iconFor(selected))
+        marker.isDraggable = landmark.id == debugDraggableLandmarkId
         areaOverlay = updateAreaOverlay(areaOverlay, landmark, selected)
         this.landmark = landmark
         this.selected = selected
@@ -275,6 +285,7 @@ internal class AmapMapAdapter(
         fogOverlay.remove()
         scoutCircle = null
         map.setOnMarkerClickListener(null)
+        map.setOnMarkerDragListener(null)
         map.setOnCameraChangeListener(null)
     }
 
@@ -307,7 +318,6 @@ internal class AmapMapAdapter(
         private const val CAMERA_ANIMATION_MILLIS = 220L
         private const val LOCATION_INTERVAL_MILLIS = 3_000L
         private const val SCOUT_Z_INDEX = 31f
-        private const val FOG_Z_INDEX = 30f
         private val SCOUT_STROKE_COLOR = 0xCC66D7B0.toInt()
         private val SCOUT_FILL_COLOR = 0x2266D7B0
         private val SELECTED_STROKE_COLOR = 0xFFE07A23.toInt()

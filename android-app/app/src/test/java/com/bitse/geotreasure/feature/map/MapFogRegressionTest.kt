@@ -83,6 +83,25 @@ class MapFogRegressionTest {
     }
 
     @Test
+    fun `debug landmark move changes only rendered coordinates and exposes selected marker`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first()
+        val moved = GeoPoint(landmark.point.latitude + 0.0001, landmark.point.longitude)
+        val state = MapUiState(
+            landmarks = listOf(landmark),
+            selectedLandmarkId = landmark.id,
+            debugEnabled = true,
+            debugMoveSelected = true,
+            debugPointOverrides = mapOf(landmark.id to moved),
+        )
+
+        assertEquals(landmark.point, state.landmarks.single().point)
+        assertEquals(moved, state.renderState.landmarks.single().point)
+        assertEquals(landmark.id, state.renderState.debugDraggableLandmarkId)
+        assertEquals(setOf(landmark.id), state.visibleLandmarkIds)
+        assertEquals(null, state.copy(debugEnabled = false).renderState.debugDraggableLandmarkId)
+    }
+
+    @Test
     fun `rectangle radius decreases by ten meters on each adjustment`() {
         val original = PolygonCheckInArea(
             listOf(

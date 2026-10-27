@@ -38,10 +38,15 @@ data class MapUiState(
     val debugRevealAll: Boolean = false,
     val debugShowScoutRange: Boolean = false,
     val debugAreaOverrides: Map<String, CheckInArea> = emptyMap(),
+    val debugPointOverrides: Map<String, GeoPoint> = emptyMap(),
+    val debugMoveSelected: Boolean = false,
 ) {
     val landmarksWithDebugOverrides: List<Landmark>
         get() = landmarks.map { landmark ->
-            landmark.copy(checkInArea = debugAreaOverrides[landmark.id] ?: landmark.checkInArea)
+            landmark.copy(
+                point = debugPointOverrides[landmark.id] ?: landmark.point,
+                checkInArea = debugAreaOverrides[landmark.id] ?: landmark.checkInArea,
+            )
         }
 
     val selectedLandmark: Landmark?
@@ -49,7 +54,8 @@ data class MapUiState(
 
     val visibleLandmarkIds: Set<String>
         get() = if (debugRevealAll) landmarks.mapTo(mutableSetOf()) { it.id }
-            else revealedLandmarkIds + completedLandmarkIds
+            else revealedLandmarkIds + completedLandmarkIds +
+                (if (debugEnabled) setOfNotNull(selectedLandmarkId) else emptySet())
 
     val renderState: MapRenderState
         get() = MapRenderState(
@@ -63,6 +69,7 @@ data class MapUiState(
             visibleLandmarkIds = visibleLandmarkIds,
             debugRevealAll = debugRevealAll,
             debugShowScoutRange = debugShowScoutRange,
+            debugDraggableLandmarkId = if (debugEnabled && debugMoveSelected) selectedLandmarkId else null,
         )
 }
 
@@ -79,10 +86,13 @@ sealed interface MapAction {
     data class PermissionSnapshot(val granted: Boolean) : MapAction
     data class PermissionResult(val granted: Boolean, val canAskAgain: Boolean) : MapAction
     data class SelectLandmark(val landmarkId: String) : MapAction
+    data object ClearSelection : MapAction
+    data class MoveDebugLandmark(val landmarkId: String, val point: GeoPoint) : MapAction
     data class OpenLandmark(val landmarkId: String) : MapAction
     data object ToggleDebugPanel : MapAction
     data object ToggleDebugRevealAll : MapAction
     data object ToggleDebugScoutRange : MapAction
+    data object ToggleDebugMoveSelected : MapAction
     data class AdjustDebugRadius(val deltaMeters: Double) : MapAction
     data class SetDebugRangeShape(val shape: DebugRangeShape) : MapAction
     data object DebugCompleteSelectedLandmark : MapAction

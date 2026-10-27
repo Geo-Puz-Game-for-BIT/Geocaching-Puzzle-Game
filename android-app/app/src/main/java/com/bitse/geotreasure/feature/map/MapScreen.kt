@@ -20,15 +20,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LocationDisabled
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Map
@@ -38,6 +42,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButton
@@ -131,8 +137,10 @@ fun MapScreen(
                 state = uiState.renderState,
                 focusRequest = focusRequest,
                 onEvent = { event ->
-                    if (event is MapEvent.LandmarkSelected) {
-                        viewModel.onAction(MapAction.SelectLandmark(event.landmarkId))
+                    when (event) {
+                        is MapEvent.LandmarkSelected -> viewModel.onAction(MapAction.SelectLandmark(event.landmarkId))
+                        is MapEvent.LandmarkMoved -> viewModel.onAction(MapAction.MoveDebugLandmark(event.landmarkId, event.point))
+                        is MapEvent.CameraMoved -> Unit
                     }
                 },
             )
@@ -272,6 +280,7 @@ fun MapScreen(
                     userLocation = uiState.userLocation,
                     coordinateVerified = landmark.coordinateVerified,
                     onOpen = { viewModel.onAction(MapAction.OpenLandmark(landmark.id)) },
+                    onClose = { viewModel.onAction(MapAction.ClearSelection) },
                 )
             }
         }
@@ -284,16 +293,34 @@ private fun DeveloperMapDebugPanel(
     onAction: (MapAction) -> Unit,
     onCopyLocation: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var landmarkMenuExpanded by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         shape = MaterialTheme.shapes.small,
     ) {
         Column(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()).padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text("地图调试", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Box {
+                OutlinedButton(onClick = { landmarkMenuExpanded = true }) {
+                    Text(state.selectedLandmark?.name ?: "选择调试地标")
+                }
+                DropdownMenu(expanded = landmarkMenuExpanded, onDismissRequest = { landmarkMenuExpanded = false }) {
+                    state.landmarksWithDebugOverrides.forEach { landmark ->
+                        DropdownMenuItem(
+                            text = { Text(landmark.name) },
+                            onClick = {
+                                landmarkMenuExpanded = false
+                                if (state.selectedLandmarkId != landmark.id) onAction(MapAction.SelectLandmark(landmark.id))
+                            },
+                        )
+                    }
+                }
+            }
             val location = state.userLocation
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -326,6 +353,34 @@ private fun DeveloperMapDebugPanel(
             state.selectedLandmark?.let { landmark ->
                 Text("调试地标：${landmark.name}", style = MaterialTheme.typography.bodySmall)
                 Text(landmark.checkInArea.compactDescription(), style = MaterialTheme.typography.bodySmall)
+                if (!state.usingDemoMap) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { onAction(MapAction.ToggleDebugMoveSelected) }) {
+                            Text(if (state.debugMoveSelected) "结束拖动" else "拖动地标")
+                        }
+                        Text(
+                            if (state.debugMoveSelected) "长按地图标记并拖动" else "仅本次会话生效",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    Text(
+                        "当前 GCJ-02：${"%.6f".format(Locale.US, landmark.point.latitude)}, " +
+                            "${"%.6f".format(Locale.US, landmark.point.longitude)}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    IconButton(onClick = {
+                        context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+                            ClipData.newPlainText(
+                                "调试地标坐标",
+                                "${landmark.id},${"%.6f".format(Locale.US, landmark.point.latitude)}," +
+                                    "${"%.6f".format(Locale.US, landmark.point.longitude)}",
+                            ),
+                        )
+                    }) {
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = "复制调试地标坐标")
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { onAction(MapAction.AdjustDebugRadius(-10.0)) }) {
                         Text("范围 -10m")
@@ -454,6 +509,7 @@ private fun LandmarkPanel(
     userLocation: LocationSample?,
     coordinateVerified: Boolean,
     onOpen: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -491,10 +547,15 @@ private fun LandmarkPanel(
                         )
                     }
                 }
-                Button(onClick = onOpen) {
-                    Text("查看")
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null)
+                Column(horizontalAlignment = Alignment.End) {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Rounded.Close, contentDescription = "取消选中地标")
+                    }
+                    Button(onClick = onOpen) {
+                        Text("查看")
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null)
+                    }
                 }
             }
             hint?.let {
