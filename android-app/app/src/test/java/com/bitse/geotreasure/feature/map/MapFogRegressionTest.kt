@@ -60,6 +60,48 @@ class MapFogRegressionTest {
     }
 
     @Test
+    fun `landmark appears only after accurate entry into its check in area`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first()
+        val outside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(70.0, 0.0))
+        val inside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(20.0, 0.0))
+
+        assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(outside, 2f)).isEmpty())
+        assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(inside, 70f)).isEmpty())
+        assertEquals(listOf(landmark), discoverLandmarks(listOf(landmark), emptySet(), sample(inside, 2f)))
+        assertTrue(discoverLandmarks(listOf(landmark), setOf(landmark.id), sample(inside, 2f)).isEmpty())
+
+        val hidden = MapUiState(landmarks = listOf(landmark))
+        assertTrue(hidden.visibleLandmarkIds.isEmpty())
+        assertEquals(setOf(landmark.id), hidden.copy(revealedLandmarkIds = setOf(landmark.id)).visibleLandmarkIds)
+        assertEquals(setOf(landmark.id), hidden.copy(debugRevealAll = true).visibleLandmarkIds)
+    }
+
+    @Test
+    fun `polygon landmark is discovered within its area`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first { it.checkInArea is PolygonCheckInArea }
+        assertEquals(listOf(landmark), discoverLandmarks(listOf(landmark), emptySet(), sample(landmark.point, 2f)))
+    }
+
+    @Test
+    fun `debug landmark move changes only rendered coordinates and exposes selected marker`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first()
+        val moved = GeoPoint(landmark.point.latitude + 0.0001, landmark.point.longitude)
+        val state = MapUiState(
+            landmarks = listOf(landmark),
+            selectedLandmarkId = landmark.id,
+            debugEnabled = true,
+            debugMoveSelected = true,
+            debugPointOverrides = mapOf(landmark.id to moved),
+        )
+
+        assertEquals(landmark.point, state.landmarks.single().point)
+        assertEquals(moved, state.renderState.landmarks.single().point)
+        assertEquals(landmark.id, state.renderState.debugDraggableLandmarkId)
+        assertEquals(setOf(landmark.id), state.visibleLandmarkIds)
+        assertEquals(null, state.copy(debugEnabled = false).renderState.debugDraggableLandmarkId)
+    }
+
+    @Test
     fun `rectangle radius decreases by ten meters on each adjustment`() {
         val original = PolygonCheckInArea(
             listOf(

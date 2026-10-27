@@ -37,6 +37,7 @@ import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.MapRenderState
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
 import com.bitse.geotreasure.core.model.campusRevealBlocks
+import com.bitse.geotreasure.core.location.offsetPoint
 
 @Composable
 fun DemoMapContent(
@@ -102,7 +103,7 @@ fun DemoMapContent(
         }
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            state.landmarks.forEach { landmark ->
+            state.landmarks.filter { it.id in state.visibleLandmarkIds }.forEach { landmark ->
                 val position = projection?.position(landmark.point) ?: return@forEach
                 DemoLandmarkMarker(
                     landmark = landmark,
@@ -167,6 +168,32 @@ fun DemoMapContent(
                     path.close()
                     drawPath(path, color = Color.Transparent, blendMode = BlendMode.Clear)
                 }
+                state.landmarks.filter { it.id in state.revealedLandmarkIds }.forEach { landmark ->
+                    val mapProjection = projection ?: return@forEach
+                    when (val area = landmark.checkInArea) {
+                        is CircularCheckInArea -> {
+                            val position = mapProjection.position(landmark.point)
+                            val radius = mapProjection.radiusFractions(area.radiusMeters)
+                            drawOval(
+                                color = Color.Transparent,
+                                topLeft = Offset(size.width * (position.xFraction - radius.xFraction), size.height * (position.yFraction - radius.yFraction)),
+                                size = Size(size.width * radius.xFraction * 2, size.height * radius.yFraction * 2),
+                                blendMode = BlendMode.Clear,
+                            )
+                        }
+                        is PolygonCheckInArea -> {
+                            val path = Path()
+                            area.vertices.forEachIndexed { index, offset ->
+                                val position = mapProjection.position(offsetPoint(landmark.point, offset))
+                                val x = size.width * position.xFraction
+                                val y = size.height * position.yFraction
+                                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                            }
+                            path.close()
+                            drawPath(path, color = Color.Transparent, blendMode = BlendMode.Clear)
+                        }
+                    }
+                }
             }
         }
         if (state.userLocation != null && projection != null) {
@@ -182,6 +209,7 @@ fun DemoMapContent(
         }
     }
 }
+
 
 @Composable
 private fun DemoLandmarkMarker(

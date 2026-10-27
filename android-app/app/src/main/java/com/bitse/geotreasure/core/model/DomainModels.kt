@@ -172,13 +172,17 @@ data class MapRenderState(
     val selectedLandmarkId: String?,
     val exploredCenters: List<GeoPoint> = emptyList(),
     val liveScoutCenter: GeoPoint? = null,
+    val revealedLandmarkIds: Set<String> = emptySet(),
+    val visibleLandmarkIds: Set<String> = emptySet(),
     val completedLandmarkIds: Set<String> = emptySet(),
     val debugRevealAll: Boolean = false,
     val debugShowScoutRange: Boolean = false,
+    val debugDraggableLandmarkId: String? = null,
 )
 
 sealed interface MapEvent {
     data class LandmarkSelected(val landmarkId: String) : MapEvent
+    data class LandmarkMoved(val landmarkId: String, val point: GeoPoint) : MapEvent
 
     data class CameraMoved(val center: GeoPoint) : MapEvent
 }
