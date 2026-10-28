@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
-  "envId": "cloud-d0g0u4r64556b8177",
+  "envId": "{{env.CLOUDBASE_ENV_ID}}",
   "region": "ap-shanghai",
   "functionRoot": ".",
   "functions": [

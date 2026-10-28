@@ -5,27 +5,25 @@ import {
   deleteRows,
   selectRows,
 } from "../functions/api/db.ts";
+import { deletePhotoObjectStrict } from "../functions/api/storage.ts";
 
-const apiBase =
-  process.env.LIVE_API_BASE ??
-  "https://cloud-d0g0u4r64556b8177-1510671296.ap-shanghai.app.tcloudbase.com/api/v1";
+const apiBase = process.env.LIVE_API_BASE;
 const userId = process.env.DEMO_USER_ID;
 const authToken = process.env.DEMO_AUTH_TOKEN;
 
-// 1x1 synthetic JPEG used only to exercise the real multipart/binary upload path.
+// 1x1 synthetic JPEG used only for the real HTTP upload path.
 const syntheticJpeg = Buffer.from(
   "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==",
   "base64",
 );
 
-if (!userId || !authToken) {
-  throw new Error("DEMO_USER_ID and DEMO_AUTH_TOKEN are required");
+if (!apiBase || !userId || !authToken) {
+  throw new Error("LIVE_API_BASE, DEMO_USER_ID, and DEMO_AUTH_TOKEN are required");
 }
 
 const idempotencyKey = `live-${randomUUID()}`;
+const photoObjects = [];
 let challengeId = "";
-let firstPhotoId = "";
-let secondPhotoId = "";
 let checkInId = "";
 
 function assert(condition, message) {
@@ -35,30 +33,50 @@ function assert(condition, message) {
 }
 
 async function jsonRequest(path, init = {}) {
+  const requestId = String(init.headers?.["X-Request-Id"] ?? randomUUID());
   const response = await fetch(`${apiBase}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${authToken}`,
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
+      "X-Request-Id": requestId,
     },
   });
-  return { response, body: await response.json() };
+  const body = await response.json();
+  assert(
+    response.headers.get("x-request-id") === requestId &&
+      body.requestId === requestId,
+    `Request ID mismatch for ${path}`,
+  );
+  return { requestId, response, body };
 }
 
 async function uploadPhoto() {
+  const requestId = randomUUID();
   const response = await fetch(`${apiBase}/checkin-photos`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${authToken}`,
       "Content-Type": "image/jpeg",
-      "X-Request-Id": randomUUID(),
+      "X-Request-Id": requestId,
     },
     body: syntheticJpeg,
   });
   const body = await response.json();
   assert(response.status === 200, `Photo upload failed: ${response.status}`);
-  return body.data.photoId;
+  assert(
+    response.headers.get("x-request-id") === requestId &&
+      body.requestId === requestId,
+    "Request ID mismatch for /checkin-photos",
+  );
+  const uploaded = {
+    requestId,
+    photoId: body.data.photoId,
+    objectKey: body.data.objectKey,
+  };
+  photoObjects.push(uploaded);
+  return uploaded;
 }
 
 function checkInBody(landmark, challenge, photoId, capturedAt = new Date().toISOString()) {
@@ -77,20 +95,55 @@ function checkInBody(landmark, challenge, photoId, capturedAt = new Date().toISO
   };
 }
 
+async function ownedFragmentCount() {
+  const puzzle = await jsonRequest("/puzzles/puzzle_liangxiang_campus", {
+    method: "GET",
+    headers: { "X-Request-Id": randomUUID() },
+  });
+  assert(puzzle.response.status === 200, "Puzzle progress request failed");
+  return {
+    count: puzzle.body.data.ownedFragmentIds.length,
+    puzzle: puzzle.body.data,
+    requestId: puzzle.requestId,
+  };
+}
+
 async function cleanup() {
-  if (checkInId) {
-    await deleteRows("audit_logs", { entity_id: `eq.${checkInId}` });
-    await deleteRows("fragment_grants", { check_in_id: `eq.${checkInId}` });
-    await deleteRows("checkins", { id: `eq.${checkInId}` });
+  const failures = [];
+  const dbOperations = [
+    checkInId
+      ? () => deleteRows("audit_logs", { entity_id: `eq.${checkInId}` })
+      : null,
+    checkInId
+      ? () => deleteRows("fragment_grants", { check_in_id: `eq.${checkInId}` })
+      : null,
+    checkInId
+      ? () => deleteRows("checkins", { id: `eq.${checkInId}` })
+      : null,
+    challengeId
+      ? () => deleteRows("challenges", { id: `eq.${challengeId}` })
+      : null,
+    ...photoObjects.map(
+      (photo) => () => deleteRows("photos", { id: `eq.${photo.photoId}` }),
+    ),
+  ].filter(Boolean);
+
+  for (const operation of dbOperations) {
+    try {
+      await operation();
+    } catch (error) {
+      failures.push(error);
+    }
   }
-  if (challengeId) {
-    await deleteRows("challenges", { id: `eq.${challengeId}` });
+  for (const photo of photoObjects) {
+    try {
+      await deletePhotoObjectStrict(photo.objectKey);
+    } catch (error) {
+      failures.push(error);
+    }
   }
-  if (firstPhotoId) {
-    await deleteRows("photos", { id: `eq.${firstPhotoId}` });
-  }
-  if (secondPhotoId) {
-    await deleteRows("photos", { id: `eq.${secondPhotoId}` });
+  if (failures.length > 0) {
+    throw new AggregateError(failures, "Live regression cleanup failed");
   }
 }
 
@@ -110,18 +163,19 @@ try {
   const landmark = landmarks.find((row) => !completed.has(row.id));
   assert(landmark, "No unused active landmark is available for live regression");
 
-  const challengeResponse = await jsonRequest("/checkin-challenges", {
+  const progressBefore = await ownedFragmentCount();
+
+  const challenge = await jsonRequest("/checkin-challenges", {
     method: "POST",
     headers: { "X-Request-Id": randomUUID() },
     body: JSON.stringify({ landmarkId: landmark.id }),
   });
-  assert(challengeResponse.response.status === 200, "Challenge creation failed");
-  challengeId = challengeResponse.body.data.id;
+  assert(challenge.response.status === 200, "Challenge creation failed");
+  challengeId = challenge.body.data.id;
 
-  firstPhotoId = await uploadPhoto();
-  secondPhotoId = await uploadPhoto();
-
-  const firstBody = checkInBody(landmark, challengeId, firstPhotoId);
+  const firstPhoto = await uploadPhoto();
+  const secondPhoto = await uploadPhoto();
+  const firstBody = checkInBody(landmark, challengeId, firstPhoto.photoId);
   const first = await jsonRequest("/checkins", {
     method: "POST",
     headers: {
@@ -130,8 +184,23 @@ try {
     },
     body: JSON.stringify(firstBody),
   });
-  assert(first.response.status === 200, "First check-in failed");
+  assert(
+    first.response.status === 200 && first.body.data.status === "COMPLETED",
+    "First check-in failed or did not return COMPLETED",
+  );
   checkInId = first.body.data.checkInId;
+
+  const progressAfterFirst = await ownedFragmentCount();
+  assert(
+    progressAfterFirst.count === progressBefore.count + 1,
+    "First check-in did not increase puzzle progress by one",
+  );
+  assert(
+    progressAfterFirst.puzzle.ownedFragmentIds.includes(
+      first.body.data.fragmentGrant.fragmentId,
+    ),
+    "Granted fragment is not owned by the puzzle response",
+  );
 
   const replay = await jsonRequest("/checkins", {
     method: "POST",
@@ -147,6 +216,11 @@ try {
       replay.body.data.status === "COMPLETED",
     "Same-key replay did not return the original receipt",
   );
+  const progressAfterReplay = await ownedFragmentCount();
+  assert(
+    progressAfterReplay.count === progressAfterFirst.count,
+    "Same-key replay changed puzzle progress",
+  );
 
   const conflict = await jsonRequest("/checkins", {
     method: "POST",
@@ -158,7 +232,7 @@ try {
       checkInBody(
         landmark,
         challengeId,
-        secondPhotoId,
+        secondPhoto.photoId,
         new Date(Date.now() + 1_000).toISOString(),
       ),
     ),
@@ -169,19 +243,20 @@ try {
     "Changed photo did not return IDEMPOTENCY_CONFLICT",
   );
 
-  const duplicateBody = checkInBody(
-    landmark,
-    challengeId,
-    firstPhotoId,
-    new Date(Date.now() + 2_000).toISOString(),
-  );
   const duplicate = await jsonRequest("/checkins", {
     method: "POST",
     headers: {
       "Idempotency-Key": `live-duplicate-${randomUUID()}`,
       "X-Request-Id": randomUUID(),
     },
-    body: JSON.stringify(duplicateBody),
+    body: JSON.stringify(
+      checkInBody(
+        landmark,
+        challengeId,
+        firstPhoto.photoId,
+        new Date(Date.now() + 2_000).toISOString(),
+      ),
+    ),
   });
   assert(
     duplicate.response.status === 200 &&
@@ -189,8 +264,13 @@ try {
       duplicate.body.data.status === "ALREADY_COMPLETED",
     "New-key duplicate did not return ALREADY_COMPLETED",
   );
+  const progressAfterDuplicate = await ownedFragmentCount();
+  assert(
+    progressAfterDuplicate.count === progressAfterFirst.count,
+    "Duplicate check-in changed puzzle progress",
+  );
 
-  const [checkIns, grants, audits, challenges, photos] = await Promise.all([
+  const [checkIns, grants, audits, challenges] = await Promise.all([
     selectRows("checkins", { id: `eq.${checkInId}` }),
     selectRows("fragment_grants", { check_in_id: `eq.${checkInId}` }),
     selectRows("audit_logs", {
@@ -202,39 +282,44 @@ try {
       id: `eq.${challengeId}`,
       limit: "1",
     }),
-    selectRows("photos", {
-      select: "id",
-      user_id: `eq.${userId}`,
-    }),
   ]);
 
   assert(checkIns.length === 1, "Expected exactly one persisted check-in");
   assert(grants.length === 1, "Expected exactly one fragment grant");
   assert(audits.length === 1, "Expected exactly one audit record");
   assert(Boolean(challenges[0]?.used_at), "Challenge was not consumed");
-  assert(
-    photos.some((photo) => photo.id === firstPhotoId),
-    "First uploaded photo row is missing",
-  );
 
   console.log(
     JSON.stringify(
       {
         requestIds: {
-          challenge: challengeResponse.body.requestId,
-          first: first.body.requestId,
-          replay: replay.body.requestId,
-          conflict: conflict.body.requestId,
-          duplicate: duplicate.body.requestId,
+          progressBefore: progressBefore.requestId,
+          challenge: challenge.requestId,
+          firstPhoto: firstPhoto.requestId,
+          secondPhoto: secondPhoto.requestId,
+          firstCheckIn: first.requestId,
+          firstProgress: progressAfterFirst.requestId,
+          replay: replay.requestId,
+          replayProgress: progressAfterReplay.requestId,
+          conflict: conflict.requestId,
+          duplicate: duplicate.requestId,
+          duplicateProgress: progressAfterDuplicate.requestId,
         },
         landmarkId: landmark.id,
         challengeId,
-        photoIds: [firstPhotoId, secondPhotoId],
+        photoIds: photoObjects.map((photo) => photo.photoId),
+        objectKeys: photoObjects.map((photo) => photo.objectKey),
         checkInId,
         firstStatus: first.body.data.status,
         replayStatus: replay.body.data.status,
         duplicateStatus: duplicate.body.data.status,
         conflictCode: conflict.body.error.code,
+        progress: {
+          before: progressBefore.count,
+          afterFirst: progressAfterFirst.count,
+          afterReplay: progressAfterReplay.count,
+          afterDuplicate: progressAfterDuplicate.count,
+        },
         challengeUsed: true,
         databaseCounts: {
           checkins: checkIns.length,
@@ -253,11 +338,10 @@ try {
     checkInId ? selectRows("fragment_grants", { check_in_id: `eq.${checkInId}` }) : [],
     checkInId ? selectRows("audit_logs", { entity_id: `eq.${checkInId}` }) : [],
     challengeId ? selectRows("challenges", { id: `eq.${challengeId}` }) : [],
-    firstPhotoId ? selectRows("photos", { id: `eq.${firstPhotoId}` }) : [],
-    secondPhotoId ? selectRows("photos", { id: `eq.${secondPhotoId}` }) : [],
+    ...photoObjects.map((photo) => selectRows("photos", { id: `eq.${photo.photoId}` })),
   ]);
   assert(
     leftovers.every((rows) => rows.length === 0),
-    "Live regression cleanup left rows behind",
+    "Live regression cleanup left database rows behind",
   );
 }

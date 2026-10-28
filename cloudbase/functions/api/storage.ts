@@ -56,3 +56,32 @@ export async function deletePhotoObject(objectKey: string): Promise<void> {
     console.error("Storage cleanup failed", response.status, await response.text());
   }
 }
+
+export async function deletePhotoObjectStrict(objectKey: string): Promise<void> {
+  const authorization = `Bearer ${requiredEnv("CLOUDBASE_API_KEY")}`;
+  const deleted = await fetch(objectUrl(objectKey), {
+    method: "DELETE",
+    headers: { Authorization: authorization },
+  });
+  if (!deleted.ok && deleted.status !== 404) {
+    throw new Error(`Storage delete failed with ${String(deleted.status)}`);
+  }
+
+  let probe = await fetch(objectUrl(objectKey), {
+    method: "HEAD",
+    headers: { Authorization: authorization },
+  });
+  if (probe.status === 405) {
+    probe = await fetch(objectUrl(objectKey), {
+      method: "GET",
+      headers: { Authorization: authorization },
+    });
+  }
+  if (probe.status === 404) {
+    return;
+  }
+  if (probe.ok) {
+    throw new Error("Storage object still exists after deletion");
+  }
+  throw new Error(`Unable to verify storage object is absent: ${String(probe.status)}`);
+}

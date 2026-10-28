@@ -18,8 +18,12 @@ info:
     - Errors always use the unified response envelope.
   x-contract-version: 1.1.0-poc
 servers:
-  - url: https://cloud-d0g0u4r64556b8177-1510671296.ap-shanghai.app.tcloudbase.com/api/v1
-    description: First-week development environment
+  - url: https://{cloudbaseHost}/api/v1
+    description: Private CloudBase development environment
+    variables:
+      cloudbaseHost:
+        default: cloudbase.invalid
+        description: Set from private tooling; do not commit the real environment host
   - url: http://localhost:3000
     description: Local development adapter
 tags:

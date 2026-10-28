@@ -4,6 +4,7 @@ import type { IncomingMessage } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { storeCheckInPhoto } from "../functions/api/handlers/photos.ts";
+import { deletePhotoObjectStrict } from "../functions/api/storage.ts";
 import { MAX_PHOTO_BYTES } from "../shared/photo.ts";
 
 function requestWithBody(body: Buffer, contentType: string): IncomingMessage {
@@ -92,5 +93,49 @@ describe("storeCheckInPhoto", () => {
         requestWithBody(Buffer.alloc(MAX_PHOTO_BYTES + 1), "image/jpeg"),
       ),
     ).rejects.toMatchObject({ code: "PHOTO_INVALID" });
+  });
+});
+
+describe("deletePhotoObjectStrict", () => {
+  it("verifies the object is absent after deletion", async () => {
+    const methods: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        methods.push(init?.method ?? "GET");
+        return new Response(null, {
+          status: init?.method === "DELETE" ? 204 : 404,
+        });
+      }),
+    );
+
+    await expect(
+      deletePhotoObjectStrict("checkins/usr_demo01/pho_test.jpg"),
+    ).resolves.toBeUndefined();
+    expect(methods).toEqual(["DELETE", "HEAD"]);
+  });
+
+  it("fails when storage deletion fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("unavailable", { status: 503 })),
+    );
+
+    await expect(
+      deletePhotoObjectStrict("checkins/usr_demo01/pho_test.jpg"),
+    ).rejects.toThrow(/delete|storage/i);
+  });
+
+  it("fails when the object still exists after deletion", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) =>
+        new Response(null, { status: init?.method === "DELETE" ? 204 : 200 }),
+      ),
+    );
+
+    await expect(
+      deletePhotoObjectStrict("checkins/usr_demo01/pho_test.jpg"),
+    ).rejects.toThrow(/still exists|absent/i);
   });
 });
