@@ -1,6 +1,9 @@
 package com.bitse.geotreasure.core.location
 
 import com.bitse.geotreasure.core.model.GeoPoint
+import com.bitse.geotreasure.core.model.CircularCheckInArea
+import com.bitse.geotreasure.core.model.LocalOffsetMeters
+import com.bitse.geotreasure.core.model.PolygonCheckInArea
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,5 +24,38 @@ class GeoMathTest {
     @Test
     fun isWithinRadius_acceptsCloseAccurateLocation() {
         assertTrue(isWithinRadius(distanceMeters = 10.0, radiusMeters = 30.0, accuracyMeters = 12f))
+    }
+
+    @Test
+    fun isWithinCheckInArea_supportsCircularAreas() {
+        val center = GeoPoint(39.7335, 116.1649)
+        val nearbyPoint = offsetPoint(center, LocalOffsetMeters(eastMeters = 15.0, northMeters = 0.0))
+
+        assertTrue(isWithinCheckInArea(nearbyPoint, center, CircularCheckInArea(20.0), accuracyMeters = 10f))
+        assertFalse(isWithinCheckInArea(nearbyPoint, center, CircularCheckInArea(10.0), accuracyMeters = 10f))
+    }
+
+    @Test
+    fun isWithinCheckInArea_supportsPolygonAreas() {
+        val center = GeoPoint(39.7335, 116.1649)
+        val rectangle = PolygonCheckInArea(
+            vertices = listOf(
+                LocalOffsetMeters(-20.0, -10.0),
+                LocalOffsetMeters(20.0, -10.0),
+                LocalOffsetMeters(20.0, 10.0),
+                LocalOffsetMeters(-20.0, 10.0),
+            ),
+        )
+
+        assertTrue(isWithinCheckInArea(center, center, rectangle, accuracyMeters = 8f))
+        assertFalse(
+            isWithinCheckInArea(
+                offsetPoint(center, LocalOffsetMeters(eastMeters = 25.0, northMeters = 0.0)),
+                center,
+                rectangle,
+                accuracyMeters = 8f,
+            ),
+        )
+        assertFalse(isWithinCheckInArea(center, center, rectangle, accuracyMeters = 70f))
     }
 }

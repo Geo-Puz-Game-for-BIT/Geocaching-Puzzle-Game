@@ -64,6 +64,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.LocationSourceKind
 import com.bitse.geotreasure.core.model.MapEvent
+import com.bitse.geotreasure.core.ui.compactDescription
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
 
@@ -179,6 +180,17 @@ fun MapScreen(
                     )
                 }
             }
+            if (uiState.debugEnabled) {
+                OutlinedButton(onClick = { viewModel.onAction(MapAction.ToggleDebugPanel) }) {
+                    Text(if (uiState.debugPanelExpanded) "关闭开发者调试" else "开发者调试")
+                }
+                if (uiState.debugPanelExpanded) {
+                    DeveloperMapDebugPanel(
+                        state = uiState,
+                        onAction = viewModel::onAction,
+                    )
+                }
+            }
         }
 
         if (uiState.isLoading) {
@@ -237,12 +249,62 @@ fun MapScreen(
                 LandmarkPanel(
                     name = landmark.name,
                     hint = landmark.hint,
-                    radiusMeters = landmark.checkInRadiusMeters,
+                    checkInAreaDescription = landmark.checkInArea.compactDescription(),
                     distanceMeters = uiState.distanceToSelectedMeters,
                     userLocation = uiState.userLocation,
                     coordinateVerified = landmark.coordinateVerified,
                     onOpen = { viewModel.onAction(MapAction.OpenLandmark(landmark.id)) },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeveloperMapDebugPanel(
+    state: MapUiState,
+    onAction: (MapAction) -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("地图调试", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(onClick = { onAction(MapAction.ToggleDebugRevealAll) }) {
+                    Text(if (state.debugRevealAll) "恢复迷雾" else "显示全图")
+                }
+                Button(onClick = { onAction(MapAction.ToggleDebugScoutRange) }) {
+                    Text(if (state.debugShowScoutRange) "隐藏侦查圈" else "显示侦查圈")
+                }
+            }
+            state.selectedLandmark?.let { landmark ->
+                Text("调试地标：${landmark.name}", style = MaterialTheme.typography.bodySmall)
+                Text(landmark.checkInArea.compactDescription(), style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { onAction(MapAction.AdjustDebugRadius(-10.0)) }) {
+                        Text("范围 -10m")
+                    }
+                    OutlinedButton(onClick = { onAction(MapAction.AdjustDebugRadius(10.0)) }) {
+                        Text("范围 +10m")
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { onAction(MapAction.SetDebugRangeShape(DebugRangeShape.CIRCLE)) }) {
+                        Text("圆形")
+                    }
+                    OutlinedButton(onClick = { onAction(MapAction.SetDebugRangeShape(DebugRangeShape.RECTANGLE)) }) {
+                        Text("矩形")
+                    }
+                    OutlinedButton(onClick = { onAction(MapAction.DebugCompleteSelectedLandmark) }) {
+                        Text("完成地标")
+                    }
+                }
             }
         }
     }
@@ -347,7 +409,7 @@ private fun ActionBanner(
 private fun LandmarkPanel(
     name: String,
     hint: String?,
-    radiusMeters: Double,
+    checkInAreaDescription: String,
     distanceMeters: Double?,
     userLocation: LocationSample?,
     coordinateVerified: Boolean,
@@ -365,8 +427,8 @@ private fun LandmarkPanel(
                 Column(Modifier.weight(1f)) {
                     Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        distanceMeters?.let { "距离约 ${it.roundToInt()} 米 · 打卡范围 ${radiusMeters.roundToInt()} 米" }
-                            ?: "等待定位 · 打卡范围 ${radiusMeters.roundToInt()} 米",
+                        distanceMeters?.let { "距离约 ${it.roundToInt()} 米 · $checkInAreaDescription" }
+                            ?: "等待定位 · $checkInAreaDescription",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )

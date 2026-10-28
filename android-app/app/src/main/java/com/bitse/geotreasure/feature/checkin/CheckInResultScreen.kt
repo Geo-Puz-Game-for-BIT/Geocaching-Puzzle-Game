@@ -23,21 +23,36 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitse.geotreasure.app.ExplorationProgressStore
+import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 
-data class CheckInResultUiState(val checkInId: String, val grantedPieceIndex: Int = 0)
+data class CheckInResultUiState(val checkInId: String, val grantedFragmentTitle: String?)
 sealed interface CheckInResultAction { data object OpenPuzzle : CheckInResultAction }
 sealed interface CheckInResultEffect { data class NavigateToPuzzle(val puzzleId: String) : CheckInResultEffect }
 
-class CheckInResultViewModel(checkInId: String) : ViewModel() {
-    private val mutableUiState = MutableStateFlow(CheckInResultUiState(checkInId))
+class CheckInResultViewModel(
+    checkInId: String,
+    landmarkId: String,
+    progressStore: ExplorationProgressStore,
+) : ViewModel() {
+    private val mutableUiState = MutableStateFlow(
+        CheckInResultUiState(
+            checkInId,
+            LiangxiangTreasureCatalog.landmarks.firstOrNull { it.id == landmarkId }?.name,
+        ),
+    )
     val uiState: StateFlow<CheckInResultUiState> = mutableUiState.asStateFlow()
     private val effectChannel = Channel<CheckInResultEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
+
+    init {
+        progressStore.markLandmarkCompleted(landmarkId)
+    }
 
     fun onAction(action: CheckInResultAction) {
         if (action == CheckInResultAction.OpenPuzzle) {
@@ -46,9 +61,14 @@ class CheckInResultViewModel(checkInId: String) : ViewModel() {
     }
 
     companion object {
-        fun factory(checkInId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(
+            checkInId: String,
+            landmarkId: String,
+            progressStore: ExplorationProgressStore,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = CheckInResultViewModel(checkInId) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                CheckInResultViewModel(checkInId, landmarkId, progressStore) as T
         }
     }
 }
@@ -72,7 +92,7 @@ fun CheckInResultScreen(
         ) {
             Icon(Icons.Rounded.Celebration, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
             Text("打卡成功", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text("获得第 ${state.grantedPieceIndex + 1} 块校园拼图碎片")
+            Text(state.grantedFragmentTitle?.let { "点亮「$it」拼图碎片" } ?: "已记录地标进度")
             Text(state.checkInId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             Button(
                 onClick = { viewModel.onAction(CheckInResultAction.OpenPuzzle) },

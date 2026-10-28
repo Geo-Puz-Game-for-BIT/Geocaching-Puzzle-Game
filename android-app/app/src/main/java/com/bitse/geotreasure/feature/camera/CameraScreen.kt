@@ -48,7 +48,7 @@ sealed interface CameraAction {
 }
 
 sealed interface CameraEffect {
-    data class NavigateToResult(val checkInId: String) : CameraEffect
+    data class NavigateToResult(val checkInId: String, val landmarkId: String) : CameraEffect
 }
 
 class CameraViewModel(landmarkId: String, draftId: String) : ViewModel() {
@@ -61,7 +61,9 @@ class CameraViewModel(landmarkId: String, draftId: String) : ViewModel() {
         when (action) {
             CameraAction.CaptureDemo -> mutableUiState.value = mutableUiState.value.copy(hasDemoPhoto = true)
             CameraAction.Retake -> mutableUiState.value = mutableUiState.value.copy(hasDemoPhoto = false)
-            CameraAction.Confirm -> effectChannel.trySend(CameraEffect.NavigateToResult("chk_demo01"))
+            CameraAction.Confirm -> effectChannel.trySend(
+                CameraEffect.NavigateToResult("chk_demo01", mutableUiState.value.landmarkId),
+            )
         }
     }
 
@@ -80,12 +82,12 @@ class CameraViewModel(landmarkId: String, draftId: String) : ViewModel() {
 fun CameraScreen(
     viewModel: CameraViewModel,
     onBack: () -> Unit,
-    onResult: (String) -> Unit,
+    onResult: (String, String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
-            if (effect is CameraEffect.NavigateToResult) onResult(effect.checkInId)
+            if (effect is CameraEffect.NavigateToResult) onResult(effect.checkInId, effect.landmarkId)
         }
     }
     Scaffold(

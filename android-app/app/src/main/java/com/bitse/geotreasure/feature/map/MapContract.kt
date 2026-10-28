@@ -1,6 +1,7 @@
 package com.bitse.geotreasure.feature.map
 
 import com.bitse.geotreasure.core.model.GeoPoint
+import com.bitse.geotreasure.core.model.CheckInArea
 import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.MapRenderState
@@ -28,16 +29,39 @@ data class MapUiState(
     val permissionRequestCount: Int = 0,
     val usingDemoMap: Boolean = true,
     val message: String? = null,
+    val exploredCenters: List<GeoPoint> = emptyList(),
+    val locationSignalActive: Boolean = false,
+    val completedLandmarkIds: Set<String> = emptySet(),
+    val debugEnabled: Boolean = false,
+    val debugPanelExpanded: Boolean = false,
+    val debugRevealAll: Boolean = false,
+    val debugShowScoutRange: Boolean = false,
+    val debugAreaOverrides: Map<String, CheckInArea> = emptyMap(),
 ) {
+    val landmarksWithDebugOverrides: List<Landmark>
+        get() = landmarks.map { landmark ->
+            landmark.copy(checkInArea = debugAreaOverrides[landmark.id] ?: landmark.checkInArea)
+        }
+
     val selectedLandmark: Landmark?
-        get() = landmarks.firstOrNull { it.id == selectedLandmarkId }
+        get() = landmarksWithDebugOverrides.firstOrNull { it.id == selectedLandmarkId }
 
     val renderState: MapRenderState
         get() = MapRenderState(
             userLocation = userLocation,
-            landmarks = landmarks,
+            landmarks = landmarksWithDebugOverrides,
             selectedLandmarkId = selectedLandmarkId,
+            exploredCenters = exploredCenters,
+            liveScoutCenter = if (locationSignalActive) userLocation?.point else null,
+            completedLandmarkIds = completedLandmarkIds,
+            debugRevealAll = debugRevealAll,
+            debugShowScoutRange = debugShowScoutRange,
         )
+}
+
+enum class DebugRangeShape {
+    CIRCLE,
+    RECTANGLE,
 }
 
 sealed interface MapAction {
@@ -49,6 +73,12 @@ sealed interface MapAction {
     data class PermissionResult(val granted: Boolean, val canAskAgain: Boolean) : MapAction
     data class SelectLandmark(val landmarkId: String) : MapAction
     data class OpenLandmark(val landmarkId: String) : MapAction
+    data object ToggleDebugPanel : MapAction
+    data object ToggleDebugRevealAll : MapAction
+    data object ToggleDebugScoutRange : MapAction
+    data class AdjustDebugRadius(val deltaMeters: Double) : MapAction
+    data class SetDebugRangeShape(val shape: DebugRangeShape) : MapAction
+    data object DebugCompleteSelectedLandmark : MapAction
 }
 
 sealed interface MapEffect {

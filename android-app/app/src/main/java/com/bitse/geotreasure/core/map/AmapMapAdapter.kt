@@ -4,17 +4,27 @@ import android.graphics.Color
 import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.model.BitmapDescriptorFactory
+import com.amap.api.maps.model.BaseHoleOptions
 import com.amap.api.maps.model.Circle
+import com.amap.api.maps.model.CircleHoleOptions
 import com.amap.api.maps.model.CircleOptions
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
+import com.amap.api.maps.model.Polygon
+import com.amap.api.maps.model.PolygonHoleOptions
+import com.amap.api.maps.model.PolygonOptions
+import com.bitse.geotreasure.core.location.offsetPoint
+import com.bitse.geotreasure.core.model.CircularCheckInArea
+import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.MapEvent
 import com.bitse.geotreasure.core.model.MapRenderState
+import com.bitse.geotreasure.core.model.PolygonCheckInArea
+import com.bitse.geotreasure.core.model.campusRevealBlocks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -28,7 +38,16 @@ internal class AmapMapAdapter(
     private val normalLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
     private val selectedLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
     private var cameraInitialized = false
+    private var cameraFocusedOnUser = false
     private var renderedLocation: LocationSample? = null
+    private var renderedExploredCenters: List<GeoPoint> = emptyList()
+    private var renderedLiveScoutCenter: GeoPoint? = null
+    private var renderedCompletedLandmarkIds: Set<String> = emptySet()
+    private var renderedFogLandmarks: List<Landmark> = emptyList()
+    private var renderedDebugRevealAll = false
+    private var renderedDebugShowScoutRange = false
+    private var fogOverlay: Polygon? = null
+    private var scoutCircle: Circle? = null
 
     init {
         map.setLocationSource(locationSource)
@@ -61,11 +80,32 @@ internal class AmapMapAdapter(
 
     override fun render(state: MapRenderState) {
         reconcileLandmarks(state.landmarks, state.selectedLandmarkId)
-        if (state.userLocation != renderedLocation) {
+        if (
+            state.userLocation != renderedLocation ||
+            state.exploredCenters != renderedExploredCenters ||
+            state.liveScoutCenter != renderedLiveScoutCenter ||
+            state.completedLandmarkIds != renderedCompletedLandmarkIds ||
+            state.landmarks != renderedFogLandmarks ||
+            state.debugRevealAll != renderedDebugRevealAll ||
+            state.debugShowScoutRange != renderedDebugShowScoutRange ||
+            fogOverlay == null
+        ) {
             locationSource.update(state.userLocation)
+            updateExplorationOverlay(state)
             renderedLocation = state.userLocation
+            renderedExploredCenters = state.exploredCenters
+            renderedLiveScoutCenter = state.liveScoutCenter
+            renderedCompletedLandmarkIds = state.completedLandmarkIds
+            renderedFogLandmarks = state.landmarks
+            renderedDebugRevealAll = state.debugRevealAll
+            renderedDebugShowScoutRange = state.debugShowScoutRange
         }
-        if (!cameraInitialized) {
+        if (!cameraFocusedOnUser && state.userLocation != null) {
+            val point = state.userLocation.point
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(point.latitude, point.longitude), DEFAULT_ZOOM))
+            cameraInitialized = true
+            cameraFocusedOnUser = true
+        } else if (!cameraInitialized) {
             val focus = state.userLocation?.point ?: state.landmarks.firstOrNull()?.point
             focus?.let {
                 map.moveCamera(
@@ -110,35 +150,143 @@ internal class AmapMapAdapter(
         ).apply {
             `object` = landmark.id
         }
-        val circle = map.addCircle(circleOptionsFor(landmark, selected))
-        return LandmarkOverlay(marker, circle, landmark, selected)
+        return LandmarkOverlay(marker, createAreaOverlay(landmark, selected), landmark, selected)
     }
 
-    private fun circleOptionsFor(landmark: Landmark, selected: Boolean) = CircleOptions()
-        .center(LatLng(landmark.point.latitude, landmark.point.longitude))
-        .radius(landmark.checkInRadiusMeters)
-        .strokeWidth(if (selected) 4f else 2f)
-        .strokeColor(if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR)
-        .fillColor(if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR)
+    private fun createAreaOverlay(landmark: Landmark, selected: Boolean): AreaOverlay = when (val area = landmark.checkInArea) {
+        is CircularCheckInArea -> CircleAreaOverlay(
+            map.addCircle(
+                CircleOptions()
+                    .center(LatLng(landmark.point.latitude, landmark.point.longitude))
+                    .radius(area.radiusMeters)
+                    .applyAreaStyle(selected),
+            ),
+        )
+
+        is PolygonCheckInArea -> PolygonAreaOverlay(
+            map.addPolygon(
+                PolygonOptions()
+                    .addAll(areaPoints(landmark, area))
+                    .applyAreaStyle(selected),
+            ),
+        )
+    }
+
+    private fun CircleOptions.applyAreaStyle(selected: Boolean) =
+        strokeWidth(if (selected) 4f else 2f)
+            .strokeColor(if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR)
+            .fillColor(if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR)
+
+    private fun PolygonOptions.applyAreaStyle(selected: Boolean) =
+        strokeWidth(if (selected) 4f else 2f)
+            .strokeColor(if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR)
+            .fillColor(if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR)
+
+    private fun areaPoints(
+        landmark: Landmark,
+        area: PolygonCheckInArea,
+    ): List<LatLng> = area.vertices.map { offset ->
+        val point = offsetPoint(landmark.point, offset)
+        LatLng(point.latitude, point.longitude)
+    }
+
+    private fun updateAreaOverlay(
+        overlay: AreaOverlay,
+        landmark: Landmark,
+        selected: Boolean,
+    ): AreaOverlay = when {
+        overlay is CircleAreaOverlay && landmark.checkInArea is CircularCheckInArea -> overlay.apply {
+            circle.center = LatLng(landmark.point.latitude, landmark.point.longitude)
+            circle.radius = landmark.checkInArea.radiusMeters
+            circle.strokeWidth = if (selected) 4f else 2f
+            circle.strokeColor = if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR
+            circle.fillColor = if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR
+        }
+
+        overlay is PolygonAreaOverlay && landmark.checkInArea is PolygonCheckInArea -> overlay.apply {
+            polygon.points = areaPoints(landmark, landmark.checkInArea)
+            polygon.strokeWidth = if (selected) 4f else 2f
+            polygon.strokeColor = if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR
+            polygon.fillColor = if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR
+        }
+
+        else -> {
+            overlay.remove()
+            createAreaOverlay(landmark, selected)
+        }
+    }
 
     private fun iconFor(selected: Boolean) =
         if (selected) selectedLandmarkIcon else normalLandmarkIcon
+
+    private fun updateExplorationOverlay(state: MapRenderState) {
+        val holes = state.exploredCenters.map<GeoPoint, BaseHoleOptions> { center ->
+            CircleHoleOptions()
+                .center(LatLng(center.latitude, center.longitude))
+                .radius(FogOfWarRules.SCOUT_RADIUS_METERS)
+        }.toMutableList()
+        state.liveScoutCenter?.let { center ->
+            if (center !in state.exploredCenters) {
+                holes += CircleHoleOptions()
+                    .center(LatLng(center.latitude, center.longitude))
+                    .radius(FogOfWarRules.SCOUT_RADIUS_METERS)
+            }
+        }
+        campusRevealBlocks(state.landmarks)
+            .filter { it.landmarkId in state.completedLandmarkIds }
+            .forEach { block ->
+                holes += PolygonHoleOptions().addAll(block.vertices.map { LatLng(it.latitude, it.longitude) })
+            }
+        if (fogOverlay == null) {
+            fogOverlay = map.addPolygon(
+                PolygonOptions()
+                    .addAll(FOG_BOUNDARY)
+                    .addHoles(holes)
+                    .strokeWidth(0f)
+                    .strokeColor(Color.TRANSPARENT)
+                    .fillColor(FOG_FILL_COLOR)
+                    .zIndex(FOG_Z_INDEX),
+            )
+        } else {
+            fogOverlay?.setHoleOptions(holes)
+        }
+        fogOverlay?.isVisible = !state.debugRevealAll
+
+        val liveScoutCenter = state.liveScoutCenter
+        if (!state.debugShowScoutRange || liveScoutCenter == null) {
+            scoutCircle?.remove()
+            scoutCircle = null
+        } else {
+            val center = LatLng(liveScoutCenter.latitude, liveScoutCenter.longitude)
+            if (scoutCircle == null) {
+                scoutCircle = map.addCircle(
+                    CircleOptions()
+                        .center(center)
+                .radius(FogOfWarRules.SCOUT_RADIUS_METERS)
+                        .strokeWidth(3f)
+                        .strokeColor(SCOUT_STROKE_COLOR)
+                        .fillColor(SCOUT_FILL_COLOR)
+                        .zIndex(SCOUT_Z_INDEX),
+                )
+            } else {
+                scoutCircle?.center = center
+                scoutCircle?.radius = FogOfWarRules.SCOUT_RADIUS_METERS
+            }
+        }
+    }
 
     private fun LandmarkOverlay.update(landmark: Landmark, selected: Boolean) {
         val position = LatLng(landmark.point.latitude, landmark.point.longitude)
         marker.position = position
         marker.title = landmark.name
         marker.setIcon(iconFor(selected))
-        circle.center = position
-        circle.radius = landmark.checkInRadiusMeters
-        circle.strokeWidth = if (selected) 4f else 2f
-        circle.strokeColor = if (selected) SELECTED_STROKE_COLOR else DEFAULT_STROKE_COLOR
-        circle.fillColor = if (selected) SELECTED_FILL_COLOR else DEFAULT_FILL_COLOR
+        areaOverlay = updateAreaOverlay(areaOverlay, landmark, selected)
         this.landmark = landmark
         this.selected = selected
     }
 
     override fun focusOn(point: GeoPoint) {
+        cameraFocusedOnUser = true
         map.stopAnimation()
         map.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
@@ -158,26 +306,53 @@ internal class AmapMapAdapter(
         locationSource.deactivate()
         landmarkOverlays.values.forEach(LandmarkOverlay::remove)
         landmarkOverlays.clear()
+        fogOverlay?.remove()
+        scoutCircle?.remove()
+        fogOverlay = null
+        scoutCircle = null
         map.setOnMarkerClickListener(null)
         map.setOnCameraChangeListener(null)
     }
 
     private data class LandmarkOverlay(
         val marker: Marker,
-        val circle: Circle,
+        var areaOverlay: AreaOverlay,
         var landmark: Landmark,
         var selected: Boolean,
     ) {
         fun remove() {
             marker.remove()
-            circle.remove()
+            areaOverlay.remove()
         }
+    }
+
+    private sealed interface AreaOverlay {
+        fun remove()
+    }
+
+    private data class CircleAreaOverlay(val circle: Circle) : AreaOverlay {
+        override fun remove() = circle.remove()
+    }
+
+    private data class PolygonAreaOverlay(val polygon: Polygon) : AreaOverlay {
+        override fun remove() = polygon.remove()
     }
 
     companion object {
         private const val DEFAULT_ZOOM = 17f
         private const val CAMERA_ANIMATION_MILLIS = 220L
         private const val LOCATION_INTERVAL_MILLIS = 3_000L
+        private const val FOG_Z_INDEX = 30f
+        private const val SCOUT_Z_INDEX = 31f
+        private val FOG_FILL_COLOR = 0x66343A40
+        private val SCOUT_STROKE_COLOR = 0xCC66D7B0.toInt()
+        private val SCOUT_FILL_COLOR = 0x2266D7B0
+        private val FOG_BOUNDARY = listOf(
+            LatLng(-85.0, -179.0),
+            LatLng(-85.0, 179.0),
+            LatLng(85.0, 179.0),
+            LatLng(85.0, -179.0),
+        )
         private val SELECTED_STROKE_COLOR = 0xFFE07A23.toInt()
         private val DEFAULT_STROKE_COLOR = 0xAA1C7C54.toInt()
         private const val SELECTED_FILL_COLOR = 0x22E07A23

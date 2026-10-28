@@ -43,4 +43,15 @@ class LiangxiangTreasureCatalogTest {
         assertTrue(LiangxiangTreasureCatalog.landmarks.isNotEmpty())
         assertFalse(LiangxiangTreasureCatalog.landmarks.any { it.coordinateVerified })
     }
+
+    @Test
+    fun `catalog demonstrates adjustable circle and polygon check in areas`() {
+        val areas = LiangxiangTreasureCatalog.landmarks.map { it.checkInArea }
+
+        assertTrue(areas.any { it is CircularCheckInArea })
+        assertTrue(areas.any { it is PolygonCheckInArea })
+        areas.filterIsInstance<PolygonCheckInArea>().forEach { area ->
+            assertTrue(area.vertices.size >= 3)
+        }
+    }
 }

@@ -1,7 +1,7 @@
 package com.bitse.geotreasure.core.location
 
 import com.bitse.geotreasure.core.common.AppResult
-import com.bitse.geotreasure.core.model.GeoPoint
+import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.LocationSourceKind
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +19,7 @@ class DemoLocationProvider : LocationProvider {
     override fun stopLocationUpdates() = Unit
 
     private fun createSample() = LocationSample(
-        point = GeoPoint(latitude = 39.9594, longitude = 116.3162),
+        point = LiangxiangTreasureCatalog.landmarks.first().point,
         accuracyMeters = 18f,
         capturedAt = Clock.System.now(),
         source = LocationSourceKind.DEMO,
