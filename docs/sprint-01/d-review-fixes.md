@@ -1,7 +1,7 @@
 # PR #5 审核修复记录
 
 负责人：张博淳（D）
-修复日期：2026-10-25；复审补充：2026-10-26
+修复日期：2026-10-25；复审补充：2026-10-26、2026-10-28
 
 ## 修复任务
 
@@ -22,6 +22,16 @@
 | `S1-D-R04A` | P2 | 完成 | 增加完整 12 片校园目录夹具和 Android stable ID/2x2/0..3 校验 |
 | `S1-D-R05A` | P2 | 完成 | 收紧 health UUID、service、版本、UTC 毫秒和 no-store 契约 |
 | `S1-D-R06` | P2 | 完成 | 线上回归改为真实 challenge、照片上传和 checkin HTTP 全链路，并增加清理失败断言 |
+
+### 2026-10-28 F05/F03-R 复审补充
+
+| 审核项 | 结果 | 修复 |
+|---|---|---|
+| `F05` | 完成 | live 回归跟踪本次 `objectKey`，严格删除并验证存储对象不存在；删除失败使脚本失败 |
+| `F03-R` | 完成 | 逐项解析 Android 基线的 campusZone、landmarkId、fragmentId、sectionId、pieceIndex、taskId、坐标，并增加错索引/错区块负向测试 |
+| HTTP 验收 | 完成 | 所有 HTTP 响应校验 `X-Request-Id` 与 body.requestId；新增进度首次 +1、重放/重复 +0 |
+| 配置约定 | 完成 | OpenAPI、cloudbaserc、live 脚本移除硬编码环境 ID，改为私有环境变量 |
+| 契约流程 | 已记录 | 经项目协调人确认，契约与实现继续保留 PR #5；#7 保持关闭 |
 
 ## 根因与修复
 
@@ -88,8 +98,8 @@ Node.js：`v24.20.0`
 
 ```text
 npm run api:check
-Test Files  7 passed | 1 skipped
-Tests       35 passed | 6 skipped
+Test Files  8 passed | 1 skipped
+Tests       43 passed | 6 skipped
 OpenAPI contract and canonical campus fixture are valid
 
 npm run api:test:database
@@ -170,8 +180,8 @@ SOUTH 4  {0,1,2,3}
 - 函数 ID：`lam-btbif7il`
 - 状态：`Active`
 - 运行时：`Nodejs20.19`
-- 最终部署：`2026-10-26 18:56:50`（Asia/Shanghai）
-- 运行时提交：`08ee4aa`
+- 最终部署：`2026-10-28 20:18:36`（Asia/Shanghai）
+- 运行时代码 head：`91482e1`
 
 线上 health：
 
@@ -194,11 +204,11 @@ Cache-Control 包含 no-store
 ```json
 {
   "requestIds": {
-    "challenge": "abc7c370-3cd0-4af2-875b-917f52fe9d93",
-    "first": "349092c9-a5e6-4de9-988a-f32a5beb9084",
-    "replay": "f4c90a32-0ac5-45cb-8e98-e08764a3ec46",
-    "conflict": "62c4d096-9bc0-444f-8f64-5b7d77512ce6",
-    "duplicate": "66dfb5e9-b5a0-43b4-be09-c8593dcfa5af"
+    "challenge": "417362d6-c086-4e24-8cb7-8b7dbc60f806",
+    "first": "a35a5dd4-7d75-4d90-9f7c-cb68fd29027c",
+    "replay": "374f2a7f-51f8-4715-909b-5444e79f3d88",
+    "conflict": "0736a81f-c0d2-47ce-a7ff-67de84eef9f2",
+    "duplicate": "e917c421-8ddf-4f2f-9541-0df55fde3d1b"
   },
   "landmarkId": "lmk_east_gantang",
   "firstStatus": "COMPLETED",
@@ -206,6 +216,12 @@ Cache-Control 包含 no-store
   "duplicateStatus": "ALREADY_COMPLETED",
   "conflictCode": "IDEMPOTENCY_CONFLICT",
   "challengeUsed": true,
+  "progress": {
+    "before": 0,
+    "afterFirst": 1,
+    "afterReplay": 1,
+    "afterDuplicate": 1
+  },
   "databaseCounts": {
     "checkins": 1,
     "grants": 1,
@@ -214,4 +230,5 @@ Cache-Control 包含 no-store
 }
 ```
 
-回归结束后测试数据已清理，没有遗留测试 checkin、grant、audit 或用户。
+回归结束后测试数据已清理，没有遗留测试 checkin、grant、audit、user，
+两个本次上传的存储对象也经严格删除和不存在校验。

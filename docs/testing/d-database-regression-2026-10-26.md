@@ -15,7 +15,7 @@ npm run api:test:database
 ```text
 Test Files  1 passed (1)
 Tests       6 passed (6)
-Duration    13.39s
+Duration    12.06s
 
 ✓ canonical API model exposes three campus sections and twelve landmarks
 ✓ same key with a changed photo is a conflict and keeps one persisted result

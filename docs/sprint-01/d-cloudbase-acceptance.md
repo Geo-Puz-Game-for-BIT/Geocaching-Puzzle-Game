@@ -32,8 +32,8 @@
 ## 自动化验证
 
 ```text
-Test Files  7 passed | 1 skipped
-Tests       35 passed | 6 skipped
+Test Files  8 passed | 1 skipped
+Tests       43 passed | 6 skipped
 Real DB     6 passed
 OpenAPI     valid
 ```
