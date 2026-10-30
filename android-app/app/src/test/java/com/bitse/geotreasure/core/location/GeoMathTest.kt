@@ -22,6 +22,12 @@ class GeoMathTest {
     }
 
     @Test
+    fun isWithinRadius_rejectsAccuracyAbove30m() {
+        // 40m 在旧 50m 阈值内、新 30m 阈值外，用于锁定正式打卡门控 = 30m
+        assertFalse(isWithinRadius(distanceMeters = 10.0, radiusMeters = 30.0, accuracyMeters = 40f))
+    }
+
+    @Test
     fun isWithinRadius_acceptsCloseAccurateLocation() {
         assertTrue(isWithinRadius(distanceMeters = 10.0, radiusMeters = 30.0, accuracyMeters = 12f))
     }
