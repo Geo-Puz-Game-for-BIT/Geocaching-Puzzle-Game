@@ -1,0 +1,4 @@
+# Copy this file to local.properties and keep the real file untracked.
+# Adjust this path to match the Android SDK location on your machine.
+sdk.dir=D\:\\Android\\Sdk
+AMAP_API_KEY=

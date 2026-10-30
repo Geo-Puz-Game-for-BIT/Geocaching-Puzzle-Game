@@ -1,0 +1,41 @@
+meta {
+  name: Health contract regression
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{API_BASE_URL}}/health
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("HTTP 200 and JSON", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getHeader("content-type")).to.include("application/json");
+  });
+  test("Stable health payload", function () {
+    const body = res.getBody();
+    expect(body).to.have.all.keys("requestId", "data");
+    expect(body.data).to.have.all.keys("status", "service", "version", "environment", "timestamp");
+    expect(body.data.status).to.equal("ok");
+    expect(body.data.service).to.equal("geotreasure-api");
+    expect(body.data.version).to.match(/^\d+\.\d+\.\d+$/);
+  });
+  test("Request ID is traceable", function () {
+    const requestId = res.getBody().requestId;
+    expect(requestId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(res.getHeader("x-request-id")).to.equal(requestId);
+  });
+  test("Timestamp is UTC and cache is disabled", function () {
+    const timestamp = res.getBody().data.timestamp;
+    expect(timestamp).to.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(Number.isNaN(Date.parse(timestamp))).to.equal(false);
+    expect(res.getHeader("cache-control")).to.equal("no-store");
+  });
+}

@@ -1,5 +1,6 @@
 # Android / Gradle
 .gradle/
+.kotlin/
 **/build/
 local.properties
 captures/
@@ -14,6 +15,7 @@ secrets.properties
 
 # Node.js / CloudBase
 node_modules/
+cloudbase/deploy/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -51,3 +53,7 @@ cgeo-master.zip
 /地标寻宝软件可行性验证与Agent协作方案.md
 /地标寻宝软件技术栈与工具链清单.md
 /第一周执行分工与接口验收规范.md
+api-tests/environments/private/
+api-tests/.env
+cloudbase/.env
+.env.local

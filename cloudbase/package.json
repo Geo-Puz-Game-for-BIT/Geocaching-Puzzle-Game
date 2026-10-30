@@ -1,0 +1,38 @@
+{
+  "name": "@geotreasure/cloudbase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.20.0" },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:cloud": "esbuild src/cloudbase-server.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/dist/main.cjs",
+    "api:check": "npm run typecheck && npm run test && npm run api:contract",
+    "deploy": "npm run build:cloud && tcb deploy --config-file cloudbaserc.json --only functions --force --yes",
+    "cloudbase": "tcb",
+    "bruno": "bru",
+    "api:contract": "node scripts/check-contract.mjs",
+    "api:test": "cd ../api-tests && bru run health --env local --bail",
+    "api:test:development": "cd ../api-tests && bru run health --env-file environments/private/development.bru --bail",
+    "api:test:database": "node --env-file-if-exists=.env scripts/run-database-integration.mjs",
+    "api:test:live": "node --env-file-if-exists=.env scripts/live-checkin-regression.mjs",
+    "api:smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "busboy": "1.6.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "10.1.0",
+    "@cloudbase/cli": "3.8.7",
+    "@types/busboy": "1.5.5",
+    "@types/node": "24.0.0",
+    "@usebruno/cli": "4.2.1",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

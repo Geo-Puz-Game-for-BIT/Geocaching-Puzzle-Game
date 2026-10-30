@@ -4,10 +4,28 @@
 
 ## 当前状态
 
-- 当前分支：`main`，用于稳定基线和每周验收版本。
+- `main` 用于稳定基线，`develop` 用于日常集成。
 - 当前阶段：第 1 周，完成工程骨架、接口契约和各模块最小验证。
 - c:geo 源码仅供架构参考，`cgeo-master/` 与压缩包不会提交到本仓库。
-- 尚未配置远程仓库和首次提交；配置方法见下文。
+- 已有 GitHub 远程仓库，Android 骨架已进入 develop。新增本地 health、OpenAPI 与 Bruno 基线见下文；业务云接口仍待实现。
+
+## 第一天统一环境与 API 验收
+
+环境版本和官方下载见 [统一工具链](docs/toolchain.md)，接口规则见 [API 契约与回归](docs/api/README.md)。
+Node.js 固定 24.20.0；CloudBase CLI 3.8.7、Bruno CLI 4.2.1 由项目安装。
+在根目录运行：
+
+```text
+npm ci
+npm run cloudbase -- --version
+npm run bruno -- --version
+npm run typecheck
+npm run api:contract
+npm run api:smoke
+```
+
+人工联调先 `npm run dev`，另一个终端 `npm run api:test`。
+OpenAPI 是契约，Bruno 是可运行测试，后端是实现。按协作规范先评审合并契约，再提交实现与测试PR，并引用已经合并的契约。
 
 ## 提交位置
 
@@ -28,6 +46,8 @@ android-app/             Android/Kotlin 客户端
 cloudbase/functions/api/ 云函数 API 入口
 cloudbase/shared/        云端共享类型和工具
 cloudbase/tests/         云端测试
+cloudbase/src/           本地 HTTP 开发入口
+api-tests/               Bruno 集合、环境模板与回归
 design/                  可交付的设计资产与清单
 docs/api/                API、错误码和数据契约
 docs/adr/                架构决策记录
@@ -44,21 +64,10 @@ docs/sprint-01/          第一周分工、验收和汇总材料
 4. 每日结束前推送个人分支；需要联调时向 `develop` 提交 PR。
 5. 每周验收通过后，由集成人员将 `develop` 合并到 `main` 并打标签，例如 `week-01`。
 
-## 首次建立远程仓库
+## 仓库维护与审核
 
-在 GitHub、Gitee 或学校 GitLab 新建一个空仓库，不要在线生成 README。当前基线文件已经暂存，仓库管理员只需填写自己的公开提交身份并执行：
-
-```powershell
-git config user.name "你的姓名或团队认可的昵称"
-git config user.email "你的 Git 托管平台邮箱"
-git commit -m "chore(repo): initialize project repository"
-git remote add origin <REMOTE_URL>
-git push -u origin main
-git switch -c develop
-git push -u origin develop
-```
-
-建议开启 `main` 和 `develop` 分支保护：禁止强制推送，至少 1 人审查，合并前必须解决讨论。
+E 负责仓库维护、PR 审核、集成与验收记录。建议开启 main/develop 分支保护：禁止强推，至少一人审核，合并前解决讨论。
+具体操作前确认平台权限；建议不代表远端保护已配置完成。
 
 ## 开始工作
 

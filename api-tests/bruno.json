@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "GeoTreasure API",
+  "type": "collection",
+  "ignore": ["node_modules", ".git", "environments/private"]
+}
