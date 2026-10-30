@@ -67,7 +67,14 @@ fun GeoTreasureNavHost() {
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
             val draftId = requireNotNull(entry.arguments?.getString("draftId"))
-            val cameraViewModel: CameraViewModel = viewModel(factory = CameraViewModel.factory(landmarkId, draftId))
+            val cameraViewModel: CameraViewModel = viewModel(
+                factory = CameraViewModel.factory(
+                    landmarkId = landmarkId,
+                    draftId = draftId,
+                    draftStore = container.checkInDraftStore,
+                    cameraManager = container.createCameraManager(),
+                ),
+            )
             CameraScreen(
                 viewModel = cameraViewModel,
                 onBack = navController::popBackStack,
