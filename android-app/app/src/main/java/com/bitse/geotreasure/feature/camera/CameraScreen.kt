@@ -2,7 +2,7 @@ package com.bitse.geotreasure.feature.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
+import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -49,10 +49,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.bitse.geotreasure.core.camera.CameraXManager
+import com.bitse.geotreasure.core.camera.PhotoCompressor
 import com.bitse.geotreasure.core.model.CheckInDraft
 import com.bitse.geotreasure.core.model.LocalPhotoRef
 import com.bitse.geotreasure.core.model.UploadState
 import com.bitse.geotreasure.data.repository.CheckInDraftStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,6 +62,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
 import java.io.File
 
@@ -70,6 +73,7 @@ data class CameraUiState(
     val cameraBound: Boolean = false,
     val photoPath: String? = null,
     val isCapturing: Boolean = false,
+    val isProcessing: Boolean = false,
     val restoredDraft: Boolean = false,
     val errorMessage: String? = null,
 )
@@ -96,6 +100,7 @@ class CameraViewModel(
     val effects = effectChannel.receiveAsFlow()
 
     private var draftCreatedAt: Instant? = null
+    private var attachedPreviewView: PreviewView? = null
 
     init {
         restoreDraft()
@@ -119,6 +124,7 @@ class CameraViewModel(
     fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
         if (mutableUiState.value.cameraBound) return
         mutableUiState.update { it.copy(cameraBound = true) }
+        attachedPreviewView = previewView
         cameraManager.bind(lifecycleOwner, previewView) { e ->
             mutableUiState.update { it.copy(errorMessage = e.message) }
         }
@@ -135,7 +141,9 @@ class CameraViewModel(
     private fun capture() {
         if (mutableUiState.value.isCapturing) return
         mutableUiState.update { it.copy(isCapturing = true) }
+        val rotation = attachedPreviewView?.display?.rotation ?: Surface.ROTATION_0
         cameraManager.takePhoto(
+            rotation = rotation,
             onCaptured = { file ->
                 mutableUiState.update { it.copy(photoPath = file.absolutePath, isCapturing = false) }
                 persistDraft(
@@ -161,13 +169,28 @@ class CameraViewModel(
 
     private fun confirm() {
         val photoPath = mutableUiState.value.photoPath ?: return
-        persistDraft(
-            localPhoto = LocalPhotoRef(photoPath, "image/jpeg", File(photoPath).length()),
-            uploadState = UploadState.CONFIRMED,
-        )
-        effectChannel.trySend(
-            CameraEffect.NavigateToResult(checkInId = draftId, landmarkId = landmarkId),
-        )
+        if (mutableUiState.value.isProcessing) return
+        mutableUiState.update { it.copy(isProcessing = true, errorMessage = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            // S1-C-04：确认时按 EXIF 烘焙正立方向并压缩至 5MiB 契约内；失败保留原图
+            val processed = PhotoCompressor.process(File(photoPath))
+            withContext(Dispatchers.Main) {
+                mutableUiState.update {
+                    it.copy(photoPath = processed.file.absolutePath, isProcessing = false)
+                }
+                persistDraft(
+                    localPhoto = LocalPhotoRef(
+                        absolutePath = processed.file.absolutePath,
+                        mimeType = "image/jpeg",
+                        sizeBytes = processed.file.length(),
+                    ),
+                    uploadState = UploadState.CONFIRMED,
+                )
+                effectChannel.trySend(
+                    CameraEffect.NavigateToResult(checkInId = draftId, landmarkId = landmarkId),
+                )
+            }
+        }
     }
 
     private fun persistDraft(localPhoto: LocalPhotoRef?, uploadState: UploadState) {
@@ -299,7 +322,7 @@ private fun LivePreview(viewModel: CameraViewModel, lifecycleOwner: LifecycleOwn
 @Composable
 private fun PhotoPreview(photoPath: String) {
     val bitmap = remember(photoPath) {
-        BitmapFactory.decodeFile(photoPath)?.asImageBitmap()
+        PhotoCompressor.decodeUpright(photoPath)?.asImageBitmap()
     }
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
@@ -338,16 +361,16 @@ private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit
             OutlinedButton(
                 onClick = { onAction(CameraAction.Retake) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isCapturing,
+                enabled = !state.isCapturing && !state.isProcessing,
             ) {
                 Text("重拍")
             }
             Button(
                 onClick = { onAction(CameraAction.Confirm) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isCapturing,
+                enabled = !state.isCapturing && !state.isProcessing,
             ) {
-                Text("确认并提交打卡")
+                Text(if (state.isProcessing) "正在处理照片…" else "确认并提交打卡")
             }
         } else {
             Button(

@@ -57,6 +57,7 @@ class CameraXManager(private val context: Context) {
     }
 
     fun takePhoto(
+        rotation: Int,
         onCaptured: (File) -> Unit,
         onError: (Throwable) -> Unit,
     ) {
@@ -65,6 +66,8 @@ class CameraXManager(private val context: Context) {
             onError(IllegalStateException("相机尚未就绪"))
             return
         }
+        // S1-C-04：按当前屏幕方向写入 EXIF，横竖拍方向正确
+        capture.targetRotation = rotation
         val file = createPhotoFile()
         val options = ImageCapture.OutputFileOptions.Builder(file).build()
         capture.takePicture(
