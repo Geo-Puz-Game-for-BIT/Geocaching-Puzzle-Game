@@ -50,7 +50,11 @@ fun GeoTreasureNavHost() {
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
             val detailViewModel: LandmarkDetailViewModel = viewModel(
-                factory = LandmarkDetailViewModel.factory(landmarkId, container.landmarkRepository),
+                factory = LandmarkDetailViewModel.factory(
+                    landmarkId = landmarkId,
+                    repository = container.landmarkRepository,
+                    locationProvider = container.locationProvider,
+                ),
             )
             LandmarkDetailScreen(
                 viewModel = detailViewModel,
@@ -73,6 +77,10 @@ fun GeoTreasureNavHost() {
                     draftId = draftId,
                     draftStore = container.checkInDraftStore,
                     cameraManager = container.createCameraManager(),
+                    checkInRepository = container.checkInRepository,
+                    progressStore = container.explorationProgressStore,
+                    locationProvider = container.locationProvider,
+                    faceQualityChecker = container.createFaceQualityChecker(),
                 ),
             )
             CameraScreen(
@@ -96,7 +104,6 @@ fun GeoTreasureNavHost() {
                 factory = CheckInResultViewModel.factory(
                     checkInId = checkInId,
                     landmarkId = landmarkId,
-                    progressStore = container.explorationProgressStore,
                 ),
             )
             CheckInResultScreen(

@@ -101,6 +101,7 @@ data class CheckInDraft(
     val id: String,
     val landmarkId: String,
     val localPhoto: LocalPhotoRef?,
+    val uploadedPhotoId: String? = null,
     val uploadState: UploadState,
     val createdAt: Instant,
     val updatedAt: Instant,

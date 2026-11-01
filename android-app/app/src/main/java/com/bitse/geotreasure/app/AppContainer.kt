@@ -3,13 +3,17 @@ package com.bitse.geotreasure.app
 import android.content.Context
 import com.bitse.geotreasure.BuildConfig
 import com.bitse.geotreasure.core.camera.CameraXManager
+import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.location.AmapLocationProvider
 import com.bitse.geotreasure.core.location.DemoLocationProvider
 import com.bitse.geotreasure.core.location.LocationPrivacyManager
 import com.bitse.geotreasure.core.location.LocationProvider
+import com.bitse.geotreasure.data.remote.CheckInApi
 import com.bitse.geotreasure.data.repository.CheckInDraftStore
+import com.bitse.geotreasure.data.repository.CheckInRepository
 import com.bitse.geotreasure.data.repository.FakeLandmarkRepository
 import com.bitse.geotreasure.data.repository.LandmarkRepository
+import com.bitse.geotreasure.data.repository.RemoteCheckInRepository
 
 class AppContainer(private val context: Context) {
     val privacyManager = LocationPrivacyManager(context)
@@ -21,6 +25,14 @@ class AppContainer(private val context: Context) {
     } else {
         DemoLocationProvider()
     }
+    val checkInRepository: CheckInRepository = RemoteCheckInRepository(
+        CheckInApi(
+            baseUrl = BuildConfig.CHECKIN_API_BASE_URL,
+            authToken = BuildConfig.CHECKIN_AUTH_TOKEN,
+        ),
+    )
 
     fun createCameraManager(): CameraXManager = CameraXManager(context)
+
+    fun createFaceQualityChecker(): FaceQualityChecker = FaceQualityChecker()
 }
