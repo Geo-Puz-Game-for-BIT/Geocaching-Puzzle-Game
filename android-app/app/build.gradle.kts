@@ -16,6 +16,12 @@ val localProperties = Properties().apply {
 val amapApiKey = localProperties.getProperty("AMAP_API_KEY")
     ?: System.getenv("AMAP_API_KEY")
     ?: ""
+val checkInApiBaseUrl = localProperties.getProperty("CHECKIN_API_BASE_URL")
+    ?: System.getenv("CHECKIN_API_BASE_URL")
+    ?: ""
+val checkInAuthToken = localProperties.getProperty("CHECKIN_AUTH_TOKEN")
+    ?: System.getenv("CHECKIN_AUTH_TOKEN")
+    ?: ""
 
 android {
     namespace = "com.bitse.geotreasure"
@@ -31,6 +37,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("boolean", "HAS_AMAP_KEY", amapApiKey.isNotBlank().toString())
+        buildConfigField("String", "CHECKIN_API_BASE_URL", "\"$checkInApiBaseUrl\"")
+        buildConfigField("String", "CHECKIN_AUTH_TOKEN", "\"$checkInAuthToken\"")
     }
 
     buildTypes {
@@ -89,6 +97,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.gson)
+    implementation(libs.okhttp)
     implementation(libs.amap.map.location.search)
 
     testImplementation(libs.junit)
