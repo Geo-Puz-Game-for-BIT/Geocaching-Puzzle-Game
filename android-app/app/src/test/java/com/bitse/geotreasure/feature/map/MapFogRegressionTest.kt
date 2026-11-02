@@ -45,7 +45,43 @@ class MapFogRegressionTest {
         val initial = updatedExploredCenters(emptyList(), sample(first, 18f))
         assertEquals(listOf(first), initial)
         assertEquals(initial, updatedExploredCenters(initial, sample(nearby, 18f)))
-        assertEquals(listOf(first, next), updatedExploredCenters(initial, sample(next, 18f)))
+
+        val advanced = updatedExploredCenters(initial, sample(next, 18f))
+        assertEquals(first, advanced.first())
+        assertEquals(next, advanced.last())
+        assertTrue(advanced.size > 2)
+    }
+
+    @Test
+    fun `large location jump bridges fog centers along the path`() {
+        val start = LiangxiangTreasureCatalog.landmarks.first().point
+        val end = com.bitse.geotreasure.core.location.offsetPoint(start, LocalOffsetMeters(42.0, 0.0))
+
+        val centers = updatedExploredCenters(listOf(start), sample(end, 18f))
+
+        assertTrue(centers.size > 2)
+        assertEquals(start, centers.first())
+        assertEquals(end, centers.last())
+        centers.zipWithNext().forEach { (from, to) ->
+            assertTrue(
+                "Fog centers leave a gap: ${com.bitse.geotreasure.core.location.distanceMeters(from, to)} m",
+                com.bitse.geotreasure.core.location.distanceMeters(from, to) <=
+                    FogOfWarRules.EXPLORATION_RECORD_DISTANCE_METERS + 0.001,
+            )
+        }
+    }
+
+    @Test
+    fun `nearby historical center does not block bridging from the latest center`() {
+        val start = LiangxiangTreasureCatalog.landmarks.first().point
+        val outbound = com.bitse.geotreasure.core.location.offsetPoint(start, LocalOffsetMeters(20.0, 0.0))
+        val returning = com.bitse.geotreasure.core.location.offsetPoint(start, LocalOffsetMeters(5.0, 0.0))
+        val history = listOf(start, outbound)
+
+        val centers = updatedExploredCenters(history, sample(returning, 18f))
+
+        assertTrue(centers.size > history.size)
+        assertEquals(returning, centers.last())
     }
 
     @Test
