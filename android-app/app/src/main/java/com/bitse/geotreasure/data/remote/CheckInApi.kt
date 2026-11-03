@@ -85,6 +85,29 @@ class CheckInApi(
         return envelope.data.toDomain()
     }
 
+    /**
+     * 查询某地标是否已打卡成功（幂等恢复用）。
+     *
+     * 契约（C/D 约定，服务端 `GET /checkins?landmarkId=` **尚未落地**，客户端先按此契约实现）：
+     * - 已打卡 → `200 { requestId, data: { checkInId, status, fragmentGrant } }`；
+     * - 未打卡 / 接口未落地 → `404` → 返回 null（「无记录」）。
+     */
+    fun queryCheckIn(landmarkId: String): CheckInReceipt? {
+        if (rootUrl.isBlank()) return null
+        val request = Request.Builder()
+            .url("$rootUrl/checkins?landmarkId=$landmarkId")
+            .header("Authorization", "Bearer $authToken")
+            .get()
+            .build()
+        client.newCall(request).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (resp.code == 404) return null
+            if (!resp.isSuccessful) throw toException(body, resp.code)
+            val envelope = parseOrThrow<QueryEnvelope>(body)
+            return envelope.data?.toDomain()
+        }
+    }
+
     private fun execute(request: Request): String {
         if (rootUrl.isBlank()) {
             throw CheckInApiException("NOT_CONFIGURED", false, "打卡服务端地址未配置，请在 local.properties 填入 API_BASE_URL")
@@ -135,6 +158,8 @@ private data class PhotoEnvelope(val requestId: String, val data: PhotoDto)
 private data class PhotoDto(val photoId: String, val objectKey: String, val uploadedAt: String) {
     fun toDomain() = UploadedPhoto(photoId = photoId, objectKey = objectKey, uploadedAt = Instant.parse(uploadedAt))
 }
+
+private data class QueryEnvelope(val requestId: String?, val data: ReceiptDto?)
 
 private data class ReceiptEnvelope(val requestId: String, val data: ReceiptDto)
 private data class ReceiptDto(val checkInId: String, val status: String, val fragmentGrant: FragmentGrantDto) {

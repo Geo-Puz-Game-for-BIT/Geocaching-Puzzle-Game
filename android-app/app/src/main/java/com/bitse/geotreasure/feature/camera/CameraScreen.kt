@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.NoPhotography
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,14 +55,22 @@ import com.bitse.geotreasure.core.camera.CameraXManager
 import com.bitse.geotreasure.core.camera.FaceCheckResult
 import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.camera.PhotoCompressor
+import com.bitse.geotreasure.core.checkin.BlockReason
+import com.bitse.geotreasure.core.checkin.CheckInGate
+import com.bitse.geotreasure.core.checkin.CheckInGateResult
+import com.bitse.geotreasure.core.checkin.CheckInSubmitCoordinator
+import com.bitse.geotreasure.core.checkin.SubmitOutcome
 import com.bitse.geotreasure.core.common.AppResult
 import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.model.CheckInDraft
+import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.LocalPhotoRef
+import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.UploadState
 import com.bitse.geotreasure.data.remote.CheckInApiException
 import com.bitse.geotreasure.data.repository.CheckInDraftStore
 import com.bitse.geotreasure.data.repository.CheckInRepository
+import com.bitse.geotreasure.data.repository.LandmarkRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,77 +80,114 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
 
 data class CameraUiState(
     val landmarkId: String,
-    val draftId: String,
+    val attemptId: String,
     val hasCameraPermission: Boolean = false,
     val cameraBound: Boolean = false,
     val photoPath: String? = null,
+    val retaking: Boolean = false,
     val isCapturing: Boolean = false,
     val isProcessing: Boolean = false,
     val uploadState: UploadState = UploadState.EMPTY,
+    val gate: CheckInGateResult? = null,
     val restoredDraft: Boolean = false,
+    val pendingUnknownDraft: Boolean = false,
     val errorMessage: String? = null,
     val faceCheckMessage: String? = null,
-)
+) {
+    val canShoot: Boolean get() = gate is CheckInGateResult.Ready
+    val gateMessage: String? get() = (gate as? CheckInGateResult.Blocked)?.reason?.message
+}
 
 sealed interface CameraAction {
     data object Capture : CameraAction
     data object Retake : CameraAction
+    data object CancelRetake : CameraAction
     data object Confirm : CameraAction // 兼作「重试」入口（幂等提交）
+    data object RefreshLocation : CameraAction
+    data object DiscardPendingDraft : CameraAction // 放弃上一个未完成草稿
+    data object KeepPendingDraft : CameraAction // 保留上一个未完成草稿并返回
 }
 
 sealed interface CameraEffect {
     data class NavigateToResult(val checkInId: String, val landmarkId: String) : CameraEffect
+    data object NavigateBack : CameraEffect
 }
 
 class CameraViewModel(
     private val landmarkId: String,
-    private val draftId: String,
+    private val attemptId: String,
     private val draftStore: CheckInDraftStore,
     private val cameraManager: CameraXManager,
     private val checkInRepository: CheckInRepository,
+    private val submitCoordinator: CheckInSubmitCoordinator,
     private val progressStore: ExplorationProgressStore,
     private val locationProvider: LocationProvider,
     private val faceQualityChecker: FaceQualityChecker,
+    private val landmarkRepository: LandmarkRepository,
 ) : ViewModel() {
-    private val mutableUiState = MutableStateFlow(CameraUiState(landmarkId, draftId))
+    private val mutableUiState = MutableStateFlow(CameraUiState(landmarkId, attemptId))
     val uiState: StateFlow<CameraUiState> = mutableUiState.asStateFlow()
     private val effectChannel = Channel<CameraEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
 
+    private var landmark: Landmark? = null
+    private var challengeId: String? = null
+    private var challengeExpiresAt: Instant? = null
+    private var frozenLocation: LocationSample? = null
+    private var uploadedPhotoId: String? = null
     private var draftCreatedAt: Instant? = null
     private var attachedPreviewView: PreviewView? = null
-    private var uploadedPhotoId: String? = null
 
     init {
-        restoreDraft()
+        loadLandmarkAndDraft()
     }
 
-    private fun restoreDraft() {
+    private fun loadLandmarkAndDraft() {
         viewModelScope.launch {
+            landmark = when (val result = landmarkRepository.getLandmark(landmarkId)) {
+                is AppResult.Success -> result.data
+                is AppResult.Failure -> null
+            }
             val saved = draftStore.load()
-            if (saved != null && saved.id == draftId) {
-                draftCreatedAt = saved.createdAt
-                uploadedPhotoId = saved.uploadedPhotoId
-                val photoPath = saved.localPhoto?.absolutePath
-                if (photoPath != null && File(photoPath).exists()) {
-                    mutableUiState.update {
-                        it.copy(
-                            photoPath = photoPath,
-                            uploadState = saved.uploadState,
-                            restoredDraft = true,
-                            errorMessage = if (saved.uploadState == UploadState.FAILED) {
-                                "上次提交失败，请重试"
-                            } else {
-                                null
-                            },
-                        )
+            when {
+                saved == null -> Unit
+                saved.id == attemptId && saved.landmarkId == landmarkId -> recoverDraft(saved)
+                else -> {
+                    val terminal = saved.uploadState == UploadState.EMPTY ||
+                        saved.uploadState == UploadState.CONFIRMED
+                    if (!terminal) {
+                        mutableUiState.update { it.copy(pendingUnknownDraft = true) }
                     }
                 }
+            }
+            refreshGate()
+        }
+    }
+
+    private fun recoverDraft(saved: CheckInDraft) {
+        challengeId = saved.challengeId
+        challengeExpiresAt = saved.challengeExpiresAt
+        uploadedPhotoId = saved.uploadedPhotoId
+        draftCreatedAt = saved.createdAt
+        val path = saved.localPhoto?.absolutePath
+        if (path != null && File(path).exists()) {
+            mutableUiState.update {
+                it.copy(
+                    photoPath = path,
+                    uploadState = saved.uploadState,
+                    restoredDraft = true,
+                    errorMessage = if (saved.uploadState == UploadState.FAILED) {
+                        "上次提交失败，请重试"
+                    } else {
+                        null
+                    },
+                )
             }
         }
     }
@@ -151,63 +198,137 @@ class CameraViewModel(
 
     fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
         if (mutableUiState.value.cameraBound) return
-        mutableUiState.update { it.copy(cameraBound = true) }
         attachedPreviewView = previewView
-        cameraManager.bind(lifecycleOwner, previewView) { e ->
-            mutableUiState.update { it.copy(errorMessage = e.message) }
-        }
+        cameraManager.bind(
+            lifecycleOwner,
+            previewView,
+            onBound = { mutableUiState.update { it.copy(cameraBound = true, errorMessage = null) } },
+            onError = { e ->
+                mutableUiState.update { it.copy(cameraBound = false, errorMessage = e.message) }
+            },
+        )
     }
 
     fun onAction(action: CameraAction) {
         when (action) {
             CameraAction.Capture -> capture()
             CameraAction.Retake -> retake()
+            CameraAction.CancelRetake -> cancelRetake()
             CameraAction.Confirm -> submitFlow()
+            CameraAction.RefreshLocation -> refreshGate()
+            CameraAction.DiscardPendingDraft -> discardPendingDraft()
+            CameraAction.KeepPendingDraft -> effectChannel.trySend(CameraEffect.NavigateBack)
+        }
+    }
+
+    private fun refreshGate() {
+        val currentLandmark = landmark ?: return
+        viewModelScope.launch {
+            val locationResult = locationProvider.getCurrentLocation()
+            val gate = when (locationResult) {
+                is AppResult.Success -> CheckInGate.evaluate(
+                    locationResult.data,
+                    currentLandmark.point,
+                    currentLandmark.checkInArea,
+                )
+                is AppResult.Failure -> CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
+            }
+            if (gate is CheckInGateResult.Ready) {
+                // 只在门控通过时冻结定位（后续提交复用，不再重取位）
+                frozenLocation = (locationResult as AppResult.Success).data
+            }
+            mutableUiState.update { it.copy(gate = gate) }
         }
     }
 
     private fun capture() {
-        if (mutableUiState.value.isCapturing) return
+        val state = mutableUiState.value
+        if (state.isCapturing || state.isProcessing) return
+        if (!state.canShoot) {
+            mutableUiState.update { it.copy(errorMessage = state.gateMessage ?: "当前不可拍照") }
+            return
+        }
         mutableUiState.update { it.copy(isCapturing = true, errorMessage = null, faceCheckMessage = null) }
-        val rotation = attachedPreviewView?.display?.rotation ?: Surface.ROTATION_0
-        cameraManager.takePhoto(
-            rotation = rotation,
-            onCaptured = { file ->
-                uploadedPhotoId = null
-                mutableUiState.update {
-                    it.copy(photoPath = file.absolutePath, isCapturing = false, uploadState = UploadState.CAPTURED)
+        viewModelScope.launch {
+            if (!hasValidChallenge()) {
+                try {
+                    val challenge = checkInRepository.createChallenge(landmarkId)
+                    challengeId = challenge.id
+                    challengeExpiresAt = challenge.expiresAt
+                    persistDraft(localPhoto = state.photoPath?.let {
+                        LocalPhotoRef(it, "image/jpeg", File(it).length())
+                    }, uploadState = state.uploadState)
+                } catch (e: Throwable) {
+                    mutableUiState.update {
+                        it.copy(isCapturing = false, errorMessage = checkInFailureMessage(e))
+                    }
+                    return@launch
                 }
-                persistDraft(
-                    localPhoto = LocalPhotoRef(file.absolutePath, "image/jpeg", file.length()),
-                    uploadState = UploadState.CAPTURED,
-                )
-            },
-            onError = { e ->
-                mutableUiState.update { it.copy(isCapturing = false, errorMessage = e.message) }
-            },
-        )
+            }
+            val rotation = attachedPreviewView?.display?.rotation ?: Surface.ROTATION_0
+            cameraManager.takePhoto(
+                rotation = rotation,
+                onCaptured = { file ->
+                    // 新照成功才替换旧照；首拍无旧照
+                    val old = mutableUiState.value.photoPath
+                    if (old != null && old != file.absolutePath) CameraXManager.deletePhoto(old)
+                    uploadedPhotoId = null
+                    mutableUiState.update {
+                        it.copy(
+                            photoPath = file.absolutePath,
+                            isCapturing = false,
+                            retaking = false,
+                            uploadState = UploadState.CAPTURED,
+                        )
+                    }
+                    persistDraft(
+                        localPhoto = LocalPhotoRef(file.absolutePath, "image/jpeg", file.length()),
+                        uploadState = UploadState.CAPTURED,
+                    )
+                },
+                onError = { e ->
+                    mutableUiState.update { it.copy(isCapturing = false, errorMessage = e.message) }
+                },
+            )
+        }
     }
 
     private fun retake() {
-        CameraXManager.deletePhoto(mutableUiState.value.photoPath)
-        uploadedPhotoId = null
-        mutableUiState.update {
-            it.copy(
-                photoPath = null,
-                restoredDraft = false,
-                uploadState = UploadState.EMPTY,
-                errorMessage = null,
-                faceCheckMessage = null,
-            )
-        }
-        persistDraft(localPhoto = null, uploadState = UploadState.EMPTY)
+        if (mutableUiState.value.isProcessing) return
+        // 进入重拍模式：旧照保留，不在此删除（取消重拍可回旧预览）
+        mutableUiState.update { it.copy(retaking = true, errorMessage = null, faceCheckMessage = null) }
+        refreshGate()
     }
 
-    /** 拍照 → 本地初检 → 上传照片 → 领 challenge → POST /checkins → 等 receipt。失败可重试。 */
+    private fun cancelRetake() {
+        mutableUiState.update { it.copy(retaking = false, errorMessage = null, faceCheckMessage = null) }
+    }
+
+    private fun discardPendingDraft() {
+        viewModelScope.launch {
+            draftStore.clear()
+            mutableUiState.update { it.copy(pendingUnknownDraft = false) }
+            refreshGate()
+        }
+    }
+
+    /** 拍照 → 本地初检 → 上传照片 → 提交（冻结内容 + 幂等键 attemptId）→ 收回执。失败可重试。 */
     private fun submitFlow() {
         val state = mutableUiState.value
         if (state.isProcessing || state.uploadState == UploadState.CONFIRMED) return
         val photoPath = state.photoPath ?: return
+
+        // 门控：提交复用同一冻结定位（不重取位）；无冻结定位说明位置已过期，需重拍
+        val location = frozenLocation
+        if (location == null) {
+            mutableUiState.update { it.copy(errorMessage = "定位已过期，请重新定位后重拍") }
+            return
+        }
+        val challenge = challengeId
+        if (challenge == null || !hasValidChallenge()) {
+            mutableUiState.update { it.copy(errorMessage = "挑战码已过期，请重新拍照") }
+            return
+        }
 
         mutableUiState.update { it.copy(isProcessing = true, errorMessage = null, faceCheckMessage = null) }
         persistDraft(
@@ -217,7 +338,6 @@ class CameraViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             val processed = PhotoCompressor.process(File(photoPath))
-
             val bitmap = PhotoCompressor.decodeUpright(processed.file.absolutePath)
             if (bitmap == null) {
                 onFaceCheckFailed("照片读取失败，请重拍")
@@ -227,14 +347,6 @@ class CameraViewModel(
             if (faceResult is FaceCheckResult.Failure) {
                 onFaceCheckFailed(faceResult.reason.message)
                 return@launch
-            }
-
-            val location = when (val loc = locationProvider.getCurrentLocation()) {
-                is AppResult.Success -> loc.data
-                is AppResult.Failure -> {
-                    onSubmitFailed(IllegalStateException(loc.error.message ?: "定位失败，请重试"))
-                    return@launch
-                }
             }
 
             var photoId = uploadedPhotoId
@@ -257,18 +369,24 @@ class CameraViewModel(
                 }
             }
 
-            try {
-                val receipt = checkInRepository.submitCheckIn(
-                    landmarkId = landmarkId,
-                    photoId = photoId,
-                    location = location,
-                    idempotencyKey = draftId,
-                )
-                withContext(Dispatchers.Main) { onCheckInSuccess(receipt.checkInId) }
-            } catch (e: Throwable) {
-                onSubmitFailed(e)
+            when (val outcome = submitCoordinator.submit(landmarkId, attemptId, challenge, photoId, location)) {
+                is SubmitOutcome.Success -> onSuccess(outcome.receipt.checkInId)
+                is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
+                is SubmitOutcome.ChallengeExpired ->
+                    if (outcome.recoveredReceipt != null) {
+                        onSuccess(outcome.recoveredReceipt.checkInId)
+                    } else {
+                        onChallengeExpired()
+                    }
+                is SubmitOutcome.Failed -> onSubmitFailed(outcome.error)
             }
         }
+    }
+
+    private fun hasValidChallenge(): Boolean {
+        val id = challengeId ?: return false
+        val expires = challengeExpiresAt ?: return false
+        return Clock.System.now() < expires
     }
 
     private fun onFaceCheckFailed(message: String) {
@@ -301,7 +419,27 @@ class CameraViewModel(
         }
     }
 
-    private fun onCheckInSuccess(checkInId: String) {
+    private fun onChallengeExpired() {
+        // 挑战过期且无旧成功：换新挑战重拍（新冻结内容）
+        val oldPath = mutableUiState.value.photoPath
+        CameraXManager.deletePhoto(oldPath)
+        challengeId = null
+        challengeExpiresAt = null
+        uploadedPhotoId = null
+        frozenLocation = null
+        mutableUiState.update {
+            it.copy(
+                isProcessing = false,
+                photoPath = null,
+                retaking = true,
+                uploadState = UploadState.EMPTY,
+                errorMessage = "挑战码已过期，请重新拍照",
+            )
+        }
+        persistDraft(localPhoto = null, uploadState = UploadState.EMPTY)
+    }
+
+    private fun onSuccess(checkInId: String) {
         // 只有服务端确认成功后才发碎片 + 清草稿，不因本地拍照成功提前发奖
         progressStore.markLandmarkCompleted(landmarkId)
         viewModelScope.launch { draftStore.clear() }
@@ -315,10 +453,12 @@ class CameraViewModel(
             val createdAt = draftCreatedAt ?: now.also { draftCreatedAt = it }
             draftStore.save(
                 CheckInDraft(
-                    id = draftId,
+                    id = attemptId,
                     landmarkId = landmarkId,
                     localPhoto = localPhoto,
                     uploadedPhotoId = uploadedPhotoId,
+                    challengeId = challengeId,
+                    challengeExpiresAt = challengeExpiresAt,
                     uploadState = uploadState,
                     createdAt = createdAt,
                     updatedAt = now,
@@ -335,24 +475,28 @@ class CameraViewModel(
     companion object {
         fun factory(
             landmarkId: String,
-            draftId: String,
+            attemptId: String,
             draftStore: CheckInDraftStore,
             cameraManager: CameraXManager,
             checkInRepository: CheckInRepository,
+            submitCoordinator: CheckInSubmitCoordinator,
             progressStore: ExplorationProgressStore,
             locationProvider: LocationProvider,
             faceQualityChecker: FaceQualityChecker,
+            landmarkRepository: LandmarkRepository,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = CameraViewModel(
                 landmarkId = landmarkId,
-                draftId = draftId,
+                attemptId = attemptId,
                 draftStore = draftStore,
                 cameraManager = cameraManager,
                 checkInRepository = checkInRepository,
+                submitCoordinator = submitCoordinator,
                 progressStore = progressStore,
                 locationProvider = locationProvider,
                 faceQualityChecker = faceQualityChecker,
+                landmarkRepository = landmarkRepository,
             ) as T
         }
     }
@@ -364,6 +508,8 @@ internal fun checkInFailureMessage(throwable: Throwable): String = when (throwab
         "OUT_OF_RANGE" -> "已离开打卡范围，请回到地标附近重试"
         "LOCATION_ACCURACY_TOO_LOW" -> "定位精度不足，请到开阔处重试"
         "CHALLENGE_EXPIRED" -> "挑战码已过期，请重新提交"
+        "IDEMPOTENCY_CONFLICT" -> "提交冲突，正在恢复上次结果"
+        "PHOTO_REQUIRED" -> "照片缺失，请重新拍照"
         "NOT_CONFIGURED" -> throwable.message ?: "打卡服务端未配置"
         else -> throwable.message ?: "打卡失败，请重试"
     }
@@ -384,7 +530,10 @@ fun CameraScreen(
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
-            if (effect is CameraEffect.NavigateToResult) onResult(effect.checkInId, effect.landmarkId)
+            when (effect) {
+                is CameraEffect.NavigateToResult -> onResult(effect.checkInId, effect.landmarkId)
+                CameraEffect.NavigateBack -> onBack()
+            }
         }
     }
 
@@ -399,6 +548,13 @@ fun CameraScreen(
         if (!granted) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
+    }
+
+    if (state.pendingUnknownDraft) {
+        PendingDraftDialog(
+            onDiscard = { viewModel.onAction(CameraAction.DiscardPendingDraft) },
+            onKeep = { viewModel.onAction(CameraAction.KeepPendingDraft) },
+        )
     }
 
     Scaffold(
@@ -428,30 +584,41 @@ fun CameraScreen(
                         onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                     )
 
-                    photoPath != null -> PhotoPreview(photoPath)
-                    else -> LivePreview(viewModel, lifecycleOwner)
+                    state.retaking || photoPath == null -> LivePreview(viewModel, lifecycleOwner)
+                    else -> PhotoPreview(photoPath)
                 }
             }
 
             state.faceCheckMessage?.let { msg ->
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
 
             state.errorMessage?.let { msg ->
-                Text(
-                    msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            state.gateMessage?.takeIf { state.photoPath == null || state.retaking }?.let { msg ->
+                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             ActionButtons(state = state, onAction = viewModel::onAction)
         }
     }
+}
+
+@Composable
+private fun PendingDraftDialog(onDiscard: () -> Unit, onKeep: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("发现未完成的打卡") },
+        text = { Text("上一个打卡任务尚未完成，继续完成它，还是放弃并重新开始？") },
+        confirmButton = {
+            TextButton(onClick = onDiscard) { Text("放弃并重新开始") }
+        },
+        dismissButton = {
+            TextButton(onClick = onKeep) { Text("返回继续上一个") }
+        },
+    )
 }
 
 @Composable
@@ -508,39 +675,71 @@ private fun PermissionHint(onRequestPermission: () -> Unit) {
 @Composable
 private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (state.photoPath != null) {
-            OutlinedButton(
-                onClick = { onAction(CameraAction.Retake) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isCapturing && !state.isProcessing,
-            ) {
-                Text("重拍")
-            }
-            Button(
-                onClick = { onAction(CameraAction.Confirm) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isCapturing && !state.isProcessing,
-            ) {
-                Text(
-                    when {
-                        state.isProcessing -> "正在提交打卡…"
-                        state.uploadState == UploadState.FAILED -> "重试"
-                        else -> "确认并提交打卡"
-                    },
-                )
-            }
-        } else {
-            Button(
-                onClick = { onAction(CameraAction.Capture) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.hasCameraPermission && !state.isCapturing,
-            ) {
-                if (state.isCapturing) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                } else {
-                    Icon(Icons.Rounded.CameraAlt, contentDescription = null)
+        when {
+            state.photoPath != null && !state.retaking -> {
+                OutlinedButton(
+                    onClick = { onAction(CameraAction.Retake) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isCapturing && !state.isProcessing,
+                ) {
+                    Text("重拍")
                 }
-                Text(if (state.isCapturing) "  正在拍照…" else "  拍照")
+                Button(
+                    onClick = { onAction(CameraAction.Confirm) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isCapturing && !state.isProcessing,
+                ) {
+                    Text(
+                        when {
+                            state.isProcessing -> "正在提交打卡…"
+                            state.uploadState == UploadState.FAILED -> "重试"
+                            else -> "确认并提交打卡"
+                        },
+                    )
+                }
+            }
+
+            state.retaking -> {
+                OutlinedButton(
+                    onClick = { onAction(CameraAction.CancelRetake) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isCapturing,
+                ) {
+                    Text("取消重拍")
+                }
+                Button(
+                    onClick = { onAction(CameraAction.Capture) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
+                ) {
+                    if (state.isCapturing) {
+                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                    } else {
+                        Icon(Icons.Rounded.CameraAlt, contentDescription = null)
+                    }
+                    Text(if (state.isCapturing) "  正在拍照…" else "  拍照")
+                }
+            }
+
+            else -> {
+                Button(
+                    onClick = { onAction(CameraAction.Capture) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
+                ) {
+                    if (state.isCapturing) {
+                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                    } else {
+                        Icon(Icons.Rounded.CameraAlt, contentDescription = null)
+                    }
+                    Text(if (state.isCapturing) "  正在拍照…" else "  拍照")
+                }
+                OutlinedButton(
+                    onClick = { onAction(CameraAction.RefreshLocation) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("重新定位")
+                }
             }
         }
     }

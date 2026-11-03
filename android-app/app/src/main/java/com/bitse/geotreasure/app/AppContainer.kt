@@ -4,6 +4,7 @@ import android.content.Context
 import com.bitse.geotreasure.BuildConfig
 import com.bitse.geotreasure.core.camera.CameraXManager
 import com.bitse.geotreasure.core.camera.FaceQualityChecker
+import com.bitse.geotreasure.core.checkin.CheckInSubmitCoordinator
 import com.bitse.geotreasure.core.location.AmapLocationProvider
 import com.bitse.geotreasure.core.location.DemoLocationProvider
 import com.bitse.geotreasure.core.location.LocationPrivacyManager
@@ -42,6 +43,7 @@ class AppContainer(private val context: Context) {
             authToken = BuildConfig.DEMO_AUTH_TOKEN,
         ),
     )
+    val submitCoordinator = CheckInSubmitCoordinator(checkInRepository)
 
     fun createCameraManager(): CameraXManager = CameraXManager(context)
 

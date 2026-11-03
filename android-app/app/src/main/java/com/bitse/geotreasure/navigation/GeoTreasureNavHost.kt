@@ -59,28 +59,30 @@ fun GeoTreasureNavHost() {
             LandmarkDetailScreen(
                 viewModel = detailViewModel,
                 onBack = navController::popBackStack,
-                onOpenCamera = { id, draftId -> navController.navigate(AppRoutes.camera(id, draftId)) },
+                onOpenCamera = { id, attemptId -> navController.navigate(AppRoutes.camera(id, attemptId)) },
             )
         }
         composable(
             route = AppRoutes.CAMERA,
             arguments = listOf(
                 navArgument("landmarkId") { type = NavType.StringType },
-                navArgument("draftId") { type = NavType.StringType },
+                navArgument("attemptId") { type = NavType.StringType },
             ),
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
-            val draftId = requireNotNull(entry.arguments?.getString("draftId"))
+            val attemptId = requireNotNull(entry.arguments?.getString("attemptId"))
             val cameraViewModel: CameraViewModel = viewModel(
                 factory = CameraViewModel.factory(
                     landmarkId = landmarkId,
-                    draftId = draftId,
+                    attemptId = attemptId,
                     draftStore = container.checkInDraftStore,
                     cameraManager = container.createCameraManager(),
                     checkInRepository = container.checkInRepository,
+                    submitCoordinator = container.submitCoordinator,
                     progressStore = container.explorationProgressStore,
                     locationProvider = container.locationProvider,
                     faceQualityChecker = container.createFaceQualityChecker(),
+                    landmarkRepository = container.landmarkRepository,
                 ),
             )
             CameraScreen(

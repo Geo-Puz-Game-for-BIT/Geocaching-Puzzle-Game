@@ -33,6 +33,8 @@ class CheckInDraftStore(private val context: Context) {
     private val photoMimeKey = stringPreferencesKey("photo_mime")
     private val photoSizeKey = longPreferencesKey("photo_size")
     private val uploadedPhotoIdKey = stringPreferencesKey("uploaded_photo_id")
+    private val challengeIdKey = stringPreferencesKey("challenge_id")
+    private val challengeExpiresAtKey = longPreferencesKey("challenge_expires_at")
     private val uploadStateKey = stringPreferencesKey("upload_state")
     private val createdAtKey = longPreferencesKey("created_at")
     private val updatedAtKey = longPreferencesKey("updated_at")
@@ -51,6 +53,9 @@ class CheckInDraftStore(private val context: Context) {
                 )
             },
             uploadedPhotoId = prefs[uploadedPhotoIdKey],
+            challengeId = prefs[challengeIdKey],
+            challengeExpiresAt = prefs[challengeExpiresAtKey]
+                ?.let { Instant.fromEpochMilliseconds(it) },
             uploadState = prefs[uploadStateKey]
                 ?.let { runCatching { UploadState.valueOf(it) }.getOrNull() }
                 ?: UploadState.EMPTY,
@@ -77,6 +82,10 @@ class CheckInDraftStore(private val context: Context) {
             }
             draft.uploadedPhotoId?.let { prefs[uploadedPhotoIdKey] = it }
                 ?: prefs.remove(uploadedPhotoIdKey)
+            draft.challengeId?.let { prefs[challengeIdKey] = it }
+                ?: prefs.remove(challengeIdKey)
+            draft.challengeExpiresAt?.let { prefs[challengeExpiresAtKey] = it.toEpochMilliseconds() }
+                ?: prefs.remove(challengeExpiresAtKey)
             prefs[uploadStateKey] = draft.uploadState.name
             prefs[createdAtKey] = draft.createdAt.toEpochMilliseconds()
             prefs[updatedAtKey] = draft.updatedAt.toEpochMilliseconds()
