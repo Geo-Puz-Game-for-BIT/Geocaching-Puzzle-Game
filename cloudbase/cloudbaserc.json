@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
+  "envId": "{{env.CLOUDBASE_ENV_ID}}",
+  "region": "ap-shanghai",
+  "functionRoot": ".",
+  "functions": [
+    {
+      "name": "api",
+      "type": "HTTP",
+      "runtime": "Nodejs20.19",
+      "dir": "deploy",
+      "entry": "dist/main.cjs",
+      "memorySize": 256,
+      "timeout": 30,
+      "installDependency": false,
+      "public": true,
+      "gatewayPath": "/api/v1",
+      "envVariables": {
+        "API_HOST": "0.0.0.0",
+        "API_PORT": "9000",
+        "APP_ENV": "dev",
+        "SERVICE_VERSION": "0.1.0",
+        "DEMO_AUTH_TOKEN": "{{env.DEMO_AUTH_TOKEN}}",
+        "DEMO_USER_ID": "{{env.DEMO_USER_ID}}",
+        "STORAGE_API_BASE": "{{env.STORAGE_API_BASE}}",
+        "STORAGE_BUCKET": "{{env.STORAGE_BUCKET}}",
+        "CLOUDBASE_API_KEY": "{{env.CLOUDBASE_API_KEY}}"
+      }
+    }
+  ]
+}

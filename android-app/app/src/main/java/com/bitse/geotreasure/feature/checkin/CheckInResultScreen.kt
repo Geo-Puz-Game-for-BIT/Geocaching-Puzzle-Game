@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,10 +34,14 @@ data class CheckInResultUiState(val checkInId: String, val grantedFragmentTitle:
 sealed interface CheckInResultAction { data object OpenPuzzle : CheckInResultAction }
 sealed interface CheckInResultEffect { data class NavigateToPuzzle(val puzzleId: String) : CheckInResultEffect }
 
+/**
+ * 打卡结果页：仅展示服务端已确认的成功结果。
+ * 碎片发放已由 CameraViewModel 在收到 CheckInReceipt 后调用 markLandmarkCompleted 完成，
+ * 本页不再重复标记，避免「本地拍照成功即发奖」。
+ */
 class CheckInResultViewModel(
     checkInId: String,
     landmarkId: String,
-    progressStore: ExplorationProgressStore,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         CheckInResultUiState(
@@ -50,10 +53,6 @@ class CheckInResultViewModel(
     private val effectChannel = Channel<CheckInResultEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
 
-    init {
-        progressStore.markLandmarkCompleted(landmarkId)
-    }
-
     fun onAction(action: CheckInResultAction) {
         if (action == CheckInResultAction.OpenPuzzle) {
             effectChannel.trySend(CheckInResultEffect.NavigateToPuzzle("pzl_campus_01"))
@@ -64,11 +63,10 @@ class CheckInResultViewModel(
         fun factory(
             checkInId: String,
             landmarkId: String,
-            progressStore: ExplorationProgressStore,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                CheckInResultViewModel(checkInId, landmarkId, progressStore) as T
+                CheckInResultViewModel(checkInId, landmarkId) as T
         }
     }
 }

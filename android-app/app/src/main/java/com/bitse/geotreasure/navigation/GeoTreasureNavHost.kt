@@ -50,7 +50,11 @@ fun GeoTreasureNavHost() {
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
             val detailViewModel: LandmarkDetailViewModel = viewModel(
-                factory = LandmarkDetailViewModel.factory(landmarkId, container.landmarkRepository),
+                factory = LandmarkDetailViewModel.factory(
+                    landmarkId = landmarkId,
+                    repository = container.landmarkRepository,
+                    locationProvider = container.locationProvider,
+                ),
             )
             LandmarkDetailScreen(
                 viewModel = detailViewModel,
@@ -67,7 +71,18 @@ fun GeoTreasureNavHost() {
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
             val draftId = requireNotNull(entry.arguments?.getString("draftId"))
-            val cameraViewModel: CameraViewModel = viewModel(factory = CameraViewModel.factory(landmarkId, draftId))
+            val cameraViewModel: CameraViewModel = viewModel(
+                factory = CameraViewModel.factory(
+                    landmarkId = landmarkId,
+                    draftId = draftId,
+                    draftStore = container.checkInDraftStore,
+                    cameraManager = container.createCameraManager(),
+                    checkInRepository = container.checkInRepository,
+                    progressStore = container.explorationProgressStore,
+                    locationProvider = container.locationProvider,
+                    faceQualityChecker = container.createFaceQualityChecker(),
+                ),
+            )
             CameraScreen(
                 viewModel = cameraViewModel,
                 onBack = navController::popBackStack,
@@ -89,7 +104,6 @@ fun GeoTreasureNavHost() {
                 factory = CheckInResultViewModel.factory(
                     checkInId = checkInId,
                     landmarkId = landmarkId,
-                    progressStore = container.explorationProgressStore,
                 ),
             )
             CheckInResultScreen(
