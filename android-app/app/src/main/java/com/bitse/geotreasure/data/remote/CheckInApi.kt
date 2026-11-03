@@ -48,7 +48,7 @@ class CheckInApi(
             .build()
         val response = execute(
             Request.Builder()
-                .url("$rootUrl/api/v1/checkin-photos")
+                .url("$rootUrl/checkin-photos")
                 .header("Authorization", "Bearer $authToken")
                 .post(body)
                 .build(),
@@ -61,7 +61,7 @@ class CheckInApi(
         val json = gson.toJson(ChallengeRequestDto(landmarkId))
         val response = execute(
             Request.Builder()
-                .url("$rootUrl/api/v1/checkin-challenges")
+                .url("$rootUrl/checkin-challenges")
                 .header("Authorization", "Bearer $authToken")
                 .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build(),
@@ -75,7 +75,7 @@ class CheckInApi(
         val json = gson.toJson(dto)
         val response = execute(
             Request.Builder()
-                .url("$rootUrl/api/v1/checkins")
+                .url("$rootUrl/checkins")
                 .header("Authorization", "Bearer $authToken")
                 .header("Idempotency-Key", idempotencyKey)
                 .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
@@ -87,7 +87,7 @@ class CheckInApi(
 
     private fun execute(request: Request): String {
         if (rootUrl.isBlank()) {
-            throw CheckInApiException("NOT_CONFIGURED", false, "打卡服务端地址未配置，请在 local.properties 填入 CHECKIN_API_BASE_URL")
+            throw CheckInApiException("NOT_CONFIGURED", false, "打卡服务端地址未配置，请在 local.properties 填入 API_BASE_URL")
         }
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
