@@ -104,7 +104,7 @@ class CheckInApi(
 
     private fun toException(body: String, httpStatus: Int): CheckInApiException {
         val error = runCatching {
-            gson.fromJson(body, ErrorEnvelope::class.java).error
+            gson.fromJson(body, CheckInErrorEnvelope::class.java).error
         }.getOrNull()
         return CheckInApiException(
             code = error?.code,
@@ -180,5 +180,5 @@ private fun SubmitCheckInRequest.toDto() = CheckInRequestDto(
     ),
 )
 
-private data class ErrorEnvelope(val requestId: String?, val error: ErrorDto?)
-private data class ErrorDto(val code: String?, val message: String?, val retryable: Boolean = false)
+private data class CheckInErrorEnvelope(val requestId: String?, val error: CheckInErrorDto?)
+private data class CheckInErrorDto(val code: String?, val message: String?, val retryable: Boolean = false)
