@@ -316,7 +316,7 @@ internal class AmapMapAdapter(
     companion object {
         private const val DEFAULT_ZOOM = 17f
         private const val CAMERA_ANIMATION_MILLIS = 220L
-        private const val LOCATION_INTERVAL_MILLIS = 3_000L
+        private const val LOCATION_INTERVAL_MILLIS = 1_000L
         private const val SCOUT_Z_INDEX = 31f
         private val SCOUT_STROKE_COLOR = 0xCC66D7B0.toInt()
         private val SCOUT_FILL_COLOR = 0x2266D7B0
