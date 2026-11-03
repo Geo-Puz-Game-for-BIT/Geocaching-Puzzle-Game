@@ -18,8 +18,8 @@ class FaceQualityRulesTest {
     }
 
     @Test
-    fun evaluateFaceCount_manyIsTooMany() {
-        assertEquals(FaceQualityRules.FaceCountVerdict.TOO_MANY, FaceQualityRules.evaluateFaceCount(2))
+    fun evaluateFaceCount_manyIsStillOk() {
+        assertEquals(FaceQualityRules.FaceCountVerdict.OK, FaceQualityRules.evaluateFaceCount(2))
     }
 
     @Test

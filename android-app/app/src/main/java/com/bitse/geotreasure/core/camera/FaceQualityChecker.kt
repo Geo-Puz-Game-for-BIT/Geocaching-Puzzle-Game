@@ -24,7 +24,6 @@ sealed interface FaceCheckResult {
 
 enum class FaceCheckFailureReason(val message: String) {
     NO_FACE("未检测到人脸，请正对镜头重拍"),
-    TOO_MANY_FACES("检测到多张人脸，请单人拍摄"),
     FACE_TOO_SMALL("人脸过小，请靠近镜头重拍"),
     TOO_DARK("照片过暗，请到光线充足处重拍"),
     TOO_BLURRY("照片模糊，请持稳手机重拍"),
@@ -33,7 +32,7 @@ enum class FaceCheckFailureReason(val message: String) {
 
 /**
  * 人脸存在性 + 照片质量初检（ML Kit bundled，离线，不依赖 GMS）。
- * 只证「有人参与拍摄」，不做身份识别；建筑识别不在本类职责内。
+ * 只证「有人参与拍摄」（至少一张清晰合格人脸），不做身份识别；建筑识别不在本类职责内。
  */
 class FaceQualityChecker(
     private val detector: FaceDetector = defaultDetector(),
@@ -53,7 +52,6 @@ class FaceQualityChecker(
 
         val reason = when {
             countVerdict == FaceQualityRules.FaceCountVerdict.NONE -> FaceCheckFailureReason.NO_FACE
-            countVerdict == FaceQualityRules.FaceCountVerdict.TOO_MANY -> FaceCheckFailureReason.TOO_MANY_FACES
             FaceQualityRules.isFaceTooSmall(
                 faces.first().boundingBox.width(),
                 bitmap.width,

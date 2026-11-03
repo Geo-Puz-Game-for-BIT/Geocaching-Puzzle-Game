@@ -26,9 +26,13 @@ class CameraXManager(private val context: Context) {
     fun bind(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
+        onBound: () -> Unit = {},
         onError: (Throwable) -> Unit = {},
     ) {
-        if (cameraProvider != null) return
+        if (cameraProvider != null) {
+            onBound()
+            return
+        }
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener(
             {
@@ -49,7 +53,10 @@ class CameraXManager(private val context: Context) {
                         p,
                         ic,
                     )
+                    onBound()
                 } catch (e: Exception) {
+                    // 绑定失败：复位，允许后续重试（不残留半绑定状态）
+                    unbind()
                     onError(e)
                 }
             },
