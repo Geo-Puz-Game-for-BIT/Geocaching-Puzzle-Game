@@ -1,12 +1,12 @@
 package com.bitse.geotreasure.ui.theme
 
-// 由 design/tokens/tokens.json 生成 —— 改 token 请改 JSON，不要只改这里
+// 由 design/tokens/tokens.json 实测值生成（v1.8 / PR#8 整改：主色由旧 #146C5A 更正为 #00634D）
+// 改 token 请改 JSON，不要只改这里
 // 用法：把本文件放到 ui/theme/Theme.kt，MaterialTheme(colorScheme = …, typography = …) 即可
 
 import androidx.compose.material3.Typography
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -14,44 +14,48 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-// ---------- 品牌色 ----------
-val Primary = Color(0xFF146C5A)
+// ---------- 品牌色（= tokens.json color.brand） ----------
+val Primary = Color(0xFF00634D)
 val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFFC6E9DC)
-val OnPrimaryContainer = Color(0xFF002018)
-val Secondary = Color(0xFF4F6279)
+val PrimaryContainer = Color(0xFFE6EDE5)
+val OnPrimaryContainer = Color(0xFF123A2E)
+val Secondary = Color(0xFF4A5B54)
 val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFD6E3F5)
-val OnSecondaryContainer = Color(0xFF0B1E33)
-val Tertiary = Color(0xFF8A5A2B)
+val SecondaryContainer = Color(0xFFE6EDE5)
+val OnSecondaryContainer = Color(0xFF123A2E)
+val Tertiary = Color(0xFF8A6A32)
 val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFF2DCC2)
-val OnTertiaryContainer = Color(0xFF2E1804)
+val TertiaryContainer = Color(0xFFF5E6C8)
+val OnTertiaryContainer = Color(0xFF33260B)
 
-// ---------- 表面 ----------
-val Background = Color(0xFFFBFDFC)
-val OnBackground = Color(0xFF191C1B)
-val Surface = Color(0xFFFBFDFC)
-val OnSurface = Color(0xFF191C1B)
-val SurfaceVariant = Color(0xFFDCE5E1)
-val OnSurfaceVariant = Color(0xFF404A46)
-val Outline = Color(0xFF707A75)
-val OutlineVariant = Color(0xFFBFCBC5)
+// ---------- 表面（= tokens.json color.surface） ----------
+val Background = Color(0xFFF8F7F2)
+val OnBackground = Color(0xFF202923)
+val Surface = Color(0xFFFFFEFA)
+val OnSurface = Color(0xFF202923)
+val SurfaceVariant = Color(0xFFE6EDE5)
+val OnSurfaceVariant = Color(0xFF5D6962)
+val Outline = Color(0xFF8A938D)
+val OutlineVariant = Color(0xFFCFD8CF)
+val Scrim = Color(0xFF000000)
 
-// ---------- 语义色 ----------
+// ---------- 语义色（= tokens.json color.semantic） ----------
 val Success = Color(0xFF1F7A4C)
-val SuccessContainer = Color(0xFFC7EBD5)
-val Warning = Color(0xFF8A5A00)
-val WarningContainer = Color(0xFFFFDDA6)
+val OnSuccess = Color(0xFFFFFFFF)
+val SuccessContainer = Color(0xFFD6EBDD)
+val Warning = Color(0xFF8A6A32)
+val WarningContainer = Color(0xFFF5E6C8)
 val Error = Color(0xFFB3261E)
 val OnError = Color(0xFFFFFFFF)
 val ErrorContainer = Color(0xFFF9DEDC)
 val OnErrorContainer = Color(0xFF410E0B)
 /** 碎片、成就、剧情解锁的奖励色；不要用于普通按钮 */
-val RewardGold = Color(0xFFC8A34A)
-/** 地图底色与允许半径圈（fill 用 copy(alpha = 0.12f)） */
+val RewardGold = Color(0xFFB58B45)
+/** 地图底色 */
 val MapCanvas = Color(0xFFEDF1EF)
+/** 地图连线与允许半径描边（fill 用 #146C5A1F） */
 val RouteLine = Color(0xFF146C5A)
+val AllowedRadiusStroke = Color(0xFF146C5A)
 
 val LightColors = lightColorScheme(
     primary = Primary, onPrimary = OnPrimary,
@@ -68,17 +72,7 @@ val LightColors = lightColorScheme(
     errorContainer = ErrorContainer, onErrorContainer = OnErrorContainer
 )
 
-// 第一版只做浅色；教师要求深色时再补
-val DarkColors = darkColorScheme(
-    primary = Color(0xFF8FDCB8), onPrimary = Color(0xFF00362A),
-    primaryContainer = Color(0xFF005042), onPrimaryContainer = Color(0xFFC6E9DC),
-    secondary = Color(0xFFB9C8DE), onSecondary = Color(0xFF22344B),
-    error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFF9DEDC),
-    background = Color(0xFF191C1B), onBackground = Color(0xFFE1E3E2),
-    surface = Color(0xFF191C1B), onSurface = Color(0xFFE1E3E2),
-    outline = Color(0xFF8B958F), outlineVariant = Color(0xFF404A46)
-)
+// Token 未定义深色模式；教师要求深色时再从 tokens.json 扩展，不要沿用旧示例色
 
 // ---------- 字号 ----------
 val GeoTreasureTypography = Typography(
