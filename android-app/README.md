@@ -13,7 +13,7 @@ DEMO_AUTH_TOKEN=<private-test-token>
 DEMO_USER_ID=usr_demo01
 ```
 
-`API_BASE_URL` 与 `DEMO_AUTH_TOKEN` 都非空时，App 使用 CloudBase 地标接口；否则回退到本地演示数据。
+`API_BASE_URL` 与 `DEMO_AUTH_TOKEN` 都非空时，App 使用 CloudBase 地标接口；否则回退到本地演示数据。地址可以填写网关根地址或已经带 `/api/v1` 的完整 API 地址，构建时会统一为只包含一个 `/api/v1`。CloudBase 返回 401/403、网络错误或响应解析失败时不会静默切换演示数据，而是展示对应错误，避免把鉴权问题伪装成联机成功。
 真机不要使用 `127.0.0.1` 或 `localhost` 作为 API 地址。高德 Key 必须绑定包名
 `com.bitse.geotreasure` 与当前 APK 签名 SHA-1。
 4. 执行 `gradlew.bat assembleDebug`，APK 位于 `app/build/outputs/apk/debug/`。

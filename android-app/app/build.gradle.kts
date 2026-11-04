@@ -20,6 +20,13 @@ val amapApiKey = localProperties.getProperty("AMAP_API_KEY")
 val apiBaseUrl = localProperties.getProperty("API_BASE_URL")
     ?: System.getenv("API_BASE_URL")
     ?: ""
+val normalizedApiBaseUrl = apiBaseUrl.trimEnd('/').let { value ->
+    when {
+        value.isBlank() -> ""
+        value.endsWith("/api/v1") -> value
+        else -> "$value/api/v1"
+    }
+}
 val demoAuthToken = localProperties.getProperty("DEMO_AUTH_TOKEN")
     ?: System.getenv("DEMO_AUTH_TOKEN")
     ?: ""
@@ -41,13 +48,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("boolean", "HAS_AMAP_KEY", amapApiKey.isNotBlank().toString())
-        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\"", "\\\"")}\"")
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${normalizedApiBaseUrl.replace("\"", "\\\"")}\"",
+        )
         buildConfigField("String", "DEMO_AUTH_TOKEN", "\"${demoAuthToken.replace("\"", "\\\"")}\"")
         buildConfigField("String", "DEMO_USER_ID", "\"${demoUserId.replace("\"", "\\\"")}\"")
         buildConfigField(
             "boolean",
             "HAS_CLOUD_API",
-            (apiBaseUrl.isNotBlank() && demoAuthToken.isNotBlank()).toString(),
+            (normalizedApiBaseUrl.isNotBlank() && demoAuthToken.isNotBlank()).toString(),
         )
     }
 

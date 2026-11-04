@@ -36,6 +36,7 @@ fun GeoTreasureNavHost() {
                     privacyManager = container.privacyManager,
                     explorationProgressStore = container.explorationProgressStore,
                     hasAmapKey = BuildConfig.HAS_AMAP_KEY,
+                    hasCloudApi = BuildConfig.HAS_CLOUD_API,
                     debugEnabled = BuildConfig.DEBUG,
                 ),
             )
