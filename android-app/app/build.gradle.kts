@@ -119,6 +119,9 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.gson)
+    implementation(libs.okhttp)
     implementation(libs.amap.map.location.search)
 
     testImplementation(libs.junit)

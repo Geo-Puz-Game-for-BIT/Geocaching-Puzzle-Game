@@ -86,7 +86,7 @@ class AmapLocationProvider(
     }
 
     companion object {
-        private const val LOCATION_INTERVAL_MILLIS = 3_000L
+        private const val LOCATION_INTERVAL_MILLIS = 1_000L
         private const val LOCATION_TIMEOUT_MILLIS = 12_000L
         private const val GPS_FIRST_TIMEOUT_MILLIS = 10_000L
     }

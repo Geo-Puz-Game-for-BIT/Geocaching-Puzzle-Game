@@ -48,12 +48,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.camera.CameraXManager
+import com.bitse.geotreasure.core.camera.FaceCheckResult
+import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.camera.PhotoCompressor
+import com.bitse.geotreasure.core.common.AppResult
+import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.model.CheckInDraft
 import com.bitse.geotreasure.core.model.LocalPhotoRef
 import com.bitse.geotreasure.core.model.UploadState
+import com.bitse.geotreasure.data.remote.CheckInApiException
 import com.bitse.geotreasure.data.repository.CheckInDraftStore
+import com.bitse.geotreasure.data.repository.CheckInRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,14 +81,16 @@ data class CameraUiState(
     val photoPath: String? = null,
     val isCapturing: Boolean = false,
     val isProcessing: Boolean = false,
+    val uploadState: UploadState = UploadState.EMPTY,
     val restoredDraft: Boolean = false,
     val errorMessage: String? = null,
+    val faceCheckMessage: String? = null,
 )
 
 sealed interface CameraAction {
     data object Capture : CameraAction
     data object Retake : CameraAction
-    data object Confirm : CameraAction
+    data object Confirm : CameraAction // 兼作「重试」入口（幂等提交）
 }
 
 sealed interface CameraEffect {
@@ -93,6 +102,10 @@ class CameraViewModel(
     private val draftId: String,
     private val draftStore: CheckInDraftStore,
     private val cameraManager: CameraXManager,
+    private val checkInRepository: CheckInRepository,
+    private val progressStore: ExplorationProgressStore,
+    private val locationProvider: LocationProvider,
+    private val faceQualityChecker: FaceQualityChecker,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(CameraUiState(landmarkId, draftId))
     val uiState: StateFlow<CameraUiState> = mutableUiState.asStateFlow()
@@ -101,6 +114,7 @@ class CameraViewModel(
 
     private var draftCreatedAt: Instant? = null
     private var attachedPreviewView: PreviewView? = null
+    private var uploadedPhotoId: String? = null
 
     init {
         restoreDraft()
@@ -109,10 +123,24 @@ class CameraViewModel(
     private fun restoreDraft() {
         viewModelScope.launch {
             val saved = draftStore.load()
-            val photoPath = saved?.localPhoto?.absolutePath
-            if (saved != null && saved.id == draftId && photoPath != null && File(photoPath).exists()) {
+            if (saved != null && saved.id == draftId) {
                 draftCreatedAt = saved.createdAt
-                mutableUiState.update { it.copy(photoPath = photoPath, restoredDraft = true) }
+                uploadedPhotoId = saved.uploadedPhotoId
+                val photoPath = saved.localPhoto?.absolutePath
+                if (photoPath != null && File(photoPath).exists()) {
+                    mutableUiState.update {
+                        it.copy(
+                            photoPath = photoPath,
+                            uploadState = saved.uploadState,
+                            restoredDraft = true,
+                            errorMessage = if (saved.uploadState == UploadState.FAILED) {
+                                "上次提交失败，请重试"
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
             }
         }
     }
@@ -134,24 +162,23 @@ class CameraViewModel(
         when (action) {
             CameraAction.Capture -> capture()
             CameraAction.Retake -> retake()
-            CameraAction.Confirm -> confirm()
+            CameraAction.Confirm -> submitFlow()
         }
     }
 
     private fun capture() {
         if (mutableUiState.value.isCapturing) return
-        mutableUiState.update { it.copy(isCapturing = true) }
+        mutableUiState.update { it.copy(isCapturing = true, errorMessage = null, faceCheckMessage = null) }
         val rotation = attachedPreviewView?.display?.rotation ?: Surface.ROTATION_0
         cameraManager.takePhoto(
             rotation = rotation,
             onCaptured = { file ->
-                mutableUiState.update { it.copy(photoPath = file.absolutePath, isCapturing = false) }
+                uploadedPhotoId = null
+                mutableUiState.update {
+                    it.copy(photoPath = file.absolutePath, isCapturing = false, uploadState = UploadState.CAPTURED)
+                }
                 persistDraft(
-                    localPhoto = LocalPhotoRef(
-                        absolutePath = file.absolutePath,
-                        mimeType = "image/jpeg",
-                        sizeBytes = file.length(),
-                    ),
+                    localPhoto = LocalPhotoRef(file.absolutePath, "image/jpeg", file.length()),
                     uploadState = UploadState.CAPTURED,
                 )
             },
@@ -163,34 +190,123 @@ class CameraViewModel(
 
     private fun retake() {
         CameraXManager.deletePhoto(mutableUiState.value.photoPath)
-        mutableUiState.update { it.copy(photoPath = null, restoredDraft = false) }
+        uploadedPhotoId = null
+        mutableUiState.update {
+            it.copy(
+                photoPath = null,
+                restoredDraft = false,
+                uploadState = UploadState.EMPTY,
+                errorMessage = null,
+                faceCheckMessage = null,
+            )
+        }
         persistDraft(localPhoto = null, uploadState = UploadState.EMPTY)
     }
 
-    private fun confirm() {
-        val photoPath = mutableUiState.value.photoPath ?: return
-        if (mutableUiState.value.isProcessing) return
-        mutableUiState.update { it.copy(isProcessing = true, errorMessage = null) }
+    /** 拍照 → 本地初检 → 上传照片 → 领 challenge → POST /checkins → 等 receipt。失败可重试。 */
+    private fun submitFlow() {
+        val state = mutableUiState.value
+        if (state.isProcessing || state.uploadState == UploadState.CONFIRMED) return
+        val photoPath = state.photoPath ?: return
+
+        mutableUiState.update { it.copy(isProcessing = true, errorMessage = null, faceCheckMessage = null) }
+        persistDraft(
+            localPhoto = LocalPhotoRef(photoPath, "image/jpeg", File(photoPath).length()),
+            uploadState = UploadState.UPLOADING,
+        )
+
         viewModelScope.launch(Dispatchers.IO) {
-            // S1-C-04：确认时按 EXIF 烘焙正立方向并压缩至 5MiB 契约内；失败保留原图
             val processed = PhotoCompressor.process(File(photoPath))
-            withContext(Dispatchers.Main) {
-                mutableUiState.update {
-                    it.copy(photoPath = processed.file.absolutePath, isProcessing = false)
+
+            val bitmap = PhotoCompressor.decodeUpright(processed.file.absolutePath)
+            if (bitmap == null) {
+                onFaceCheckFailed("照片读取失败，请重拍")
+                return@launch
+            }
+            val faceResult = faceQualityChecker.check(bitmap)
+            if (faceResult is FaceCheckResult.Failure) {
+                onFaceCheckFailed(faceResult.reason.message)
+                return@launch
+            }
+
+            val location = when (val loc = locationProvider.getCurrentLocation()) {
+                is AppResult.Success -> loc.data
+                is AppResult.Failure -> {
+                    onSubmitFailed(IllegalStateException(loc.error.message ?: "定位失败，请重试"))
+                    return@launch
                 }
-                persistDraft(
-                    localPhoto = LocalPhotoRef(
-                        absolutePath = processed.file.absolutePath,
-                        mimeType = "image/jpeg",
-                        sizeBytes = processed.file.length(),
-                    ),
-                    uploadState = UploadState.CONFIRMED,
+            }
+
+            var photoId = uploadedPhotoId
+            if (photoId == null) {
+                photoId = try {
+                    checkInRepository.uploadPhoto(processed.file).photoId.also {
+                        uploadedPhotoId = it
+                        persistDraft(
+                            localPhoto = LocalPhotoRef(
+                                processed.file.absolutePath,
+                                "image/jpeg",
+                                processed.file.length(),
+                            ),
+                            uploadState = UploadState.UPLOADED,
+                        )
+                    }
+                } catch (e: Throwable) {
+                    onSubmitFailed(e)
+                    return@launch
+                }
+            }
+
+            try {
+                val receipt = checkInRepository.submitCheckIn(
+                    landmarkId = landmarkId,
+                    photoId = photoId,
+                    location = location,
+                    idempotencyKey = draftId,
                 )
-                effectChannel.trySend(
-                    CameraEffect.NavigateToResult(checkInId = draftId, landmarkId = landmarkId),
-                )
+                withContext(Dispatchers.Main) { onCheckInSuccess(receipt.checkInId) }
+            } catch (e: Throwable) {
+                onSubmitFailed(e)
             }
         }
+    }
+
+    private fun onFaceCheckFailed(message: String) {
+        viewModelScope.launch {
+            val path = mutableUiState.value.photoPath
+            mutableUiState.update {
+                it.copy(isProcessing = false, uploadState = UploadState.CAPTURED, faceCheckMessage = message)
+            }
+            persistDraft(
+                localPhoto = path?.let { LocalPhotoRef(it, "image/jpeg", File(it).length()) },
+                uploadState = UploadState.CAPTURED,
+            )
+        }
+    }
+
+    private fun onSubmitFailed(throwable: Throwable) {
+        viewModelScope.launch {
+            val path = mutableUiState.value.photoPath
+            mutableUiState.update {
+                it.copy(
+                    isProcessing = false,
+                    uploadState = UploadState.FAILED,
+                    errorMessage = checkInFailureMessage(throwable),
+                )
+            }
+            persistDraft(
+                localPhoto = path?.let { LocalPhotoRef(it, "image/jpeg", File(it).length()) },
+                uploadState = UploadState.FAILED,
+            )
+        }
+    }
+
+    private fun onCheckInSuccess(checkInId: String) {
+        // 只有服务端确认成功后才发碎片 + 清草稿，不因本地拍照成功提前发奖
+        progressStore.markLandmarkCompleted(landmarkId)
+        viewModelScope.launch { draftStore.clear() }
+        mutableUiState.update { it.copy(isProcessing = false, uploadState = UploadState.CONFIRMED) }
+        effectChannel.trySend(CameraEffect.NavigateToResult(checkInId = checkInId, landmarkId = landmarkId))
     }
 
     private fun persistDraft(localPhoto: LocalPhotoRef?, uploadState: UploadState) {
@@ -202,6 +318,7 @@ class CameraViewModel(
                     id = draftId,
                     landmarkId = landmarkId,
                     localPhoto = localPhoto,
+                    uploadedPhotoId = uploadedPhotoId,
                     uploadState = uploadState,
                     createdAt = createdAt,
                     updatedAt = now,
@@ -212,6 +329,7 @@ class CameraViewModel(
 
     override fun onCleared() {
         cameraManager.unbind()
+        faceQualityChecker.close()
     }
 
     companion object {
@@ -220,12 +338,37 @@ class CameraViewModel(
             draftId: String,
             draftStore: CheckInDraftStore,
             cameraManager: CameraXManager,
+            checkInRepository: CheckInRepository,
+            progressStore: ExplorationProgressStore,
+            locationProvider: LocationProvider,
+            faceQualityChecker: FaceQualityChecker,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                CameraViewModel(landmarkId, draftId, draftStore, cameraManager) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = CameraViewModel(
+                landmarkId = landmarkId,
+                draftId = draftId,
+                draftStore = draftStore,
+                cameraManager = cameraManager,
+                checkInRepository = checkInRepository,
+                progressStore = progressStore,
+                locationProvider = locationProvider,
+                faceQualityChecker = faceQualityChecker,
+            ) as T
         }
     }
+}
+
+/** 把服务端/网络异常映射为可读提示（可 JVM 单测）。 */
+internal fun checkInFailureMessage(throwable: Throwable): String = when (throwable) {
+    is CheckInApiException -> when (throwable.code) {
+        "OUT_OF_RANGE" -> "已离开打卡范围，请回到地标附近重试"
+        "LOCATION_ACCURACY_TOO_LOW" -> "定位精度不足，请到开阔处重试"
+        "CHALLENGE_EXPIRED" -> "挑战码已过期，请重新提交"
+        "NOT_CONFIGURED" -> throwable.message ?: "打卡服务端未配置"
+        else -> throwable.message ?: "打卡失败，请重试"
+    }
+
+    else -> throwable.message ?: "打卡失败，请重试"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -288,6 +431,14 @@ fun CameraScreen(
                     photoPath != null -> PhotoPreview(photoPath)
                     else -> LivePreview(viewModel, lifecycleOwner)
                 }
+            }
+
+            state.faceCheckMessage?.let { msg ->
+                Text(
+                    msg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
 
             state.errorMessage?.let { msg ->
@@ -370,7 +521,13 @@ private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isCapturing && !state.isProcessing,
             ) {
-                Text(if (state.isProcessing) "正在处理照片…" else "确认并提交打卡")
+                Text(
+                    when {
+                        state.isProcessing -> "正在提交打卡…"
+                        state.uploadState == UploadState.FAILED -> "重试"
+                        else -> "确认并提交打卡"
+                    },
+                )
             }
         } else {
             Button(

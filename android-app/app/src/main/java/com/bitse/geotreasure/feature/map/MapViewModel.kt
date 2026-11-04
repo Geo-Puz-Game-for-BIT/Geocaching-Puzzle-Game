@@ -219,7 +219,7 @@ class MapViewModel(
                             userLocation = location,
                             locationSignalActive = true,
                             message = null,
-                            exploredCenters = updatedExploredCenters(it.exploredCenters, location),
+                            exploredCenters = updatedExploredCenters(it.exploredCenters, location, it.userLocation),
                         ).withDiscoveredLandmarks().withUpdatedDistance()
                     }
                 }

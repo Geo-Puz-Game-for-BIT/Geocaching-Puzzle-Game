@@ -42,9 +42,10 @@ class CameraXManager(private val context: Context) {
                     preview = p
                     imageCapture = ic
                     provider.unbindAll()
+                    // 打卡自拍场景默认前置摄像头（方便拍摄本人），设备无前置时由 onError 兜底
                     provider.bindToLifecycle(
                         lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        CameraSelector.DEFAULT_FRONT_CAMERA,
                         p,
                         ic,
                     )
