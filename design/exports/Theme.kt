@@ -1,6 +1,6 @@
 package com.bitse.geotreasure.ui.theme
 
-// 由 design/tokens/tokens.json 实测值生成（v1.8 / PR#8 整改：主色由旧 #146C5A 更正为 #00634D）
+// 由 design/tokens/tokens.json 实测值生成（ PR#8 整改：主色由旧 #146C5A 更正为 #00634D）
 // 改 token 请改 JSON，不要只改这里
 // 用法：把本文件放到 ui/theme/Theme.kt，MaterialTheme(colorScheme = …, typography = …) 即可
 
