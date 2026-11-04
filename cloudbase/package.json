@@ -18,7 +18,8 @@
     "api:test:development": "cd ../api-tests && bru run health --env-file environments/private/development.bru --bail",
     "api:test:database": "node --env-file-if-exists=.env scripts/run-database-integration.mjs",
     "api:test:live": "node --env-file-if-exists=.env scripts/live-checkin-regression.mjs",
-    "api:smoke": "node scripts/smoke.mjs"
+    "api:smoke": "node scripts/smoke.mjs",
+    "photo:cleanup": "node --env-file-if-exists=.env scripts/cleanup-deleted-photos.mjs"
   },
   "dependencies": {
     "busboy": "1.6.0",

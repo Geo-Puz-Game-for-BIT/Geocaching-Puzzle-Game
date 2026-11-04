@@ -82,7 +82,7 @@ function requestBody(landmarkId: string, challengeId: string, photoId: string) {
     location: {
       point: { latitude: 39.7366, longitude: 116.1666 },
       accuracyMeters: 8,
-      capturedAt: "2026-10-25T10:00:00.000Z",
+      capturedAt: new Date().toISOString(),
     },
   };
 }
@@ -192,6 +192,7 @@ async function createChallenge(value: Fixture, suffix: string): Promise<string> 
 async function cleanupFixture(value: Fixture): Promise<void> {
   await deleteRows("audit_logs", { user_id: `eq.${value.userId}` });
   await deleteRows("fragment_grants", { user_id: `eq.${value.userId}` });
+  await deleteRows("checkin_attempts", { user_id: `eq.${value.userId}` });
   await deleteRows("checkins", { user_id: `eq.${value.userId}` });
   await deleteRows("challenges", { user_id: `eq.${value.userId}` });
   await deleteRows("photos", { user_id: `eq.${value.userId}` });
@@ -322,10 +323,18 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
     const grants = await selectRows("fragment_grants", {
       user_id: `eq.${value.userId}`,
     });
+    const attempts = await selectRows("checkin_attempts", {
+      user_id: `eq.${value.userId}`,
+    });
 
     expect(first.status).toBe("COMPLETED");
     expect(checkins).toHaveLength(1);
     expect(grants).toHaveLength(1);
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: "COMPLETED",
+      check_in_id: first.checkInId,
+    });
   });
 
   it("failed pre-insert validation does not consume the challenge", async () => {

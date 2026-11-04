@@ -3,13 +3,21 @@ import type { IncomingMessage } from "node:http";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { storeCheckInPhoto } from "../functions/api/handlers/photos.ts";
+import {
+  cleanupPendingPhotoDeletions,
+  deleteCheckInPhoto,
+  storeCheckInPhoto,
+} from "../functions/api/handlers/photos.ts";
 import { deletePhotoObjectStrict } from "../functions/api/storage.ts";
 import { MAX_PHOTO_BYTES } from "../shared/photo.ts";
 
-function requestWithBody(body: Buffer, contentType: string): IncomingMessage {
+function requestWithBody(
+  body: Buffer,
+  contentType: string,
+  headers: Record<string, string> = {},
+): IncomingMessage {
   return Object.assign(Readable.from([body]), {
-    headers: { "content-type": contentType },
+    headers: { "content-type": contentType, ...headers },
   }) as unknown as IncomingMessage;
 }
 
@@ -77,6 +85,54 @@ describe("storeCheckInPhoto", () => {
     ).rejects.toMatchObject({ code: "PHOTO_INVALID" });
   });
 
+  it("associates an uploaded photo with its challenge and attempt", async () => {
+    const writtenRows: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/rdb/rest/challenges")) {
+          return response([
+            {
+              id: "chl_test",
+              user_id: "usr_demo01",
+              used_at: null,
+              expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            },
+          ]);
+        }
+        if (url.includes("/v1/storages/object/")) {
+          return response({}, 200);
+        }
+        if (url.includes("/rdb/rest/photos") && init?.method === "POST") {
+          writtenRows.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+          return response(
+            [{ id: "pho_test", uploaded_at: "2026-11-04T08:00:01.000Z" }],
+            201,
+          );
+        }
+        return response([]);
+      }),
+    );
+
+    await storeCheckInPhoto(
+      "usr_demo01",
+      requestWithBody(
+        Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        "image/jpeg",
+        {
+          "x-challenge-id": "chl_test",
+          "x-attempt-id": "att_test",
+        },
+      ),
+    );
+
+    expect(writtenRows[0]).toMatchObject({
+      challenge_id: "chl_test",
+      attempt_id: "att_test",
+    });
+  });
+
   it("givenNonJpegBytes_whenStore_thenRejectsPhotoInvalid", async () => {
     await expect(
       storeCheckInPhoto(
@@ -137,5 +193,158 @@ describe("deletePhotoObjectStrict", () => {
     await expect(
       deletePhotoObjectStrict("checkins/usr_demo01/pho_test.jpg"),
     ).rejects.toThrow(/still exists|absent/i);
+  });
+});
+
+describe("deleteCheckInPhoto", () => {
+  it("logically deletes an owned photo without touching an existing check-in", async () => {
+    const requests: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        requests.push({ method, url });
+        if (url.includes("/rdb/rest/photos") && method === "GET") {
+          return response([
+            {
+              id: "pho_test",
+              user_id: "usr_demo01",
+              object_key: "checkins/usr_demo01/pho_test.jpg",
+              attempt_id: "att_test",
+              deleted_at: null,
+            },
+          ]);
+        }
+        if (url.includes("/rdb/rest/checkin_attempts") && method === "GET") {
+          return response([
+            {
+              id: "att_test",
+              status: "COMPLETED",
+            },
+          ]);
+        }
+        if (url.includes("/rdb/rest/photos") && method === "PATCH") {
+          return response([{ id: "pho_test" }]);
+        }
+        if (url.includes("/v1/storages/object/") && method === "DELETE") {
+          return new Response(null, { status: 204 });
+        }
+        if (url.includes("/v1/storages/object/") && method === "HEAD") {
+          return new Response(null, { status: 404 });
+        }
+        return response([]);
+      }),
+    );
+
+    await expect(
+      deleteCheckInPhoto("usr_demo01", "pho_test", "req_delete"),
+    ).resolves.toMatchObject({
+      photoId: "pho_test",
+      status: "DELETED",
+      storageCleanup: "COMPLETED",
+    });
+
+    expect(
+      requests.some(
+        (request) =>
+          request.method === "PATCH" &&
+          request.url.includes("/rdb/rest/photos"),
+      ),
+    ).toBe(true);
+    expect(
+      requests.some(
+        (request) =>
+          request.method === "DELETE" &&
+          request.url.includes("/v1/storages/object/"),
+      ),
+    ).toBe(true);
+    expect(
+      requests.some((request) => request.url.includes("/rdb/rest/checkins")),
+    ).toBe(false);
+  });
+
+  it("refuses to delete the only photo while the attempt result is unknown", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes("/rdb/rest/photos")) {
+          return response([
+            {
+              id: "pho_test",
+              user_id: "usr_demo01",
+              object_key: "checkins/usr_demo01/pho_test.jpg",
+              attempt_id: "att_test",
+              deleted_at: null,
+            },
+          ]);
+        }
+        if (url.includes("/rdb/rest/checkin_attempts")) {
+          return response([{ id: "att_test", status: "PROCESSING" }]);
+        }
+        return response([]);
+      }),
+    );
+
+    await expect(
+      deleteCheckInPhoto("usr_demo01", "pho_test", "req_delete"),
+    ).rejects.toMatchObject({
+      code: "CHECKIN_RESULT_UNKNOWN",
+      retryable: true,
+    });
+  });
+
+  it("does not reveal photos owned by another user", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response([])),
+    );
+
+    await expect(
+      deleteCheckInPhoto("usr_demo01", "pho_other", "req_delete"),
+    ).rejects.toMatchObject({ code: "PHOTO_NOT_FOUND", status: 404 });
+  });
+});
+
+describe("cleanupPendingPhotoDeletions", () => {
+  it("removes due storage objects and marks cleanup completed", async () => {
+    const methods: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        methods.push(method);
+        if (url.includes("/rdb/rest/photos") && method === "GET") {
+          return response([
+            {
+              id: "pho_test",
+              user_id: "usr_demo01",
+              object_key: "checkins/usr_demo01/pho_test.jpg",
+            },
+          ]);
+        }
+        if (url.includes("/v1/storages/object/") && method === "DELETE") {
+          return new Response(null, { status: 204 });
+        }
+        if (url.includes("/v1/storages/object/") && method === "HEAD") {
+          return new Response(null, { status: 404 });
+        }
+        if (url.includes("/rdb/rest/photos") && method === "PATCH") {
+          return response([{ id: "pho_test" }]);
+        }
+        return response([]);
+      }),
+    );
+
+    await expect(
+      cleanupPendingPhotoDeletions(new Date("2026-11-05T09:00:00.000Z")),
+    ).resolves.toEqual({
+      scanned: 1,
+      cleaned: 1,
+      failed: 0,
+    });
+    expect(methods).toContain("PATCH");
   });
 });
