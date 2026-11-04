@@ -56,6 +56,7 @@ import com.bitse.geotreasure.core.camera.FaceCheckResult
 import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.camera.PhotoCompressor
 import com.bitse.geotreasure.core.checkin.BlockReason
+import com.bitse.geotreasure.core.checkin.CheckInAttemptRules
 import com.bitse.geotreasure.core.checkin.CheckInGate
 import com.bitse.geotreasure.core.checkin.CheckInGateResult
 import com.bitse.geotreasure.core.checkin.CheckInSubmitCoordinator
@@ -97,11 +98,15 @@ data class CameraUiState(
     val gate: CheckInGateResult? = null,
     val restoredDraft: Boolean = false,
     val pendingUnknownDraft: Boolean = false,
+    val pendingDraftUploadState: UploadState? = null,
     val errorMessage: String? = null,
     val faceCheckMessage: String? = null,
 ) {
     val canShoot: Boolean get() = gate is CheckInGateResult.Ready
     val gateMessage: String? get() = (gate as? CheckInGateResult.Blocked)?.reason?.message
+
+    /** 结果未知（含查询故障）时禁止重拍/换照/清草稿/切任务覆盖。 */
+    val isOutcomeUnknown: Boolean get() = CheckInAttemptRules.isOutcomeUnknown(uploadState)
 }
 
 sealed interface CameraAction {
@@ -143,6 +148,8 @@ class CameraViewModel(
     private var uploadedPhotoId: String? = null
     private var draftCreatedAt: Instant? = null
     private var attachedPreviewView: PreviewView? = null
+    /** 本 attempt 是否已发出过至少一次提交请求（true 后冻结内容不可变，重试即重放）。 */
+    private var requestSent: Boolean = false
 
     init {
         loadLandmarkAndDraft()
@@ -162,7 +169,12 @@ class CameraViewModel(
                     val terminal = saved.uploadState == UploadState.EMPTY ||
                         saved.uploadState == UploadState.CONFIRMED
                     if (!terminal) {
-                        mutableUiState.update { it.copy(pendingUnknownDraft = true) }
+                        mutableUiState.update {
+                            it.copy(
+                                pendingUnknownDraft = true,
+                                pendingDraftUploadState = saved.uploadState,
+                            )
+                        }
                     }
                 }
             }
@@ -175,6 +187,10 @@ class CameraViewModel(
         challengeExpiresAt = saved.challengeExpiresAt
         uploadedPhotoId = saved.uploadedPhotoId
         draftCreatedAt = saved.createdAt
+        // 恢复为「结果未知」的草稿意味着此前已发出过请求：标记已发送，重试即重放不可变内容
+        if (saved.uploadState == UploadState.UNKNOWN) {
+            requestSent = true
+        }
         val path = saved.localPhoto?.absolutePath
         if (path != null && File(path).exists()) {
             mutableUiState.update {
@@ -182,10 +198,10 @@ class CameraViewModel(
                     photoPath = path,
                     uploadState = saved.uploadState,
                     restoredDraft = true,
-                    errorMessage = if (saved.uploadState == UploadState.FAILED) {
-                        "上次提交失败，请重试"
-                    } else {
-                        null
+                    errorMessage = when (saved.uploadState) {
+                        UploadState.UNKNOWN -> "上次提交结果未知，请重试以恢复（不要重拍）"
+                        UploadState.FAILED -> "上次提交失败，请重试"
+                        else -> null
                     },
                 )
             }
@@ -197,8 +213,8 @@ class CameraViewModel(
     }
 
     fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
-        if (mutableUiState.value.cameraBound) return
         attachedPreviewView = previewView
+        // 目标变化由 CameraXManager 内部比较（owner/previewView），不在此按 boolean 早退
         cameraManager.bind(
             lifecycleOwner,
             previewView,
@@ -221,43 +237,61 @@ class CameraViewModel(
         }
     }
 
+    /** 取位 + 门控（仅刷新 UI 门控展示，不冻结定位；冻结只在开拍动作发生时进行）。 */
     private fun refreshGate() {
-        val currentLandmark = landmark ?: return
         viewModelScope.launch {
-            val locationResult = locationProvider.getCurrentLocation()
-            val gate = when (locationResult) {
-                is AppResult.Success -> CheckInGate.evaluate(
-                    locationResult.data,
-                    currentLandmark.point,
-                    currentLandmark.checkInArea,
-                )
-                is AppResult.Failure -> CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
-            }
-            if (gate is CheckInGateResult.Ready) {
-                // 只在门控通过时冻结定位（后续提交复用，不再重取位）
-                frozenLocation = (locationResult as AppResult.Success).data
-            }
+            val (_, gate) = fetchLocationAndGate()
             mutableUiState.update { it.copy(gate = gate) }
+        }
+    }
+
+    /** 取一次位并计算门控；返回 (定位样本, 门控)。landmark 未加载时返回 NO_LOCATION。 */
+    private suspend fun fetchLocationAndGate(): Pair<LocationSample?, CheckInGateResult> {
+        val currentLandmark = landmark
+        if (currentLandmark == null) {
+            return null to CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
+        }
+        return when (val result = locationProvider.getCurrentLocation()) {
+            is AppResult.Success -> {
+                val loc = result.data
+                val gate = CheckInGate.evaluate(loc, currentLandmark.point, currentLandmark.checkInArea)
+                loc to gate
+            }
+            is AppResult.Failure -> null to CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
         }
     }
 
     private fun capture() {
         val state = mutableUiState.value
         if (state.isCapturing || state.isProcessing) return
-        if (!state.canShoot) {
-            mutableUiState.update { it.copy(errorMessage = state.gateMessage ?: "当前不可拍照") }
+        if (state.isOutcomeUnknown) {
+            mutableUiState.update { it.copy(errorMessage = "提交结果未知，请先重试恢复，不要重拍") }
             return
         }
-        mutableUiState.update { it.copy(isCapturing = true, errorMessage = null, faceCheckMessage = null) }
         viewModelScope.launch {
+            // 开拍动作发生时重新取位 + 重新门控（不依赖缓存 gate），通过即冻结本次定位
+            val (location, gate) = fetchLocationAndGate()
+            if (gate !is CheckInGateResult.Ready) {
+                mutableUiState.update {
+                    it.copy(gate = gate, errorMessage = (gate as CheckInGateResult.Blocked).reason.message)
+                }
+                return@launch
+            }
+            frozenLocation = location
+            mutableUiState.update {
+                it.copy(isCapturing = true, gate = gate, errorMessage = null, faceCheckMessage = null)
+            }
             if (!hasValidChallenge()) {
                 try {
                     val challenge = checkInRepository.createChallenge(landmarkId)
                     challengeId = challenge.id
                     challengeExpiresAt = challenge.expiresAt
-                    persistDraft(localPhoto = state.photoPath?.let {
-                        LocalPhotoRef(it, "image/jpeg", File(it).length())
-                    }, uploadState = state.uploadState)
+                    persistDraft(
+                        localPhoto = mutableUiState.value.photoPath?.let {
+                            LocalPhotoRef(it, "image/jpeg", File(it).length())
+                        },
+                        uploadState = mutableUiState.value.uploadState,
+                    )
                 } catch (e: Throwable) {
                     mutableUiState.update {
                         it.copy(isCapturing = false, errorMessage = checkInFailureMessage(e))
@@ -294,7 +328,12 @@ class CameraViewModel(
     }
 
     private fun retake() {
-        if (mutableUiState.value.isProcessing) return
+        val state = mutableUiState.value
+        if (state.isProcessing) return
+        if (state.isOutcomeUnknown) {
+            mutableUiState.update { it.copy(errorMessage = "提交结果未知，请先重试恢复，不要重拍") }
+            return
+        }
         // 进入重拍模式：旧照保留，不在此删除（取消重拍可回旧预览）
         mutableUiState.update { it.copy(retaking = true, errorMessage = null, faceCheckMessage = null) }
         refreshGate()
@@ -305,9 +344,15 @@ class CameraViewModel(
     }
 
     private fun discardPendingDraft() {
+        val pending = mutableUiState.value.pendingDraftUploadState
+        // 结果未知或提交进行中的草稿不可丢弃（可能已成功），只能返回继续恢复
+        if (pending != null && !CheckInAttemptRules.canDiscard(pending)) {
+            mutableUiState.update { it.copy(errorMessage = "上一个打卡结果未知，请返回继续恢复") }
+            return
+        }
         viewModelScope.launch {
             draftStore.clear()
-            mutableUiState.update { it.copy(pendingUnknownDraft = false) }
+            mutableUiState.update { it.copy(pendingUnknownDraft = false, pendingDraftUploadState = null) }
             refreshGate()
         }
     }
@@ -325,9 +370,27 @@ class CameraViewModel(
             return
         }
         val challenge = challengeId
-        if (challenge == null || !hasValidChallenge()) {
-            mutableUiState.update { it.copy(errorMessage = "挑战码已过期，请重新拍照") }
+        if (challenge == null) {
+            mutableUiState.update { it.copy(errorMessage = "挑战码缺失，请重新拍照") }
             return
+        }
+
+        // 首次提交：动作发生时检查冻结定位的新鲜度/精度/范围；重试：不可变重放，不重查不刷新 body
+        if (!requestSent) {
+            val currentLandmark = landmark
+            if (currentLandmark != null) {
+                val now = Clock.System.now()
+                val submitGate = CheckInGate.evaluate(location, currentLandmark.point, currentLandmark.checkInArea, now)
+                if (submitGate !is CheckInGateResult.Ready) {
+                    mutableUiState.update {
+                        it.copy(
+                            gate = submitGate,
+                            errorMessage = (submitGate as CheckInGateResult.Blocked).reason.message,
+                        )
+                    }
+                    return
+                }
+            }
         }
 
         mutableUiState.update { it.copy(isProcessing = true, errorMessage = null, faceCheckMessage = null) }
@@ -364,21 +427,18 @@ class CameraViewModel(
                         )
                     }
                 } catch (e: Throwable) {
-                    onSubmitFailed(e)
+                    onSubmitFailed(e, unknownResult = false)
                     return@launch
                 }
             }
 
+            // 标记已发送：此后冻结内容不可变，重试即重放（不刷新 location/challenge/photoId）
+            requestSent = true
             when (val outcome = submitCoordinator.submit(landmarkId, attemptId, challenge, photoId, location)) {
                 is SubmitOutcome.Success -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
-                is SubmitOutcome.ChallengeExpired ->
-                    if (outcome.recoveredReceipt != null) {
-                        onSuccess(outcome.recoveredReceipt.checkInId)
-                    } else {
-                        onChallengeExpired()
-                    }
-                is SubmitOutcome.Failed -> onSubmitFailed(outcome.error)
+                is SubmitOutcome.ChallengeExpired -> onChallengeExpired(outcome)
+                is SubmitOutcome.Failed -> onSubmitFailed(outcome.error, outcome.unknownResult)
             }
         }
     }
@@ -402,31 +462,50 @@ class CameraViewModel(
         }
     }
 
-    private fun onSubmitFailed(throwable: Throwable) {
+    private fun onSubmitFailed(throwable: Throwable, unknownResult: Boolean) {
         viewModelScope.launch {
             val path = mutableUiState.value.photoPath
+            val targetState = if (unknownResult) UploadState.UNKNOWN else UploadState.FAILED
             mutableUiState.update {
                 it.copy(
                     isProcessing = false,
-                    uploadState = UploadState.FAILED,
-                    errorMessage = checkInFailureMessage(throwable),
+                    uploadState = targetState,
+                    errorMessage = if (unknownResult) {
+                        "提交结果未知，请重试以恢复（不要重拍）"
+                    } else {
+                        checkInFailureMessage(throwable)
+                    },
                 )
             }
             persistDraft(
                 localPhoto = path?.let { LocalPhotoRef(it, "image/jpeg", File(it).length()) },
-                uploadState = UploadState.FAILED,
+                uploadState = targetState,
             )
         }
     }
 
-    private fun onChallengeExpired() {
-        // 挑战过期且无旧成功：换新挑战重拍（新冻结内容）
+    private fun onChallengeExpired(outcome: SubmitOutcome.ChallengeExpired) {
+        val recovered = outcome.recoveredReceipt
+        if (recovered != null) {
+            onSuccess(recovered.checkInId)
+            return
+        }
+        if (outcome.unknownResult) {
+            onChallengeExpiryUnknown()
+        } else {
+            onChallengeExpiredConfirmedAbsent()
+        }
+    }
+
+    /** 挑战过期且明确未成功：换新挑战重拍（新冻结内容）。 */
+    private fun onChallengeExpiredConfirmedAbsent() {
         val oldPath = mutableUiState.value.photoPath
         CameraXManager.deletePhoto(oldPath)
         challengeId = null
         challengeExpiresAt = null
         uploadedPhotoId = null
         frozenLocation = null
+        requestSent = false
         mutableUiState.update {
             it.copy(
                 isProcessing = false,
@@ -437,6 +516,22 @@ class CameraViewModel(
             )
         }
         persistDraft(localPhoto = null, uploadState = UploadState.EMPTY)
+    }
+
+    /** 挑战过期但旧结果查询失败/未知：保留照片与冻结内容，置 UNKNOWN，仅可同 key 重试。 */
+    private fun onChallengeExpiryUnknown() {
+        val path = mutableUiState.value.photoPath
+        mutableUiState.update {
+            it.copy(
+                isProcessing = false,
+                uploadState = UploadState.UNKNOWN,
+                errorMessage = "挑战已过期且结果未知，请重试以恢复（不要重拍）",
+            )
+        }
+        persistDraft(
+            localPhoto = path?.let { LocalPhotoRef(it, "image/jpeg", File(it).length()) },
+            uploadState = UploadState.UNKNOWN,
+        )
     }
 
     private fun onSuccess(checkInId: String) {
@@ -552,6 +647,7 @@ fun CameraScreen(
 
     if (state.pendingUnknownDraft) {
         PendingDraftDialog(
+            canDiscard = state.pendingDraftUploadState?.let { CheckInAttemptRules.canDiscard(it) } ?: true,
             onDiscard = { viewModel.onAction(CameraAction.DiscardPendingDraft) },
             onKeep = { viewModel.onAction(CameraAction.KeepPendingDraft) },
         )
@@ -607,16 +703,30 @@ fun CameraScreen(
 }
 
 @Composable
-private fun PendingDraftDialog(onDiscard: () -> Unit, onKeep: () -> Unit) {
+private fun PendingDraftDialog(canDiscard: Boolean, onDiscard: () -> Unit, onKeep: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("发现未完成的打卡") },
-        text = { Text("上一个打卡任务尚未完成，继续完成它，还是放弃并重新开始？") },
+        text = {
+            Text(
+                if (canDiscard) {
+                    "上一个打卡任务尚未完成，继续完成它，还是放弃并重新开始？"
+                } else {
+                    "上一个打卡结果尚未确认（可能已成功），为避免丢失，请返回继续完成它。"
+                },
+            )
+        },
         confirmButton = {
-            TextButton(onClick = onDiscard) { Text("放弃并重新开始") }
+            if (canDiscard) {
+                TextButton(onClick = onDiscard) { Text("放弃并重新开始") }
+            } else {
+                TextButton(onClick = onKeep) { Text("返回继续上一个") }
+            }
         },
         dismissButton = {
-            TextButton(onClick = onKeep) { Text("返回继续上一个") }
+            if (canDiscard) {
+                TextButton(onClick = onKeep) { Text("返回继续上一个") }
+            }
         },
     )
 }
@@ -680,7 +790,7 @@ private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit
                 OutlinedButton(
                     onClick = { onAction(CameraAction.Retake) },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isCapturing && !state.isProcessing,
+                    enabled = !state.isCapturing && !state.isProcessing && !state.isOutcomeUnknown,
                 ) {
                     Text("重拍")
                 }
@@ -692,6 +802,7 @@ private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit
                     Text(
                         when {
                             state.isProcessing -> "正在提交打卡…"
+                            state.uploadState == UploadState.UNKNOWN -> "重试恢复"
                             state.uploadState == UploadState.FAILED -> "重试"
                             else -> "确认并提交打卡"
                         },

@@ -37,6 +37,7 @@ class CheckInSubmitCoordinatorTest {
     private class FakeRepository : CheckInRepository {
         var submitCalls = 0
         var queryResult: CheckInReceipt? = null
+        var queryError: Throwable? = null
         var submitError: Throwable? = null
         var lastKey: String? = null
         var lastRequest: SubmitCheckInRequest? = null
@@ -59,7 +60,10 @@ class CheckInSubmitCoordinatorTest {
             )
         }
 
-        override suspend fun queryCheckIn(landmarkId: String): CheckInReceipt? = queryResult
+        override suspend fun queryCheckIn(landmarkId: String): CheckInReceipt? {
+            queryError?.let { throw it }
+            return queryResult
+        }
     }
 
     @Test
@@ -79,7 +83,7 @@ class CheckInSubmitCoordinatorTest {
         val coordinator = CheckInSubmitCoordinator(repo)
         val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
         assertTrue(outcome is SubmitOutcome.Recovered)
-        assertEquals(1, repo.submitCalls) // 不重复提交，不增奖
+        assertEquals(1, repo.submitCalls)
     }
 
     @Test
@@ -87,6 +91,17 @@ class CheckInSubmitCoordinatorTest {
         val repo = FakeRepository()
         repo.submitError = IOException("network lost")
         repo.queryResult = null
+        val coordinator = CheckInSubmitCoordinator(repo)
+        val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
+        assertTrue(outcome is SubmitOutcome.Failed)
+        assertTrue((outcome as SubmitOutcome.Failed).unknownResult)
+    }
+
+    @Test
+    fun unknownOutcome_queryFailure_isFailedUnknown() = runBlocking {
+        val repo = FakeRepository()
+        repo.submitError = IOException("network lost")
+        repo.queryError = IOException("query timeout")
         val coordinator = CheckInSubmitCoordinator(repo)
         val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
         assertTrue(outcome is SubmitOutcome.Failed)
@@ -104,7 +119,7 @@ class CheckInSubmitCoordinatorTest {
     }
 
     @Test
-    fun idempotencyConflict_noPriorResult_fails() = runBlocking {
+    fun idempotencyConflict_noPriorResult_confirmedAbsent() = runBlocking {
         val repo = FakeRepository()
         repo.submitError = CheckInApiException("IDEMPOTENCY_CONFLICT", false, "conflict")
         repo.queryResult = null
@@ -115,14 +130,40 @@ class CheckInSubmitCoordinatorTest {
     }
 
     @Test
-    fun challengeExpired_noPriorResult_needsNewAttempt() = runBlocking {
+    fun idempotencyConflict_queryFailure_isUnknown() = runBlocking {
+        val repo = FakeRepository()
+        repo.submitError = CheckInApiException("IDEMPOTENCY_CONFLICT", false, "conflict")
+        repo.queryError = IOException("query 405")
+        val coordinator = CheckInSubmitCoordinator(repo)
+        val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
+        assertTrue(outcome is SubmitOutcome.Failed)
+        assertTrue((outcome as SubmitOutcome.Failed).unknownResult)
+    }
+
+    @Test
+    fun challengeExpired_noPriorResult_confirmedAbsent() = runBlocking {
         val repo = FakeRepository()
         repo.submitError = CheckInApiException("CHALLENGE_EXPIRED", true, "expired")
         repo.queryResult = null
         val coordinator = CheckInSubmitCoordinator(repo)
         val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
         assertTrue(outcome is SubmitOutcome.ChallengeExpired)
-        assertTrue((outcome as SubmitOutcome.ChallengeExpired).recoveredReceipt == null)
+        val expired = outcome as SubmitOutcome.ChallengeExpired
+        assertEquals(null, expired.recoveredReceipt)
+        assertEquals(false, expired.unknownResult)
+    }
+
+    @Test
+    fun challengeExpired_queryFailure_isUnknown() = runBlocking {
+        val repo = FakeRepository()
+        repo.submitError = CheckInApiException("CHALLENGE_EXPIRED", true, "expired")
+        repo.queryError = IOException("query 5xx")
+        val coordinator = CheckInSubmitCoordinator(repo)
+        val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
+        assertTrue(outcome is SubmitOutcome.ChallengeExpired)
+        val expired = outcome as SubmitOutcome.ChallengeExpired
+        assertEquals(null, expired.recoveredReceipt)
+        assertEquals(true, expired.unknownResult)
     }
 
     @Test
@@ -134,5 +175,38 @@ class CheckInSubmitCoordinatorTest {
         val outcome = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
         assertTrue(outcome is SubmitOutcome.ChallengeExpired)
         assertTrue((outcome as SubmitOutcome.ChallengeExpired).recoveredReceipt != null)
+    }
+
+    @Test
+    fun resolution_mapsOutcomes() {
+        val r = receipt()
+        assertEquals(
+            SubmitResolution.SUCCESS,
+            SubmitOutcome.Success(r).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.SUCCESS,
+            SubmitOutcome.Recovered(r).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.SUCCESS,
+            SubmitOutcome.ChallengeExpired(r, unknownResult = false).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.CONFIRMED_ABSENT,
+            SubmitOutcome.ChallengeExpired(null, unknownResult = false).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.UNKNOWN,
+            SubmitOutcome.ChallengeExpired(null, unknownResult = true).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.UNKNOWN,
+            SubmitOutcome.Failed(IOException("x"), unknownResult = true).resolution(),
+        )
+        assertEquals(
+            SubmitResolution.CONFIRMED_ABSENT,
+            SubmitOutcome.Failed(IOException("x"), unknownResult = false).resolution(),
+        )
     }
 }

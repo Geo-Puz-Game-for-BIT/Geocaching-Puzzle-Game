@@ -1,7 +1,6 @@
 package com.bitse.geotreasure.core.camera
 
 import android.graphics.Bitmap
-import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -48,14 +47,15 @@ class FaceQualityChecker(
         }
 
         val countVerdict = FaceQualityRules.evaluateFaceCount(faces.size)
-        val faceWidthRatio = faces.firstOrNull()?.let { faceWidthRatio(it.boundingBox, bitmap.width) } ?: 0f
+        val faceWidths = faces.map { it.boundingBox.width() }
+        val faceWidthRatio = faceWidths.maxOrNull()?.let { faceWidthRatio(it, bitmap.width) } ?: 0f
+
+        // 「至少一张合格脸」：任一 face 尺寸达标即通过，不只看返回列表第一张
+        val hasQualifiedFace = FaceQualityRules.hasQualifiedFace(faceWidths, bitmap.width)
 
         val reason = when {
             countVerdict == FaceQualityRules.FaceCountVerdict.NONE -> FaceCheckFailureReason.NO_FACE
-            FaceQualityRules.isFaceTooSmall(
-                faces.first().boundingBox.width(),
-                bitmap.width,
-            ) -> FaceCheckFailureReason.FACE_TOO_SMALL
+            !hasQualifiedFace -> FaceCheckFailureReason.FACE_TOO_SMALL
             FaceQualityRules.isTooDark(brightness) -> FaceCheckFailureReason.TOO_DARK
             FaceQualityRules.isTooBlurry(sharpness) -> FaceCheckFailureReason.TOO_BLURRY
             else -> null
@@ -84,8 +84,8 @@ class FaceQualityChecker(
                 }
         }
 
-    private fun faceWidthRatio(box: Rect, imageWidth: Int): Float =
-        if (imageWidth <= 0) 0f else box.width().toFloat() / imageWidth
+    private fun faceWidthRatio(faceWidth: Int, imageWidth: Int): Float =
+        if (imageWidth <= 0) 0f else faceWidth.toFloat() / imageWidth
 
     private data class GrayImage(val pixels: IntArray, val width: Int, val height: Int)
 

@@ -47,6 +47,13 @@ object FaceQualityRules {
         minRatio: Float = MIN_FACE_WIDTH_RATIO,
     ): Boolean = imageWidth <= 0 || faceWidth.toFloat() / imageWidth < minRatio
 
+    /** 是否至少存在一张尺寸合格的脸（「≥1 张合格」：任一 face 达标即通过，不只看第一张）。 */
+    fun hasQualifiedFace(
+        faceWidths: List<Int>,
+        imageWidth: Int,
+        minRatio: Float = MIN_FACE_WIDTH_RATIO,
+    ): Boolean = faceWidths.any { !isFaceTooSmall(it, imageWidth, minRatio) }
+
     /** 平均亮度：灰度数组均值归一化到 0..1。 */
     fun averageLuminance(gray: IntArray): Float {
         if (gray.isEmpty()) return 0f

@@ -42,6 +42,22 @@ class FaceQualityRulesTest {
     }
 
     @Test
+    fun hasQualifiedFace_firstSmallThenLarge_isTrue() {
+        // 第一张小脸、后续有合格大脸 → 仍应判定「至少一张合格」
+        assertTrue(FaceQualityRules.hasQualifiedFace(listOf(50, 200), imageWidth = 1000))
+    }
+
+    @Test
+    fun hasQualifiedFace_allSmall_isFalse() {
+        assertFalse(FaceQualityRules.hasQualifiedFace(listOf(50, 60), imageWidth = 1000))
+    }
+
+    @Test
+    fun hasQualifiedFace_empty_isFalse() {
+        assertFalse(FaceQualityRules.hasQualifiedFace(emptyList(), imageWidth = 1000))
+    }
+
+    @Test
     fun averageLuminance_allWhiteIsOne() {
         assertEquals(1.0f, FaceQualityRules.averageLuminance(IntArray(16) { 255 }), 1e-4f)
     }
