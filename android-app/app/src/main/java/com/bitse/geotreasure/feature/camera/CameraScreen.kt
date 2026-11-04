@@ -57,10 +57,12 @@ import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.camera.PhotoCompressor
 import com.bitse.geotreasure.core.checkin.BlockReason
 import com.bitse.geotreasure.core.checkin.CheckInAttemptRules
+import com.bitse.geotreasure.core.checkin.CheckInFlowRules
 import com.bitse.geotreasure.core.checkin.CheckInGate
 import com.bitse.geotreasure.core.checkin.CheckInGateResult
 import com.bitse.geotreasure.core.checkin.CheckInSubmitCoordinator
 import com.bitse.geotreasure.core.checkin.SubmitOutcome
+import com.bitse.geotreasure.core.checkin.SubmitRoute
 import com.bitse.geotreasure.core.common.AppResult
 import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.model.CheckInDraft
@@ -192,24 +194,23 @@ class CameraViewModel(
         uploadedPhotoId = saved.uploadedPhotoId
         frozenLocation = saved.frozenLocation
         draftCreatedAt = saved.createdAt
-        // 恢复为「结果未知」的草稿意味着此前已发出过请求：标记已发送，重试即查询恢复（不重放）
-        if (saved.uploadState == UploadState.UNKNOWN) {
+        // F1：无条件恢复 uploadState；照片缺失只影响预览，不影响「已发出/未知」状态与查询恢复入口
+        val path = saved.localPhoto?.absolutePath
+        val patch = CheckInFlowRules.buildRecoveredDraftPatch(
+            uploadState = saved.uploadState,
+            localPhotoPath = path,
+            photoExists = path != null && File(path).exists(),
+        )
+        if (patch.markRequestSent) {
             requestSent = true
         }
-        val path = saved.localPhoto?.absolutePath
-        if (path != null && File(path).exists()) {
-            mutableUiState.update {
-                it.copy(
-                    photoPath = path,
-                    uploadState = saved.uploadState,
-                    restoredDraft = true,
-                    errorMessage = when (saved.uploadState) {
-                        UploadState.UNKNOWN -> "上次提交结果未知，请重试以恢复（不要重拍）"
-                        UploadState.FAILED -> "上次提交失败，请重试"
-                        else -> null
-                    },
-                )
-            }
+        mutableUiState.update {
+            it.copy(
+                photoPath = patch.photoPath,
+                uploadState = patch.uploadState,
+                restoredDraft = patch.restoredDraft,
+                errorMessage = patch.errorMessage,
+            )
         }
     }
 
@@ -274,6 +275,11 @@ class CameraViewModel(
             return
         }
         viewModelScope.launch {
+            // F2：旧尝试已发出（如明确失败后重拍）时，新照片属于新 attempt，先原子重置上下文（不删旧照）
+            if (requestSent) {
+                resetAttemptContext()
+                mutableUiState.update { it.copy(attemptId = currentAttemptId) }
+            }
             // 开拍动作发生时重新取位 + 重新门控（不依赖缓存 gate），通过即冻结本次定位
             val (location, gate) = fetchLocationAndGate()
             if (gate !is CheckInGateResult.Ready) {
@@ -334,17 +340,14 @@ class CameraViewModel(
 
     private fun retake() {
         val state = mutableUiState.value
-        if (state.isProcessing) return
-        if (state.isOutcomeUnknown) {
-            mutableUiState.update { it.copy(errorMessage = "提交结果未知，请先重试恢复，不要重拍") }
+        // F2：进入重拍仅切预览，保留旧照与当前 attempt；未知/处理中/已确认不可进入
+        if (!CheckInAttemptRules.canRetake(state.uploadState, state.isProcessing)) {
+            if (state.isOutcomeUnknown) {
+                mutableUiState.update { it.copy(errorMessage = "提交结果未知，请先重试恢复，不要重拍") }
+            }
             return
         }
-        if (state.uploadState == UploadState.FAILED) {
-            // 明确失败：重拍即安全新尝试，原子生成新 attemptId（R2）
-            beginNewAttempt("已放弃上次失败尝试，请重新拍照")
-            return
-        }
-        // 进入重拍模式：旧照保留，不在此删除（取消重拍可回旧预览）
+        // 进入重拍模式：旧照保留，不删除、不换新 attemptId（取消重拍可回旧预览，F2）
         mutableUiState.update { it.copy(retaking = true, errorMessage = null, faceCheckMessage = null) }
         refreshGate()
     }
@@ -367,25 +370,17 @@ class CameraViewModel(
         }
     }
 
-    /** 提交入口：按是否已发出过请求分流（R4）。 */
+    /** 提交入口：先「已发出/未知」进入查询恢复，再「明确失败」换新尝试，最后首次提交（F1/R4）。 */
     private fun submitFlow() {
         val state = mutableUiState.value
-        if (state.isProcessing || state.uploadState == UploadState.CONFIRMED) return
-
-        // 明确未成功：重试无意义，直接安全新尝试（R2）
-        if (state.uploadState == UploadState.FAILED) {
-            beginNewAttempt("已放弃上次失败尝试，请重新拍照")
-            return
-        }
-
-        val photoPath = state.photoPath ?: return
-
-        if (requestSent) {
-            // 已发出过提交：优先按 attemptId 查询恢复，不重放 POST、不重做本地前处理（R3/R4）
-            recoverAttempt()
-        } else {
-            // 首次提交：完整前处理 + 上传照片 + POST
-            firstSubmit(photoPath)
+        when (CheckInFlowRules.submitRoute(state.uploadState, requestSent, state.isProcessing)) {
+            SubmitRoute.RETURN -> Unit
+            SubmitRoute.NEW_ATTEMPT -> beginNewAttempt("已放弃上次失败尝试，请重新拍照")
+            SubmitRoute.RECOVER -> recoverAttempt()
+            SubmitRoute.FIRST_SUBMIT -> {
+                val photoPath = state.photoPath ?: return
+                firstSubmit(photoPath)
+            }
         }
     }
 
@@ -476,6 +471,8 @@ class CameraViewModel(
             when (val outcome = submitCoordinator.recover(currentAttemptId)) {
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Failed ->
+                    // F3：终态保证成立前 recover 只返回 unknownResult=true（NotFound 亦未知）；
+                    // 保留 CONFIRMED_ABSENT 分支作为「D 落地可靠终态后放行」的扩展点
                     if (outcome.unknownResult) onRecoveryUnknown() else onRecoveryConfirmedAbsent()
                 else -> onRecoveryUnknown()
             }
@@ -559,19 +556,13 @@ class CameraViewModel(
     }
 
     /**
-     * 可靠确认旧尝试已结束（明确未成功）后，原子生成新 attemptId 并重置冻结状态（R2）。
+     * 可靠确认旧尝试已结束（明确未成功）后，删除旧照、原子生成新 attemptId 并重置冻结状态（R2）。
      * 旧未知尝试不得调用本方法（调用方须先确认 resolution 为 CONFIRMED_ABSENT）。
      */
     private fun beginNewAttempt(message: String) {
         val oldPath = mutableUiState.value.photoPath
         CameraXManager.deletePhoto(oldPath)
-        currentAttemptId = "att_" + UUID.randomUUID().toString()
-        challengeId = null
-        challengeExpiresAt = null
-        uploadedPhotoId = null
-        frozenLocation = null
-        requestSent = false
-        draftCreatedAt = null
+        resetAttemptContext()
         mutableUiState.update {
             it.copy(
                 attemptId = currentAttemptId,
@@ -583,6 +574,20 @@ class CameraViewModel(
             )
         }
         persistDraft(localPhoto = null, uploadState = UploadState.EMPTY)
+    }
+
+    /**
+     * 原子生成新 attemptId 并清空本次尝试的冻结状态（不触碰照片/预览/uploadState，F2）。
+     * 用于「新照成功采用」前重置上下文，确保新请求不复用旧 key。
+     */
+    private fun resetAttemptContext() {
+        currentAttemptId = "att_" + UUID.randomUUID().toString()
+        challengeId = null
+        challengeExpiresAt = null
+        uploadedPhotoId = null
+        frozenLocation = null
+        requestSent = false
+        draftCreatedAt = null
     }
 
     /** 挑战过期但旧结果查询失败/未知：保留照片与冻结内容，置 UNKNOWN，仅可同 key 重试。 */
@@ -870,6 +875,17 @@ private fun PermissionHint(onRequestPermission: () -> Unit) {
 private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
+            // F1：结果未知（可能缺照片）只提供「重试恢复」，不显示拍照/重拍入口
+            state.isOutcomeUnknown -> {
+                Button(
+                    onClick = { onAction(CameraAction.Confirm) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isProcessing,
+                ) {
+                    Text(if (state.isProcessing) "正在恢复…" else "重试恢复")
+                }
+            }
+
             state.photoPath != null && !state.retaking -> {
                 OutlinedButton(
                     onClick = { onAction(CameraAction.Retake) },

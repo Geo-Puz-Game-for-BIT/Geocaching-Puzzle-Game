@@ -35,6 +35,12 @@ class CheckInAttemptRulesTest {
     }
 
     @Test
+    fun failedIdle_canRetake() {
+        // F2：FAILED 点击重拍仅进入预览（保留旧照与当前 attempt，不换 ID、不删照）
+        assertTrue(CheckInAttemptRules.canRetake(UploadState.FAILED, isProcessing = false))
+    }
+
+    @Test
     fun unknownDraft_cannotDiscard() {
         assertFalse(CheckInAttemptRules.canDiscard(UploadState.UNKNOWN))
         assertFalse(CheckInAttemptRules.canDiscard(UploadState.UPLOADING))

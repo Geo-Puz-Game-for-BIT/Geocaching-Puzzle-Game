@@ -226,13 +226,30 @@ class CheckInSubmitCoordinatorTest {
     }
 
     @Test
-    fun recover_notFound_confirmedAbsent() = runBlocking {
+    fun recover_notFound_isUnknown() = runBlocking {
+        // F3：终态保证成立前，恢复查询无记录不能证明旧 POST 不会稍后成功 → 保持未知
         val repo = FakeRepository()
         repo.queryResult = CheckInQueryResult.NotFound
         val coordinator = CheckInSubmitCoordinator(repo)
         val outcome = coordinator.recover("att_1")
         assertTrue(outcome is SubmitOutcome.Failed)
-        assertTrue(!(outcome as SubmitOutcome.Failed).unknownResult)
+        assertTrue((outcome as SubmitOutcome.Failed).unknownResult)
+    }
+
+    @Test
+    fun unknownThenRecoverNotFound_staysUnknown() = runBlocking {
+        // F3 回归：POST 未知后首次查询 NotFound → 未知；随后「重试恢复」再查 NotFound → 仍未知（不得 CONFIRMED_ABSENT）
+        val repo = FakeRepository()
+        repo.submitError = IOException("network lost")
+        repo.queryResult = CheckInQueryResult.NotFound
+        val coordinator = CheckInSubmitCoordinator(repo)
+        val first = coordinator.submit("lmk_1", "att_1", "chl_1", "pho_1", location())
+        assertTrue(first is SubmitOutcome.Failed)
+        assertTrue((first as SubmitOutcome.Failed).unknownResult)
+
+        val second = coordinator.recover("att_1")
+        assertTrue(second is SubmitOutcome.Failed)
+        assertTrue((second as SubmitOutcome.Failed).unknownResult)
     }
 
     @Test
