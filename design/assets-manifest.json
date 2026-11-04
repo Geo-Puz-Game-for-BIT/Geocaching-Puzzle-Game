@@ -1,9 +1,7 @@
 {
-  "version": 1,
-  "assets": [{
   "$comment": "资源与来源清单。字段：名称 / 用途 / 尺寸 / 来源 / 许可。改素材后重跑 node design/tools/build-manifest.mjs",
   "project": "校园地标 Geocaching · 题目三第 4 组",
-  "version": "v1.1",
+  "version": "v1.1 / 交付口径修订 2026-10-27 / 交付口径修订 2026-11-01",
   "generatedAt": "2026-10-22 16:29:43",
   "owner": "向川（2.3 UI/UX 与美工）",
   "policy": [
@@ -26,7 +24,10 @@
     "screensKB": 1172.9,
     "avgScreenKB": 45.1,
     "unconfirmed": 0,
-    "pending": 2
+    "pending": 2,
+    "licenseConfirmed": 86,
+    "fileInRepo": 86,
+    "fileNotInRepo": 0
   },
   "sources": {
     "self": {
@@ -81,9 +82,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "5efa5fea02",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p01-default.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p01-default.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p01&bare=1",
+          "file": "design/exports/screens/p01-default.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p01-denied",
@@ -109,9 +124,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "7f921f4ef0",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p01-denied.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p01-denied.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p01&bare=1",
+          "file": "design/exports/screens/p01-denied.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p01-error",
@@ -137,9 +166,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "6501465f72",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p01-error.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p01-error.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p01&bare=1",
+          "file": "design/exports/screens/p01-error.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p01-loading",
@@ -165,9 +208,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "240e58863b",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p01-loading.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p01-loading.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p01&bare=1",
+          "file": "design/exports/screens/p01-loading.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p01-offline",
@@ -193,9 +250,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "13af4b092c",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p01-offline.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p01-offline.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p01&bare=1",
+          "file": "design/exports/screens/p01-offline.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p02-default",
@@ -221,9 +292,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a9c5c2c00d",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p02-default.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p02-default.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p02&bare=1",
+          "file": "design/exports/screens/p02-default.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p02-done",
@@ -249,9 +334,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "cda7107788",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p02-done.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p02-done.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p02&bare=1",
+          "file": "design/exports/screens/p02-done.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p02-error",
@@ -277,9 +376,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "e6658a96ba",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p02-error.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p02-error.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p02&bare=1",
+          "file": "design/exports/screens/p02-error.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p02-loading",
@@ -305,9 +418,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "d6cdd3076f",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p02-loading.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p02-loading.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p02&bare=1",
+          "file": "design/exports/screens/p02-loading.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p02-offline",
@@ -333,9 +460,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "1e041ce64d",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p02-offline.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p02-offline.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p02&bare=1",
+          "file": "design/exports/screens/p02-offline.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-default",
@@ -361,9 +502,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "f8253b4e03",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-default.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-default.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-default.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-denied",
@@ -389,9 +544,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "4cc44acc69",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-denied.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-denied.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-denied.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-error",
@@ -417,9 +586,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a57baeeb71",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-error.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-error.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-error.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-far",
@@ -445,9 +628,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "6b2b334d87",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-far.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-far.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-far.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-offline",
@@ -473,9 +670,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "d622c06577",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-offline.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-offline.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-offline.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p03-submitting",
@@ -501,9 +712,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b6eb06d7ba",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p03-submitting.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p03-submitting.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p03&bare=1",
+          "file": "design/exports/screens/p03-submitting.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p04-fail-accuracy",
@@ -529,9 +754,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "3ccc3c5cdc",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p04-fail-accuracy.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p04-fail-accuracy.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p04&bare=1",
+          "file": "design/exports/screens/p04-fail-accuracy.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p04-fail-network",
@@ -557,9 +796,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "5f4d5d8dd0",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p04-fail-network.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p04-fail-network.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p04&bare=1",
+          "file": "design/exports/screens/p04-fail-network.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p04-fail-photo",
@@ -585,9 +838,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "550dd000dd",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p04-fail-photo.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p04-fail-photo.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p04&bare=1",
+          "file": "design/exports/screens/p04-fail-photo.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p04-fail-radius",
@@ -613,9 +880,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "59103aaf71",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p04-fail-radius.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p04-fail-radius.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p04&bare=1",
+          "file": "design/exports/screens/p04-fail-radius.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p04-success",
@@ -641,9 +922,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "1c819c536d",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p04-success.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p04-success.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p04&bare=1",
+          "file": "design/exports/screens/p04-success.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p05-complete",
@@ -669,9 +964,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "4cb5c37e19",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p05-complete.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p05-complete.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p05&bare=1",
+          "file": "design/exports/screens/p05-complete.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p05-mapdone",
@@ -697,9 +1006,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a54a223cda",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p05-mapdone.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p05-mapdone.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p05&bare=1",
+          "file": "design/exports/screens/p05-mapdone.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p05-module",
@@ -725,9 +1048,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a93d94924a",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p05-module.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p05-module.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p05&bare=1",
+          "file": "design/exports/screens/p05-module.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p05-offline",
@@ -753,9 +1090,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "027a9fda36",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p05-offline.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p05-offline.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p05&bare=1",
+          "file": "design/exports/screens/p05-offline.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "p05-progress",
@@ -781,9 +1132,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a63f9bbd01",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/screens/p05-progress.webp",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/screens/p05-progress.webp",
+        "stableRef": {
+          "type": "protoUrl",
+          "value": "design/prototype/index.html?p=p05&bare=1",
+          "file": "design/exports/screens/p05-progress.webp",
+          "howto": "浏览器打开即可复现该状态；原型默认态为 s=default"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "alert-triangle",
@@ -809,9 +1174,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "6e3d8c0524",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/alert-triangle.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/alert-triangle.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "alert-triangle",
+          "file": "design/exports/icons/alert-triangle.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "arrow-left",
@@ -837,9 +1216,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "da5194250c",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/arrow-left.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/arrow-left.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "arrow-left",
+          "file": "design/exports/icons/arrow-left.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "award",
@@ -865,9 +1258,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "9573c9ae8a",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/award.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/award.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "award",
+          "file": "design/exports/icons/award.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "camera",
@@ -893,9 +1300,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "1722254fde",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/camera.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/camera.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "camera",
+          "file": "design/exports/icons/camera.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "check-circle-2",
@@ -921,9 +1342,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "2c73e899d8",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/check-circle-2.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/check-circle-2.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "check-circle-2",
+          "file": "design/exports/icons/check-circle-2.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "chevron-right",
@@ -949,9 +1384,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "88a939db97",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/chevron-right.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/chevron-right.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "chevron-right",
+          "file": "design/exports/icons/chevron-right.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "clock",
@@ -977,9 +1426,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "c8219f04b1",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/clock.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/clock.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "clock",
+          "file": "design/exports/icons/clock.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "cloud-off",
@@ -1005,9 +1468,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "2628b651d5",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/cloud-off.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/cloud-off.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "cloud-off",
+          "file": "design/exports/icons/cloud-off.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "compass",
@@ -1033,9 +1510,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "43e718db01",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/compass.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/compass.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "compass",
+          "file": "design/exports/icons/compass.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "crosshair",
@@ -1061,9 +1552,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b6fd888473",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/crosshair.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/crosshair.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "crosshair",
+          "file": "design/exports/icons/crosshair.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "gauge",
@@ -1089,9 +1594,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a840b3a1fa",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/gauge.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/gauge.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "gauge",
+          "file": "design/exports/icons/gauge.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "image-off",
@@ -1117,9 +1636,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "22d7a1790c",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/image-off.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/image-off.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "image-off",
+          "file": "design/exports/icons/image-off.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "images",
@@ -1145,9 +1678,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "7c7c3e45e0",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/images.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/images.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "images",
+          "file": "design/exports/icons/images.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "info",
@@ -1173,9 +1720,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "ee623ccf6b",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/info.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/info.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "info",
+          "file": "design/exports/icons/info.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "key-round",
@@ -1201,9 +1762,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "acefdb5fca",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/key-round.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/key-round.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "key-round",
+          "file": "design/exports/icons/key-round.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "lightbulb",
@@ -1229,9 +1804,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "edcb9f873c",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/lightbulb.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/lightbulb.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "lightbulb",
+          "file": "design/exports/icons/lightbulb.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "locate-fixed",
@@ -1257,9 +1846,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "7295d79f43",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/locate-fixed.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/locate-fixed.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "locate-fixed",
+          "file": "design/exports/icons/locate-fixed.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "lock",
@@ -1285,9 +1888,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "772ff50c46",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/lock.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/lock.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "lock",
+          "file": "design/exports/icons/lock.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "map-pin",
@@ -1313,9 +1930,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "4a3a4920f7",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/map-pin.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/map-pin.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "map-pin",
+          "file": "design/exports/icons/map-pin.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "map",
@@ -1341,9 +1972,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "72c422b2ef",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/map.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/map.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "map",
+          "file": "design/exports/icons/map.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "mountain",
@@ -1369,9 +2014,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "01814d5173",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/mountain.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/mountain.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "mountain",
+          "file": "design/exports/icons/mountain.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "navigation",
@@ -1397,9 +2056,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "492ef29f40",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/navigation.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/navigation.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "navigation",
+          "file": "design/exports/icons/navigation.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "puzzle",
@@ -1425,9 +2098,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b323104084",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/puzzle.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/puzzle.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "puzzle",
+          "file": "design/exports/icons/puzzle.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "refresh-cw",
@@ -1453,9 +2140,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "24edaa69b0",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/refresh-cw.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/refresh-cw.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "refresh-cw",
+          "file": "design/exports/icons/refresh-cw.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "settings",
@@ -1481,9 +2182,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a0273cc443",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/settings.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/settings.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "settings",
+          "file": "design/exports/icons/settings.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "unlock",
@@ -1509,9 +2224,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a08ae06481",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/unlock.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/unlock.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "unlock",
+          "file": "design/exports/icons/unlock.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "upload-cloud",
@@ -1537,9 +2266,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b6312536a7",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/upload-cloud.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/upload-cloud.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "upload-cloud",
+          "file": "design/exports/icons/upload-cloud.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "user",
@@ -1565,9 +2308,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "bd5425715b",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/user.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/user.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "user",
+          "file": "design/exports/icons/user.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "wifi-off",
@@ -1593,9 +2350,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "1181f028fd",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/wifi-off.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/wifi-off.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "wifi-off",
+          "file": "design/exports/icons/wifi-off.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "x-circle",
@@ -1621,9 +2392,23 @@
         "confirmed": true,
         "url": "https://lucide.dev/"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b8e22f5cac",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/exports/icons/x-circle.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/x-circle.svg",
+        "stableRef": {
+          "type": "iconId",
+          "value": "x-circle",
+          "file": "design/exports/icons/x-circle.svg",
+          "howto": "Lucide / Material Symbols 同名图标，原型内由 ic() 调用"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "material-symbols-outlined",
@@ -1648,9 +2433,23 @@
         "confirmed": true,
         "url": "https://fonts.google.com/icons"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "9c19bb77c7",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/04-图标/material-font/material-symbols-outlined.woff2",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/04-图标/material-font/material-symbols-outlined.woff2",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/04-图标/material-font/material-symbols-outlined.woff2",
+          "file": "design/04-图标/material-font/material-symbols-outlined.woff2",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "material-symbols-css",
@@ -1675,9 +2474,23 @@
         "confirmed": true,
         "url": "https://fonts.google.com/icons"
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "cf480bbe7e",
-      "updatedAt": "2026-10-21"
+      "updatedAt": "2026-10-21",
+      "delivered": true,
+      "actualPath": "design/04-图标/material-font/material-symbols.css",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/04-图标/material-font/material-symbols.css",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/04-图标/material-font/material-symbols.css",
+          "file": "design/04-图标/material-font/material-symbols.css",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "puzzle-module-2x2-spec",
@@ -1703,9 +2516,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a50c4a2081",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/puzzle/module-2x2-spec.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/puzzle/module-2x2-spec.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/puzzle/module-2x2-spec.svg",
+          "file": "design/exports/puzzle/module-2x2-spec.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "puzzle-map-assembly-3mod",
@@ -1731,9 +2558,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "33b7a13abf",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/puzzle/map-assembly-3mod.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/puzzle/map-assembly-3mod.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/puzzle/map-assembly-3mod.svg",
+          "file": "design/exports/puzzle/map-assembly-3mod.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P01-地图-Default",
@@ -1758,9 +2599,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "39d818763d",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P01-地图-Default.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P01-地图-Default.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P01-地图-Default",
+          "file": "design/exports/figma/P01-地图-Default.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P01-地图-Denied",
@@ -1785,9 +2640,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b01c5de6de",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P01-地图-Denied.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P01-地图-Denied.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P01-地图-Denied",
+          "file": "design/exports/figma/P01-地图-Denied.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P01-地图-Error",
@@ -1812,9 +2681,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "e008ff5a58",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P01-地图-Error.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P01-地图-Error.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P01-地图-Error",
+          "file": "design/exports/figma/P01-地图-Error.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P01-地图-Loading",
@@ -1839,9 +2722,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "386c835f41",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P01-地图-Loading.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P01-地图-Loading.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P01-地图-Loading",
+          "file": "design/exports/figma/P01-地图-Loading.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P01-地图-Offline",
@@ -1866,9 +2763,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "de5374722b",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P01-地图-Offline.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P01-地图-Offline.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P01-地图-Offline",
+          "file": "design/exports/figma/P01-地图-Offline.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P02-详情-Default",
@@ -1893,9 +2804,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "1ab4d99edc",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P02-详情-Default.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P02-详情-Default.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P02-详情-Default",
+          "file": "design/exports/figma/P02-详情-Default.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P02-详情-Done",
@@ -1920,9 +2845,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "15518b77e5",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P02-详情-Done.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P02-详情-Done.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P02-详情-Done",
+          "file": "design/exports/figma/P02-详情-Done.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P02-详情-Error",
@@ -1947,9 +2886,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "5e04ef1fd5",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P02-详情-Error.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P02-详情-Error.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P02-详情-Error",
+          "file": "design/exports/figma/P02-详情-Error.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P02-详情-Loading",
@@ -1974,9 +2927,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "99d771dcf1",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P02-详情-Loading.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P02-详情-Loading.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P02-详情-Loading",
+          "file": "design/exports/figma/P02-详情-Loading.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P02-详情-Offline",
@@ -2001,9 +2968,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b1009ee827",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P02-详情-Offline.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P02-详情-Offline.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P02-详情-Offline",
+          "file": "design/exports/figma/P02-详情-Offline.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Default",
@@ -2028,9 +3009,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a813cf9e89",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Default.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Default.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Default",
+          "file": "design/exports/figma/P03-相机-Default.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Denied",
@@ -2055,9 +3050,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "884bd8f1a4",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Denied.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Denied.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Denied",
+          "file": "design/exports/figma/P03-相机-Denied.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Error",
@@ -2082,9 +3091,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "c6c3ea8a11",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Error.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Error.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Error",
+          "file": "design/exports/figma/P03-相机-Error.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Far",
@@ -2109,9 +3132,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "cc1de8154b",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Far.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Far.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Far",
+          "file": "design/exports/figma/P03-相机-Far.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Offline",
@@ -2136,9 +3173,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "9595d49007",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Offline.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Offline.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Offline",
+          "file": "design/exports/figma/P03-相机-Offline.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P03-相机-Submitting",
@@ -2163,9 +3214,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "732945c99d",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P03-相机-Submitting.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P03-相机-Submitting.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P03-相机-Submitting",
+          "file": "design/exports/figma/P03-相机-Submitting.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P04-结果-FailAccuracy",
@@ -2190,9 +3255,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "2b20e79902",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P04-结果-FailAccuracy.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P04-结果-FailAccuracy.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P04-结果-FailAccuracy",
+          "file": "design/exports/figma/P04-结果-FailAccuracy.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P04-结果-FailNetwork",
@@ -2217,9 +3296,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "440756cfaf",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P04-结果-FailNetwork.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P04-结果-FailNetwork.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P04-结果-FailNetwork",
+          "file": "design/exports/figma/P04-结果-FailNetwork.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P04-结果-FailPhoto",
@@ -2244,9 +3337,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "748c91e991",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P04-结果-FailPhoto.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P04-结果-FailPhoto.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P04-结果-FailPhoto",
+          "file": "design/exports/figma/P04-结果-FailPhoto.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P04-结果-FailRadius",
@@ -2271,9 +3378,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "57ed77359a",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P04-结果-FailRadius.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P04-结果-FailRadius.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P04-结果-FailRadius",
+          "file": "design/exports/figma/P04-结果-FailRadius.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P04-结果-Success",
@@ -2298,9 +3419,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "e8d82e9ce8",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P04-结果-Success.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P04-结果-Success.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P04-结果-Success",
+          "file": "design/exports/figma/P04-结果-Success.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P05-拼图-MapDone",
@@ -2325,9 +3460,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "efa72bb9ec",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P05-拼图-MapDone.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P05-拼图-MapDone.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P05-拼图-MapDone",
+          "file": "design/exports/figma/P05-拼图-MapDone.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P05-拼图-MapProgress",
@@ -2352,9 +3501,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "b214550a7c",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P05-拼图-MapProgress.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P05-拼图-MapProgress.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P05-拼图-MapProgress",
+          "file": "design/exports/figma/P05-拼图-MapProgress.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P05-拼图-Module",
@@ -2379,9 +3542,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "a4ad74601a",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P05-拼图-Module.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P05-拼图-Module.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P05-拼图-Module",
+          "file": "design/exports/figma/P05-拼图-Module.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P05-拼图-ModuleComplete",
@@ -2406,9 +3583,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "5c2a30e0de",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P05-拼图-ModuleComplete.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P05-拼图-ModuleComplete.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P05-拼图-ModuleComplete",
+          "file": "design/exports/figma/P05-拼图-ModuleComplete.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     },
     {
       "id": "fig-P05-拼图-Offline",
@@ -2433,9 +3624,23 @@
         "attribution": false,
         "confirmed": true
       },
-      "status": "confirmed",
+      "status": "sourceConfirmed",
       "sha1": "26b18a2157",
-      "updatedAt": "2026-10-22"
+      "updatedAt": "2026-10-22",
+      "delivered": true,
+      "actualPath": "design/exports/figma/P05-拼图-Offline.svg",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/figma/P05-拼图-Offline.svg",
+        "stableRef": {
+          "type": "figmaFrame",
+          "value": "P05-拼图-Offline",
+          "file": "design/exports/figma/P05-拼图-Offline.svg",
+          "howto": "Figma 画板名由插件按「<页>|<页面名>|<State>」生成，与此文件名同名"
+        },
+        "note": "confirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
     }
   ],
   "pending": [
@@ -2463,6 +3668,17 @@
       "due": "P1",
       "status": "not-needed"
     }
-  ]
-}]
+  ],
+  "deliveryNote": {
+    "口径": "A. source.confirmed / status=sourceConfirmed ⇒ **来源与许可**已核对，不代表文件随包交付。B. delivery.fileInRepo ⇒ 脚本实测该文件存在于**本工作树**的路径（repoPath）。C. delivery.stableRef ⇒ 不依赖本次打包也能复现的稳定引用（原型 URL / Figma 画板 / 图标 ID）。三者互不替代，验收按 stableRef 复核即可。",
+    "本次修订": "2026-11-01：按验收反馈拆分 confirmed 与 delivered，补 stableRef；不再要求补传 86 份重复导出物。",
+    "源工作树": "本机 C:\\Users\\zxc52\\WorkBuddy\\2026-10-19-18-12-56",
+    "PDF 引用": "dist/拼迹-第4组-七页高保真原型-v2.2.pdf（18 页）。第 1 页封面+目录，第 2–14 页为 25 个界面状态（每页 2 屏），第 15 页修订对照，第 16 页交互证据，第 17 页 3D/迷雾证据，第 18 页附录；逐屏顺序见 .cache/mkpdf2.py 的 ITEMS 表。",
+    "统计": {
+      "总条目": 86,
+      "许可已确认": 86,
+      "存在于源工作树": 86,
+      "不在源工作树": 0
+    }
+  }
 }
