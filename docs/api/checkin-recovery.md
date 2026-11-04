@@ -30,21 +30,31 @@ X-Request-Id: <uuid>
 > 普通路由 404、代理 404、405、5xx、超时、以及「baseUrl 未配置」一律归为 `Unavailable`（查询故障，结果未知）。
 > 未配置不得作为「明确未成功」的安全新尝试依据。
 
-## 三态语义（客户端据此决定下一步）
+## 客户端语义（F3 定稿：终态保证成立前，NotFound ≠ 可安全新尝试）
 
-| 查询结果 | 客户端语义 | 允许的动作 |
+`CheckInQueryResult.NotFound` 仅表示「此刻未查到记录」，**不等于**「旧 POST 已可靠结束、不会再成功」。在服务端交付「可靠终态 + 在途 POST 竞态测试」之前，客户端对 `NotFound` 的处置如下：
+
+| 上下文 | 触发场景 | `NotFound` 处置 |
 |---|---|---|
-| `Success` | 已成功 | 发奖 / 清草稿 |
-| `NotFound` | 明确未成功 | 可安全换新 `attemptId` 重拍（`CONFIRMED_ABSENT`） |
-| `Processing` / `Unavailable` | 结果未知/处理中 | 保留照片与冻结内容，仅可同 attempt 再次查询恢复（`UNKNOWN`） |
+| 提交结果未知（`onUnknownOutcome`） | POST 网络中断 / 5xx 后查询 | 保持 `UNKNOWN`（不删照、不换 ID） |
+| 恢复入口（`recover`） | UNKNOWN 草稿「重试恢复」 | 保持 `UNKNOWN`（**F3，本轮修正**） |
+| 服务端明确拒绝（`CHALLENGE_EXPIRED` / `IDEMPOTENCY_CONFLICT`） | 提交被明确驳回后查询 | 可 `CONFIRMED_ABSENT`（换新 ID） |
+
+> 关键变化：`recover` 对 `NotFound` 由「CONFIRMED_ABSENT」改为「UNKNOWN」，与 `onUnknownOutcome` 一致，消除「同一次无记录，首次查询保持未知、恢复查询却放开新 ID」的矛盾。仅当 D 落地可靠终态（含在途竞态测试）后，才允许把 `NotFound` 作为「明确未成功」放行新尝试。
+
+`Processing` / `Unavailable` 在任何上下文一律保持 `UNKNOWN`（保留照片与冻结内容，仅可同 attempt 再次查询恢复）。
 
 ## 查询无记录的竞态（需 D 保证）
 
-「提交成功但查询却无记录」的窗口必须由服务端消除：`POST /checkins` 的事务提交与 `GET /checkins` 的可见性需保持一致（同库一致读 / 同事务「校验→消费→建记录」）。在此保证成立前，客户端对「提交结果未知 + 查询无记录」保持**未知**，不删除旧照、不换新 attempt。
+「提交成功但查询却无记录」的窗口必须由服务端消除：`POST /checkins` 的事务提交与 `GET /checkins` 的可见性需保持一致（同库一致读 / 同事务「校验→消费→建记录」）。在此保证成立前，客户端对「提交结果未知 + 查询无记录」保持**未知**，不删除旧照、不换新 attempt；`recover` 入口同样保持未知（F3）。
+
+需额外覆盖：POST 尚在执行/尚未到达、GET 先返回无记录、旧 POST 随后写入的**在途竞态**——仅写「同库一致读/事务」不足以排除请求先后与在途处理窗口，需 D 交付对应竞态测试。
 
 ## 安全新尝试条件
 
-仅当「查询**确认无记录**（`NotFound`）」或「服务端明确拒绝」才允许换新 `attemptId` 并删除旧照；查询故障/处理中/未知一律不得触发新尝试。
+- **服务端明确拒绝**（`CHALLENGE_EXPIRED` / `IDEMPOTENCY_CONFLICT` 等明确 4xx）→ 可换新 `attemptId` 并删除旧照。
+- **查询 `NotFound`**：终态保证成立前**不**作为安全新尝试依据（保持 `UNKNOWN`）；待 D 落地可靠终态 + 在途竞态测试后，再由 `recover`/`onUnknownOutcome` 放行。
+- 查询 `Processing` / `Unavailable` / 未知一律不得触发新尝试。
 
 ## 拍前 challenge 与照片关联
 
@@ -55,7 +65,7 @@ X-Request-Id: <uuid>
 
 - `CheckInApi.queryCheckIn(attemptId): CheckInQueryResult`：HTTP 层按上表解析，核验 `CHECKIN_NOT_FOUND`，未配置/普通 404/405/5xx/超时归 `Unavailable`。
 - `CheckInRepository.queryCheckIn(attemptId)`：接口签名按 attempt。
-- `CheckInSubmitCoordinator.recover(attemptId)`：独立查询入口（不重放 POST、不依赖本地冻结内容），供 UNKNOWN 草稿恢复。
+- `CheckInSubmitCoordinator.recover(attemptId)`：独立查询入口（不重放 POST、不依赖本地冻结内容），供 UNKNOWN 草稿恢复；对 `NotFound` 保持 `UNKNOWN`（F3）。
 - `CheckInQueryResult` 四态模型见 `core/checkin/CheckInQueryResult.kt`。
 
 ## 服务端待办（D）
@@ -64,3 +74,4 @@ X-Request-Id: <uuid>
 2. 返回 200 / 202 / 404(`CHECKIN_NOT_FOUND`) 三态语义（含 PROCESSING）。
 3. challenge `consumed` 语义（同事务「校验→消费→建记录」）。
 4. `geo.ts` 精度 50m→30m（`validateLocationAccuracy` / `isWithinRadius` / `assertWithinCheckInArea`）。
+5. **可靠终态语义 + 在途 POST 竞态测试**（F3）：只有「可靠结束并阻止旧请求后续生效」才提供可安全放弃的终态；否则 `CHECKIN_NOT_FOUND` 仅表示「暂未查到」，客户端继续保护旧 attempt。
