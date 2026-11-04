@@ -102,6 +102,9 @@ data class CheckInDraft(
     val landmarkId: String,
     val localPhoto: LocalPhotoRef?,
     val uploadedPhotoId: String? = null,
+    val challengeId: String? = null,
+    val challengeExpiresAt: Instant? = null,
+    val frozenLocation: LocationSample? = null,
     val uploadState: UploadState,
     val createdAt: Instant,
     val updatedAt: Instant,
@@ -146,6 +149,8 @@ enum class UploadState {
     UPLOADING,
     UPLOADED,
     FAILED,
+    /** 提交结果未知（网络中断/服务端 5xx/查询故障）：保留照片与冻结内容，仅可同 key 重试。 */
+    UNKNOWN,
     CONFIRMED,
 }
 
