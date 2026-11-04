@@ -6,6 +6,16 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+
+
+
+
+
+
+
+
+
+
 android {
     namespace = "com.bitse.geotreasure"
     compileSdk = 35
@@ -19,17 +29,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+
+
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
+@@ -48,50 +33,52 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
@@ -39,17 +52,27 @@ android {
 
     buildFeatures {
         compose = true
+
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+
+
+
+
+
+
+
+
     }
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -62,6 +85,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     debugImplementation(libs.androidx.ui.tooling)
+
+
 
     implementation(libs.androidx.navigation.compose)
 
@@ -81,4 +106,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+
+
+
 }
