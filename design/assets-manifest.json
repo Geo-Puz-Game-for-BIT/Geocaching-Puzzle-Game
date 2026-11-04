@@ -1,5 +1,5 @@
 {
-  "$comment": "资源与来源清单 v1.5（复审确认：仓库提供 HTML 原型，actual 可在仓库内执行）。界面状态用稳定引用（protoUrl / Figma 帧键 / PDF 页码）登记，不要求交付重复导出物。改素材后重跑 node design/tools/build-manifest.mjs",
+  "$comment": "资源与来源清单（复审确认：仓库提供 HTML 原型，actual 可在仓库内执行）。界面状态用稳定引用（protoUrl / Figma 帧键 / PDF 页码）登记，不要求交付重复导出物。改素材后重跑 node design/tools/build-manifest.mjs",
   "project": "校园地标 Geocaching · 题目三第 4 组",
   "version": "v1.5（2026-11-05 复审确认：仓库提供 HTML 原型，tokens.mjs actual 记 RUN；v1.4 = 变体态补基准 PDF 页码；v1.3 = 地标对应关系 + 显式 Figma 帧键 + 交付路径口径）",
   "generatedAt": "2026-11-04 17:24:38",
