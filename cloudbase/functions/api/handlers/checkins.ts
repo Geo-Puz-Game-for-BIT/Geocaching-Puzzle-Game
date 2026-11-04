@@ -2,12 +2,19 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { z } from "zod";
 
-import { insertRow, insertRowIfAbsent, PostgrestError, selectRows } from "../db.ts";
+import {
+  insertRow,
+  insertRowIfAbsent,
+  PostgrestError,
+  selectRows,
+  updateRows,
+} from "../db.ts";
 import { ApiError } from "../errors.ts";
 import {
   assertWithinCheckInArea,
   distanceMeters,
   validateLocationAccuracy,
+  validateLocationTime,
 } from "../geo.ts";
 import { requireActiveLandmark } from "./landmarks.ts";
 
@@ -22,6 +29,12 @@ const checkInSchema = z.object({
     }),
     accuracyMeters: z.number().nonnegative(),
     capturedAt: z.string().datetime(),
+    source: z
+      .enum(["GPS", "WIFI", "CELL", "NETWORK", "CACHE", "DEMO", "UNKNOWN"])
+      .optional()
+      .default("UNKNOWN"),
+    elapsedRealtimeNanos: z.number().int().nonnegative().optional(),
+    submittedElapsedRealtimeNanos: z.number().int().nonnegative().optional(),
   }),
 });
 
@@ -57,6 +70,17 @@ interface GrantRow {
   granted_at: string;
 }
 
+interface CheckInAttemptRow {
+  id: string;
+  user_id: string;
+  request_hash: string;
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  check_in_id: string | null;
+  failure_code: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CheckInReceipt {
   checkInId: string;
   status: "COMPLETED" | "ALREADY_COMPLETED";
@@ -68,6 +92,11 @@ export interface CheckInReceipt {
   };
 }
 
+export type CheckInAttemptQueryResult =
+  | { kind: "completed"; receipt: CheckInReceipt }
+  | { kind: "processing" }
+  | { kind: "not_found"; attemptId: string };
+
 function requestHash(input: z.infer<typeof checkInSchema>): string {
   const canonical = JSON.stringify([
     input.landmarkId,
@@ -77,12 +106,15 @@ function requestHash(input: z.infer<typeof checkInSchema>): string {
     input.location.point.longitude,
     input.location.accuracyMeters,
     input.location.capturedAt,
+    input.location.source,
+    input.location.elapsedRealtimeNanos ?? null,
+    input.location.submittedElapsedRealtimeNanos ?? null,
   ]);
   return createHash("sha256").update(canonical).digest("hex");
 }
 
 async function findCheckIn(
-  field: "landmark_id" | "idempotency_key",
+  field: "id" | "landmark_id" | "idempotency_key",
   userId: string,
   value: string,
 ): Promise<CheckInRow | null> {
@@ -94,6 +126,106 @@ async function findCheckIn(
     limit: "1",
   });
   return rows[0] ?? null;
+}
+
+async function findCheckInAttempt(
+  userId: string,
+  attemptId: string,
+): Promise<CheckInAttemptRow | null> {
+  const rows = await selectRows<CheckInAttemptRow>("checkin_attempts", {
+    select:
+      "id,user_id,request_hash,status,check_in_id,failure_code,created_at,updated_at",
+    id: `eq.${attemptId}`,
+    user_id: `eq.${userId}`,
+    limit: "1",
+  });
+  return rows[0] ?? null;
+}
+
+async function beginCheckInAttempt(
+  userId: string,
+  attemptId: string,
+  requestHashValue: string,
+): Promise<CheckInAttemptRow> {
+  let attempt = await findCheckInAttempt(userId, attemptId);
+  if (!attempt) {
+    const inserted = await insertRowIfAbsent<CheckInAttemptRow>("checkin_attempts", {
+      id: attemptId,
+      user_id: userId,
+      request_hash: requestHashValue,
+      status: "PROCESSING",
+    });
+    attempt = inserted ?? await findCheckInAttempt(userId, attemptId);
+  }
+  if (!attempt) {
+    throw new ApiError(
+      "IDEMPOTENCY_CONFLICT",
+      "The attempt identifier is already owned by another user",
+    );
+  }
+  if (attempt.request_hash !== requestHashValue) {
+    throw new ApiError(
+      "IDEMPOTENCY_CONFLICT",
+      "The Idempotency-Key was already used with a different request",
+    );
+  }
+  if (attempt.status === "FAILED") {
+    const rows = await updateRows<CheckInAttemptRow>(
+      "checkin_attempts",
+      {
+        id: `eq.${attemptId}`,
+        user_id: `eq.${userId}`,
+        status: "eq.FAILED",
+      },
+      {
+        status: "PROCESSING",
+        failure_code: null,
+        updated_at: new Date().toISOString(),
+      },
+    );
+    attempt = rows[0] ?? { ...attempt, status: "PROCESSING", failure_code: null };
+  }
+  return attempt;
+}
+
+async function markAttemptCompleted(
+  userId: string,
+  attemptId: string,
+  checkInId: string,
+): Promise<void> {
+  await updateRows("checkin_attempts", {
+    id: `eq.${attemptId}`,
+    user_id: `eq.${userId}`,
+  }, {
+    status: "COMPLETED",
+    check_in_id: checkInId,
+    failure_code: null,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function markAttemptFailed(
+  userId: string,
+  attemptId: string,
+  failureCode: string,
+): Promise<void> {
+  try {
+    await updateRows("checkin_attempts", {
+      id: `eq.${attemptId}`,
+      user_id: `eq.${userId}`,
+      status: "eq.PROCESSING",
+    }, {
+      status: "FAILED",
+      failure_code: failureCode,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Unable to persist failed check-in attempt", {
+      attemptId,
+      failureCode,
+      error,
+    });
+  }
 }
 
 async function getTask(landmarkId: string): Promise<TaskRow | null> {
@@ -235,6 +367,44 @@ function translateChallengeError(error: unknown): void {
   }
 }
 
+export async function queryCheckInAttempt(
+  userId: string,
+  attemptId: string,
+  requestId: string,
+): Promise<CheckInAttemptQueryResult> {
+  if (!attemptId || attemptId.length > 128) {
+    throw new ApiError("INVALID_REQUEST", "A valid attemptId is required");
+  }
+
+  const attempt = await findCheckInAttempt(userId, attemptId);
+  if (!attempt) {
+    const legacy = await findCheckIn("idempotency_key", userId, attemptId);
+    if (legacy) {
+      return {
+        kind: "completed",
+        receipt: await toReceipt(legacy, "COMPLETED", requestId),
+      };
+    }
+    return { kind: "not_found", attemptId };
+  }
+
+  if (attempt.status === "PROCESSING") {
+    return { kind: "processing" };
+  }
+  if (attempt.status === "FAILED" || !attempt.check_in_id) {
+    return { kind: "not_found", attemptId };
+  }
+
+  const checkIn = await findCheckIn("id", userId, attempt.check_in_id);
+  if (!checkIn) {
+    return { kind: "not_found", attemptId };
+  }
+  return {
+    kind: "completed",
+    receipt: await toReceipt(checkIn, "COMPLETED", requestId),
+  };
+}
+
 export async function submitCheckIn(
   userId: string,
   requestId: string,
@@ -254,88 +424,120 @@ export async function submitCheckIn(
     throw new ApiError("INVALID_REQUEST", "A valid Idempotency-Key header is required");
   }
 
-  const prior = await findCheckIn("idempotency_key", userId, idempotencyKey);
-  if (prior) {
-    if (prior.request_hash !== hash) {
-      throw new ApiError(
-        "IDEMPOTENCY_CONFLICT",
-        "The Idempotency-Key was already used with a different request",
-      );
+  const attempt = await beginCheckInAttempt(userId, idempotencyKey, hash);
+  if (attempt.status === "COMPLETED" && attempt.check_in_id) {
+    const completedAttempt = await findCheckIn("id", userId, attempt.check_in_id);
+    if (completedAttempt) {
+      return toReceipt(completedAttempt, "COMPLETED", requestId);
     }
-    return toReceipt(prior, "COMPLETED", requestId);
   }
 
-  const completed = await findCheckIn("landmark_id", userId, input.landmarkId);
-  if (completed) {
-    return toReceipt(completed, "ALREADY_COMPLETED", requestId);
-  }
-
-  const photoRows = await selectRows<{ id: string }>("photos", {
-    select: "id",
-    id: `eq.${input.photoId}`,
-    user_id: `eq.${userId}`,
-    limit: "1",
-  });
-  if (!photoRows[0]) {
-    throw new ApiError("PHOTO_REQUIRED", "A valid uploaded photo is required");
-  }
-
-  validateLocationAccuracy(input.location.accuracyMeters);
-
-  const landmark = await requireActiveLandmark(input.landmarkId);
-  const distance = distanceMeters(input.location.point, {
-    latitude: landmark.latitude,
-    longitude: landmark.longitude,
-  });
-  const checkInArea =
-    landmark.check_in_area ?? {
-      type: "circle" as const,
-      radiusMeters: landmark.check_in_radius_meters,
-    };
-  assertWithinCheckInArea(
-    {
-      latitude: landmark.latitude,
-      longitude: landmark.longitude,
-    },
-    input.location.point,
-    input.location.accuracyMeters,
-    checkInArea,
-  );
-
-  let checkIn: CheckInRow;
   try {
-    checkIn = await insertRow<CheckInRow>("checkins", {
-      id: `chk_${randomUUID()}`,
-      user_id: userId,
-      landmark_id: input.landmarkId,
-      challenge_id: input.challengeId,
-      photo_id: input.photoId,
-      distance_meters: distance,
-      accuracy_meters: input.location.accuracyMeters,
-      idempotency_key: idempotencyKey,
-      request_hash: hash,
-      request_id: requestId,
-    });
-  } catch (error) {
-    const sameKey = await findCheckIn("idempotency_key", userId, idempotencyKey);
-    if (sameKey) {
-      if (sameKey.request_hash !== hash) {
+    const prior = await findCheckIn("idempotency_key", userId, idempotencyKey);
+    if (prior) {
+      if (prior.request_hash !== hash) {
         throw new ApiError(
           "IDEMPOTENCY_CONFLICT",
           "The Idempotency-Key was already used with a different request",
         );
       }
-      return toReceipt(sameKey, "COMPLETED", requestId);
+      await markAttemptCompleted(userId, idempotencyKey, prior.id);
+      return toReceipt(prior, "COMPLETED", requestId);
     }
 
-    const sameLandmark = await findCheckIn("landmark_id", userId, input.landmarkId);
-    if (sameLandmark) {
-      return toReceipt(sameLandmark, "ALREADY_COMPLETED", requestId);
+    const completed = await findCheckIn("landmark_id", userId, input.landmarkId);
+    if (completed) {
+      await markAttemptCompleted(userId, idempotencyKey, completed.id);
+      return toReceipt(completed, "ALREADY_COMPLETED", requestId);
     }
 
-    translateChallengeError(error);
+    const photoRows = await selectRows<{
+      id: string;
+      challenge_id: string | null;
+      deleted_at: string | null;
+    }>("photos", {
+      select: "id,challenge_id,deleted_at",
+      id: `eq.${input.photoId}`,
+      user_id: `eq.${userId}`,
+      limit: "1",
+    });
+    const photo = photoRows[0];
+    if (!photo || photo.deleted_at) {
+      throw new ApiError("PHOTO_REQUIRED", "A valid uploaded photo is required");
+    }
+    if (photo.challenge_id && photo.challenge_id !== input.challengeId) {
+      throw new ApiError("PHOTO_INVALID", "The photo belongs to a different challenge");
+    }
+
+    validateLocationTime(input.location);
+    validateLocationAccuracy(input.location.accuracyMeters);
+
+    const landmark = await requireActiveLandmark(input.landmarkId);
+    const distance = distanceMeters(input.location.point, {
+      latitude: landmark.latitude,
+      longitude: landmark.longitude,
+    });
+    const checkInArea =
+      landmark.check_in_area ?? {
+        type: "circle" as const,
+        radiusMeters: landmark.check_in_radius_meters,
+      };
+    assertWithinCheckInArea(
+      {
+        latitude: landmark.latitude,
+        longitude: landmark.longitude,
+      },
+      input.location.point,
+      input.location.accuracyMeters,
+      checkInArea,
+    );
+
+    let checkIn: CheckInRow;
+    try {
+      checkIn = await insertRow<CheckInRow>("checkins", {
+        id: `chk_${randomUUID()}`,
+        user_id: userId,
+        landmark_id: input.landmarkId,
+        challenge_id: input.challengeId,
+        photo_id: input.photoId,
+        distance_meters: distance,
+        accuracy_meters: input.location.accuracyMeters,
+        idempotency_key: idempotencyKey,
+        request_hash: hash,
+        request_id: requestId,
+        location_source: input.location.source,
+        captured_at: input.location.capturedAt,
+        elapsed_realtime_nanos: input.location.elapsedRealtimeNanos ?? null,
+      });
+    } catch (error) {
+      const sameKey = await findCheckIn("idempotency_key", userId, idempotencyKey);
+      if (sameKey) {
+        if (sameKey.request_hash !== hash) {
+          throw new ApiError(
+            "IDEMPOTENCY_CONFLICT",
+            "The Idempotency-Key was already used with a different request",
+          );
+        }
+        await markAttemptCompleted(userId, idempotencyKey, sameKey.id);
+        return toReceipt(sameKey, "COMPLETED", requestId);
+      }
+
+      const sameLandmark = await findCheckIn("landmark_id", userId, input.landmarkId);
+      if (sameLandmark) {
+        await markAttemptCompleted(userId, idempotencyKey, sameLandmark.id);
+        return toReceipt(sameLandmark, "ALREADY_COMPLETED", requestId);
+      }
+
+      translateChallengeError(error);
+      throw error;
+    }
+
+    await markAttemptCompleted(userId, idempotencyKey, checkIn.id);
+    return toReceipt(checkIn, "COMPLETED", requestId);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      await markAttemptFailed(userId, idempotencyKey, error.code);
+    }
     throw error;
   }
-
-  return toReceipt(checkIn, "COMPLETED", requestId);
 }

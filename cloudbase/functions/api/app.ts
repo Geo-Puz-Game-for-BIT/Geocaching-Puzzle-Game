@@ -4,9 +4,9 @@ import { requireUserId } from "./auth.ts";
 import { ApiError } from "./errors.ts";
 import { healthHandler } from "./handlers/health.ts";
 import { createCheckInChallenge } from "./handlers/challenges.ts";
-import { submitCheckIn } from "./handlers/checkins.ts";
+import { queryCheckInAttempt, submitCheckIn } from "./handlers/checkins.ts";
 import { listNearbyLandmarks } from "./handlers/landmarks.ts";
-import { storeCheckInPhoto } from "./handlers/photos.ts";
+import { deleteCheckInPhoto, storeCheckInPhoto } from "./handlers/photos.ts";
 import { getPuzzleProgress } from "./handlers/puzzles.ts";
 import { getRequestId, readJsonBody, sendJson, statusForErrorCode, toApiError } from "./http.ts";
 
@@ -88,9 +88,47 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       return;
     }
 
+    const photoDeleteMatch = /^\/api\/v1\/checkin-photos\/([^/]+)$/.exec(pathname);
+    if (photoDeleteMatch) {
+      if (request.method !== "DELETE") {
+        response.writeHead(405, { Allow: "DELETE" });
+        response.end("Method Not Allowed");
+        return;
+      }
+      const photoId = decodeURIComponent(photoDeleteMatch[1] ?? "");
+      const data = await deleteCheckInPhoto(userId, photoId, requestId);
+      sendJson(response, data.storageCleanup === "PENDING" ? 202 : 200, requestId, {
+        requestId,
+        data,
+      });
+      return;
+    }
+
     if (pathname === "/api/v1/checkins") {
+      if (request.method === "GET") {
+        const attemptId = url.searchParams.get("attemptId");
+        if (!attemptId) {
+          throw new ApiError("INVALID_REQUEST", "attemptId query parameter is required");
+        }
+        const result = await queryCheckInAttempt(userId, attemptId, requestId);
+        if (result.kind === "completed") {
+          sendJson(response, 200, requestId, { requestId, data: result.receipt });
+          return;
+        }
+        if (result.kind === "processing") {
+          sendJson(response, 202, requestId, {
+            requestId,
+            data: { attemptId, status: "PROCESSING" },
+          });
+          return;
+        }
+        throw new ApiError("CHECKIN_NOT_FOUND", "No successful check-in exists for this attempt", {
+          details: { attemptId },
+        });
+      }
+
       if (request.method !== "POST") {
-        response.writeHead(405, { Allow: "POST" });
+        response.writeHead(405, { Allow: "GET, POST" });
         response.end("Method Not Allowed");
         return;
       }

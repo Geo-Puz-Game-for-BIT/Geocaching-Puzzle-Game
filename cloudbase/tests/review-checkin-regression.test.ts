@@ -23,8 +23,20 @@ interface FakeGrant {
   granted_at: string;
 }
 
+interface FakeAttempt {
+  id: string;
+  user_id: string;
+  request_hash: string;
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  check_in_id: string | null;
+  failure_code: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface FakeState {
   checkins: FakeCheckIn[];
+  attempts: FakeAttempt[];
   grants: FakeGrant[];
   audits: Record<string, unknown>[];
   validChallenges: Set<string>;
@@ -51,6 +63,7 @@ const fragment = {
   puzzle_id: "pzl_campus_01",
   piece_index: 0,
 };
+const testCapturedAt = new Date().toISOString();
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -75,6 +88,46 @@ function installFetch(state: FakeState): void {
           ? (JSON.parse(init.body) as Record<string, unknown>)
           : undefined;
       const get = (key: string) => url.searchParams.get(key);
+
+      if (table === "checkin_attempts" && method === "GET") {
+        return jsonResponse(
+          state.attempts.filter(
+            (row) =>
+              (!get("id") || row.id === eqValue(get("id"))) &&
+              (!get("user_id") || row.user_id === eqValue(get("user_id"))) &&
+              (!get("status") || row.status === eqValue(get("status"))),
+          ),
+        );
+      }
+
+      if (table === "checkin_attempts" && method === "POST") {
+        if (state.attempts.some((row) => row.id === body?.id)) {
+          return jsonResponse({ message: "duplicate attempt" }, 409);
+        }
+        const attempt: FakeAttempt = {
+          id: String(body?.id),
+          user_id: String(body?.user_id),
+          request_hash: String(body?.request_hash),
+          status: "PROCESSING",
+          check_in_id: null,
+          failure_code: null,
+          created_at: "2026-10-20T08:17:20.000Z",
+          updated_at: "2026-10-20T08:17:20.000Z",
+        };
+        state.attempts.push(attempt);
+        return jsonResponse([attempt]);
+      }
+
+      if (table === "checkin_attempts" && method === "PATCH") {
+        const matches = state.attempts.filter(
+          (row) =>
+            row.id === eqValue(get("id")) &&
+            row.user_id === eqValue(get("user_id")) &&
+            (!get("status") || row.status === eqValue(get("status"))),
+        );
+        matches.forEach((row) => Object.assign(row, body));
+        return jsonResponse(matches);
+      }
 
       if (table === "checkins" && method === "GET") {
         return jsonResponse(
@@ -168,6 +221,7 @@ function installFetch(state: FakeState): void {
 function newState(overrides: Partial<FakeState> = {}): FakeState {
   return {
     checkins: [],
+    attempts: [],
     grants: [],
     audits: [],
     validChallenges: new Set(["chl_test"]),
@@ -186,7 +240,7 @@ function validBody(overrides: Record<string, unknown> = {}) {
     location: {
       point: { latitude: 39.9592, longitude: 116.3083 },
       accuracyMeters: 10,
-      capturedAt: "2026-10-20T08:17:21.000Z",
+      capturedAt: testCapturedAt,
     },
     ...overrides,
   };
