@@ -61,13 +61,14 @@ fun SubmitOutcome.resolution(): SubmitResolution = when (this) {
 /**
  * 打卡提交编排（纯 Kotlin，可注入 fake repository 做 JVM 单测）。
  *
- * 落实 C-N01/C-N02 规则：
+ * 落实 C-N01/C-N02 / R1~R4 规则：
  * - 幂等键用稳定 [attemptId]（每次新尝试独立生成，由调用方保证）；
  * - 请求内容（challengeId / photoId / location）由调用方冻结后传入，同一尝试重试不换内容；
  * - 结果未知（网络中断 / 服务端 5xx 可重试）先查询，确认未成功才允许重试；
  * - 挑战过期先查旧结果，确认未成功再由调用方换新挑战重拍；
- * - 查询本身要区分「确认无记录（404）」与「查询故障（超时/405/5xx/异常）」，
- *   只有「确认无记录」才能判定为明确未成功，查询故障一律归为未知；
+ * - 查询按 **attempt** 身份识别，不用「某地标历史成功」替代本次 attempt 结果；
+ * - 查询只把「服务端特定 404 CHECKIN_NOT_FOUND」判为明确无记录，普通 404/405/5xx/超时/未配置一律未知；
+ * - 已发出提交的 attempt 提供独立的 [recover] 查询入口（不重放 POST、不依赖本地冻结内容）；
  * - 只有拿到有效成功回执才由调用方更新成果，本类绝不自行发奖。
  */
 class CheckInSubmitCoordinator(
@@ -91,50 +92,66 @@ class CheckInSubmitCoordinator(
             SubmitOutcome.Success(repository.submitCheckIn(request, attemptId))
         } catch (e: Throwable) {
             when {
-                isChallengeExpired(e) -> onChallengeExpired(e, landmarkId)
-                isUnknownOutcome(e) -> onUnknownOutcome(e, landmarkId)
-                isIdempotencyConflict(e) -> onIdempotencyConflict(e, landmarkId)
+                isChallengeExpired(e) -> onChallengeExpired(e, attemptId)
+                isUnknownOutcome(e) -> onUnknownOutcome(e, attemptId)
+                isIdempotencyConflict(e) -> onIdempotencyConflict(e, attemptId)
                 else -> SubmitOutcome.Failed(e, unknownResult = false)
             }
         }
     }
 
-    private suspend fun onChallengeExpired(e: Throwable, landmarkId: String): SubmitOutcome =
-        when (val q = queryStatus(landmarkId)) {
-            is QueryStatus.Found -> SubmitOutcome.ChallengeExpired(q.receipt, unknownResult = false)
-            QueryStatus.NotFound -> SubmitOutcome.ChallengeExpired(null, unknownResult = false)
-            QueryStatus.Unavailable -> SubmitOutcome.ChallengeExpired(null, unknownResult = true)
+    /**
+     * 已发出提交的 attempt 的恢复入口：只按 [attemptId] 查询，不重放 POST、不依赖本地冻结内容。
+     * 用于 UNKNOWN 草稿恢复 / 结果未知后的「重试恢复」。
+     */
+    suspend fun recover(attemptId: String): SubmitOutcome =
+        when (val q = queryStatus(attemptId)) {
+            is CheckInQueryResult.Success -> SubmitOutcome.Recovered(q.receipt)
+            CheckInQueryResult.NotFound -> SubmitOutcome.Failed(
+                CheckInApiException("CHECKIN_NOT_FOUND", false, "本次尝试未成功"),
+                unknownResult = false,
+            )
+            CheckInQueryResult.Processing -> SubmitOutcome.Failed(
+                CheckInApiException("RECOVERY_PROCESSING", true, "服务端处理中，请稍后重试"),
+                unknownResult = true,
+            )
+            CheckInQueryResult.Unavailable -> SubmitOutcome.Failed(
+                CheckInApiException("RECOVERY_UNAVAILABLE", true, "无法确认上次结果，请稍后重试"),
+                unknownResult = true,
+            )
         }
 
-    private suspend fun onUnknownOutcome(e: Throwable, landmarkId: String): SubmitOutcome =
-        when (val q = queryStatus(landmarkId)) {
-            is QueryStatus.Found -> SubmitOutcome.Recovered(q.receipt)
+    private suspend fun onChallengeExpired(e: Throwable, attemptId: String): SubmitOutcome =
+        when (val q = queryStatus(attemptId)) {
+            is CheckInQueryResult.Success -> SubmitOutcome.ChallengeExpired(q.receipt, unknownResult = false)
+            CheckInQueryResult.NotFound -> SubmitOutcome.ChallengeExpired(null, unknownResult = false)
+            CheckInQueryResult.Processing -> SubmitOutcome.ChallengeExpired(null, unknownResult = true)
+            CheckInQueryResult.Unavailable -> SubmitOutcome.ChallengeExpired(null, unknownResult = true)
+        }
+
+    private suspend fun onUnknownOutcome(e: Throwable, attemptId: String): SubmitOutcome =
+        when (val q = queryStatus(attemptId)) {
+            is CheckInQueryResult.Success -> SubmitOutcome.Recovered(q.receipt)
             // 提交自身结果未知（可能已到达服务端），查询确认无记录也不能排除竞态 → 保持未知
-            QueryStatus.NotFound -> SubmitOutcome.Failed(e, unknownResult = true)
-            QueryStatus.Unavailable -> SubmitOutcome.Failed(e, unknownResult = true)
+            CheckInQueryResult.NotFound -> SubmitOutcome.Failed(e, unknownResult = true)
+            CheckInQueryResult.Processing -> SubmitOutcome.Failed(e, unknownResult = true)
+            CheckInQueryResult.Unavailable -> SubmitOutcome.Failed(e, unknownResult = true)
         }
 
-    private suspend fun onIdempotencyConflict(e: Throwable, landmarkId: String): SubmitOutcome =
-        when (val q = queryStatus(landmarkId)) {
-            is QueryStatus.Found -> SubmitOutcome.Recovered(q.receipt)
+    private suspend fun onIdempotencyConflict(e: Throwable, attemptId: String): SubmitOutcome =
+        when (val q = queryStatus(attemptId)) {
+            is CheckInQueryResult.Success -> SubmitOutcome.Recovered(q.receipt)
             // 服务端明确拒绝（幂等冲突），查询确认无记录即「明确未成功」
-            QueryStatus.NotFound -> SubmitOutcome.Failed(e, unknownResult = false)
-            QueryStatus.Unavailable -> SubmitOutcome.Failed(e, unknownResult = true)
+            CheckInQueryResult.NotFound -> SubmitOutcome.Failed(e, unknownResult = false)
+            CheckInQueryResult.Processing -> SubmitOutcome.Failed(e, unknownResult = true)
+            CheckInQueryResult.Unavailable -> SubmitOutcome.Failed(e, unknownResult = true)
         }
 
-    /** 查询结果三态：确认成功 / 确认无记录 / 查询故障。 */
-    private sealed interface QueryStatus {
-        data class Found(val receipt: CheckInReceipt) : QueryStatus
-        data object NotFound : QueryStatus
-        data object Unavailable : QueryStatus
-    }
-
-    private suspend fun queryStatus(landmarkId: String): QueryStatus =
+    private suspend fun queryStatus(attemptId: String): CheckInQueryResult =
         try {
-            val receipt = repository.queryCheckIn(landmarkId)
-            if (receipt != null) QueryStatus.Found(receipt) else QueryStatus.NotFound
+            repository.queryCheckIn(attemptId)
         } catch (e: Throwable) {
-            QueryStatus.Unavailable
+            CheckInQueryResult.Unavailable
         }
 
     private fun isChallengeExpired(e: Throwable): Boolean =

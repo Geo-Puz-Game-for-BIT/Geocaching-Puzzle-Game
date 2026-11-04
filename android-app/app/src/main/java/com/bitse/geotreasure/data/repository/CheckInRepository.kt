@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.repository
 
+import com.bitse.geotreasure.core.checkin.CheckInQueryResult
 import com.bitse.geotreasure.core.model.CheckInChallenge
 import com.bitse.geotreasure.core.model.CheckInReceipt
 import com.bitse.geotreasure.core.model.SubmitCheckInRequest
@@ -20,8 +21,8 @@ interface CheckInRepository {
     /** 提交打卡（幂等键 [idempotencyKey] = attemptId，内容须已冻结）。 */
     suspend fun submitCheckIn(request: SubmitCheckInRequest, idempotencyKey: String): CheckInReceipt
 
-    /** 查询地标是否已打卡成功（幂等恢复用）。无记录返回 null。 */
-    suspend fun queryCheckIn(landmarkId: String): CheckInReceipt?
+    /** 按 attemptId 查询本次尝试是否已成功（幂等恢复用），返回有类型结果。 */
+    suspend fun queryCheckIn(attemptId: String): CheckInQueryResult
 }
 
 /**
@@ -40,6 +41,6 @@ class RemoteCheckInRepository(private val api: CheckInApi) : CheckInRepository {
         idempotencyKey: String,
     ): CheckInReceipt = withContext(Dispatchers.IO) { api.submitCheckIn(request, idempotencyKey) }
 
-    override suspend fun queryCheckIn(landmarkId: String): CheckInReceipt? =
-        withContext(Dispatchers.IO) { api.queryCheckIn(landmarkId) }
+    override suspend fun queryCheckIn(attemptId: String): CheckInQueryResult =
+        withContext(Dispatchers.IO) { api.queryCheckIn(attemptId) }
 }

@@ -104,6 +104,7 @@ data class CheckInDraft(
     val uploadedPhotoId: String? = null,
     val challengeId: String? = null,
     val challengeExpiresAt: Instant? = null,
+    val frozenLocation: LocationSample? = null,
     val uploadState: UploadState,
     val createdAt: Instant,
     val updatedAt: Instant,

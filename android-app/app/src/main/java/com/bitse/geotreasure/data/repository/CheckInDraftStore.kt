@@ -3,12 +3,17 @@ package com.bitse.geotreasure.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bitse.geotreasure.core.model.CheckInDraft
+import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.LocalPhotoRef
+import com.bitse.geotreasure.core.model.LocationSample
+import com.bitse.geotreasure.core.model.LocationSourceKind
 import com.bitse.geotreasure.core.model.UploadState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -38,10 +43,29 @@ class CheckInDraftStore(private val context: Context) {
     private val uploadStateKey = stringPreferencesKey("upload_state")
     private val createdAtKey = longPreferencesKey("created_at")
     private val updatedAtKey = longPreferencesKey("updated_at")
+    private val frozenLatKey = doublePreferencesKey("frozen_lat")
+    private val frozenLonKey = doublePreferencesKey("frozen_lon")
+    private val frozenAccuracyKey = floatPreferencesKey("frozen_accuracy")
+    private val frozenCapturedAtKey = longPreferencesKey("frozen_captured_at")
+    private val frozenSourceKey = stringPreferencesKey("frozen_source")
 
     val draft: Flow<CheckInDraft?> = appContext.checkInDraftDataStore.data.map { prefs ->
         val id = prefs[draftIdKey] ?: return@map null
         val photoPath = prefs[photoPathKey]
+        val frozenLat = prefs[frozenLatKey]
+        val frozenLon = prefs[frozenLonKey]
+        val frozenLocation = if (frozenLat != null && frozenLon != null) {
+            LocationSample(
+                point = GeoPoint(frozenLat, frozenLon),
+                accuracyMeters = prefs[frozenAccuracyKey] ?: 0f,
+                capturedAt = Instant.fromEpochMilliseconds(prefs[frozenCapturedAtKey] ?: 0L),
+                source = prefs[frozenSourceKey]
+                    ?.let { runCatching { LocationSourceKind.valueOf(it) }.getOrNull() }
+                    ?: LocationSourceKind.UNKNOWN,
+            )
+        } else {
+            null
+        }
         CheckInDraft(
             id = id,
             landmarkId = prefs[landmarkIdKey] ?: "",
@@ -56,6 +80,7 @@ class CheckInDraftStore(private val context: Context) {
             challengeId = prefs[challengeIdKey],
             challengeExpiresAt = prefs[challengeExpiresAtKey]
                 ?.let { Instant.fromEpochMilliseconds(it) },
+            frozenLocation = frozenLocation,
             uploadState = prefs[uploadStateKey]
                 ?.let { runCatching { UploadState.valueOf(it) }.getOrNull() }
                 ?: UploadState.EMPTY,
@@ -86,6 +111,20 @@ class CheckInDraftStore(private val context: Context) {
                 ?: prefs.remove(challengeIdKey)
             draft.challengeExpiresAt?.let { prefs[challengeExpiresAtKey] = it.toEpochMilliseconds() }
                 ?: prefs.remove(challengeExpiresAtKey)
+            val frozen = draft.frozenLocation
+            if (frozen != null) {
+                prefs[frozenLatKey] = frozen.point.latitude
+                prefs[frozenLonKey] = frozen.point.longitude
+                prefs[frozenAccuracyKey] = frozen.accuracyMeters
+                prefs[frozenCapturedAtKey] = frozen.capturedAt.toEpochMilliseconds()
+                prefs[frozenSourceKey] = frozen.source.name
+            } else {
+                prefs.remove(frozenLatKey)
+                prefs.remove(frozenLonKey)
+                prefs.remove(frozenAccuracyKey)
+                prefs.remove(frozenCapturedAtKey)
+                prefs.remove(frozenSourceKey)
+            }
             prefs[uploadStateKey] = draft.uploadState.name
             prefs[createdAtKey] = draft.createdAt.toEpochMilliseconds()
             prefs[updatedAtKey] = draft.updatedAt.toEpochMilliseconds()
