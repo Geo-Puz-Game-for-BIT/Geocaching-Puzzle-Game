@@ -1,13 +1,13 @@
 {
-  "$comment": "资源与来源清单 v1.3（PR#8：地标对应关系 + 显式图帧键 + 交付路径口径）。来源确认（source.confirmed）≠ 交付状态（delivery.fileInRepo）；界面状态用稳定引用（protoUrl / Figma 帧键 / PDF 页码）登记，不再要求交付 86 份重复导出物。改素材后重跑 node design/tools/build-manifest.mjs",
+  "$comment": "资源与来源清单 v1.5（复审确认：仓库提供 HTML 原型，actual 可在仓库内执行）。界面状态用稳定引用（protoUrl / Figma 帧键 / PDF 页码）登记，不要求交付重复导出物。改素材后重跑 node design/tools/build-manifest.mjs",
   "project": "校园地标 Geocaching · 题目三第 4 组",
-  "version": "v1.4（2026-11-05 PR#8 复核：变体态补基准 PDF 页码；v1.3 = 地标对应关系 + 显式 Figma 帧键 + 交付路径口径）",
-  "generatedAt": "2026-11-04 16:24:05",
+  "version": "v1.5（2026-11-05 复审确认：仓库提供 HTML 原型，tokens.mjs actual 记 RUN；v1.4 = 变体态补基准 PDF 页码；v1.3 = 地标对应关系 + 显式 Figma 帧键 + 交付路径口径）",
+  "generatedAt": "2026-11-04 17:24:38",
   "owner": "向川（2.3 UI/UX 与美工）",
   "deliveryPolicy": {
-    "repoContains": "仅 design/ 下的源资产（assets、icons、tokens、tools、prototype 源文件）；不含构建产物。",
+    "repoContains": "design/ 下的源资产（assets、icons、tokens、tools）+ 原型源文件 design/prototype/index.html（HTML 已提供，入库）；不含构建产物。",
     "releaseArtifacts": "dist/ 下的 PDF / .fig / zip 为发布物，不入库；以 docs/SHA256-*.txt 的哈希登记，路径不写进本条清单的交付判定。",
-    "html": "本次采用 Figma（.fig）+ PDF 交付，仓库内不提供 HTML 原型；protoUrl 仅供设计工作区内部复现，不作为交付物。",
+    "html": "仓库提供 HTML 原型：源文件 design/prototype/index.html 随包交付（副本 = 交付包 01-可点击原型/拼迹-七页可点击原型.html，与之同哈希 SHA256 b56d6c80…）。2026-11-05 实测：node dist/交付包/04-设计Token/05-token-检查器.mjs all --proto 01-可点击原型/拼迹-七页可点击原型.html → 3/3 通过、退出码 0，actual 在仓库内记 RUN。",
     "screens": "界面状态不登记切图；用 figma.frameKey / frameName + pdf.page 复核，PDF 版本以 manifest 内 pdf.file 为准（当前 v3.1）。"
   },
   "policy": [
