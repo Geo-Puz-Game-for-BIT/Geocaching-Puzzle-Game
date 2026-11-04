@@ -35,6 +35,8 @@ data class LocationSample(
     val accuracyMeters: Float,
     val capturedAt: Instant,
     val source: LocationSourceKind = LocationSourceKind.UNKNOWN,
+    val elapsedRealtimeNanos: Long? = null,
+    val submittedElapsedRealtimeNanos: Long? = null,
 )
 
 enum class LocationSourceKind {
@@ -163,6 +165,12 @@ data class UploadedPhoto(
     val photoId: String,
     val objectKey: String,
     val uploadedAt: Instant,
+)
+
+data class PhotoDeletionResult(
+    val photoId: String,
+    val storageCleanupPending: Boolean,
+    val deleteAfter: Instant,
 )
 
 data class SubmitCheckInRequest(

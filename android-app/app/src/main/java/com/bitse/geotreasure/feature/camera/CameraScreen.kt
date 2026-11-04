@@ -2,6 +2,7 @@ package com.bitse.geotreasure.feature.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -441,7 +442,11 @@ class CameraViewModel(
             var photoId = uploadedPhotoId
             if (photoId == null) {
                 photoId = try {
-                    checkInRepository.uploadPhoto(processed.file).photoId.also {
+                    checkInRepository.uploadPhoto(
+                        photoFile = processed.file,
+                        challengeId = challenge,
+                        attemptId = currentAttemptId,
+                    ).photoId.also {
                         uploadedPhotoId = it
                         persistDraft(
                             localPhoto = LocalPhotoRef(
@@ -458,9 +463,17 @@ class CameraViewModel(
                 }
             }
 
+            val submitLocation = if (location.elapsedRealtimeNanos != null) {
+                location.copy(
+                    submittedElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos(),
+                )
+            } else {
+                location
+            }
+
             // 标记已发送：此后冻结内容不可变，重试即查询恢复（不重放）
             requestSent = true
-            when (val outcome = submitCoordinator.submit(landmarkId, currentAttemptId, challenge, photoId, location)) {
+            when (val outcome = submitCoordinator.submit(landmarkId, currentAttemptId, challenge, photoId, submitLocation)) {
                 is SubmitOutcome.Success -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.ChallengeExpired -> onChallengeExpired(outcome)

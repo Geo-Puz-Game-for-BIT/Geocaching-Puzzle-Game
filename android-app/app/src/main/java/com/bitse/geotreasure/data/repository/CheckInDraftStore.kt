@@ -48,6 +48,7 @@ class CheckInDraftStore(private val context: Context) {
     private val frozenAccuracyKey = floatPreferencesKey("frozen_accuracy")
     private val frozenCapturedAtKey = longPreferencesKey("frozen_captured_at")
     private val frozenSourceKey = stringPreferencesKey("frozen_source")
+    private val frozenElapsedRealtimeKey = longPreferencesKey("frozen_elapsed_realtime_nanos")
 
     val draft: Flow<CheckInDraft?> = appContext.checkInDraftDataStore.data.map { prefs ->
         val id = prefs[draftIdKey] ?: return@map null
@@ -62,6 +63,7 @@ class CheckInDraftStore(private val context: Context) {
                 source = prefs[frozenSourceKey]
                     ?.let { runCatching { LocationSourceKind.valueOf(it) }.getOrNull() }
                     ?: LocationSourceKind.UNKNOWN,
+                elapsedRealtimeNanos = prefs[frozenElapsedRealtimeKey],
             )
         } else {
             null
@@ -118,12 +120,15 @@ class CheckInDraftStore(private val context: Context) {
                 prefs[frozenAccuracyKey] = frozen.accuracyMeters
                 prefs[frozenCapturedAtKey] = frozen.capturedAt.toEpochMilliseconds()
                 prefs[frozenSourceKey] = frozen.source.name
+                frozen.elapsedRealtimeNanos?.let { prefs[frozenElapsedRealtimeKey] = it }
+                    ?: prefs.remove(frozenElapsedRealtimeKey)
             } else {
                 prefs.remove(frozenLatKey)
                 prefs.remove(frozenLonKey)
                 prefs.remove(frozenAccuracyKey)
                 prefs.remove(frozenCapturedAtKey)
                 prefs.remove(frozenSourceKey)
+                prefs.remove(frozenElapsedRealtimeKey)
             }
             prefs[uploadStateKey] = draft.uploadState.name
             prefs[createdAtKey] = draft.createdAt.toEpochMilliseconds()

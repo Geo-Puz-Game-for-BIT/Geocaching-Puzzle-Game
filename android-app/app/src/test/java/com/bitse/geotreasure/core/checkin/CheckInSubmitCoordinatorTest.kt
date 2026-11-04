@@ -7,6 +7,7 @@ import com.bitse.geotreasure.core.model.FragmentGrant
 import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.LocationSourceKind
+import com.bitse.geotreasure.core.model.PhotoDeletionResult
 import com.bitse.geotreasure.core.model.SubmitCheckInRequest
 import com.bitse.geotreasure.core.model.UploadedPhoto
 import com.bitse.geotreasure.data.remote.CheckInApiException
@@ -43,7 +44,11 @@ class CheckInSubmitCoordinatorTest {
         var lastRequest: SubmitCheckInRequest? = null
         var lastQueryAttemptId: String? = null
 
-        override suspend fun uploadPhoto(photoFile: File): UploadedPhoto =
+        override suspend fun uploadPhoto(
+            photoFile: File,
+            challengeId: String,
+            attemptId: String,
+        ): UploadedPhoto =
             UploadedPhoto("pho_1", "obj", Instant.fromEpochMilliseconds(0L))
 
         override suspend fun createChallenge(landmarkId: String): CheckInChallenge =
@@ -66,6 +71,13 @@ class CheckInSubmitCoordinatorTest {
             queryError?.let { throw it }
             return queryResult ?: CheckInQueryResult.NotFound
         }
+
+        override suspend fun deletePhoto(photoId: String): PhotoDeletionResult =
+            PhotoDeletionResult(
+                photoId = photoId,
+                storageCleanupPending = false,
+                deleteAfter = Instant.fromEpochMilliseconds(0L),
+            )
     }
 
     @Test

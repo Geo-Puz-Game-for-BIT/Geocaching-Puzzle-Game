@@ -1,7 +1,13 @@
 package com.bitse.geotreasure.data.remote
 
 import com.bitse.geotreasure.core.checkin.CheckInQueryResult
+import com.bitse.geotreasure.core.model.GeoPoint
+import com.bitse.geotreasure.core.model.LocationSample
+import com.bitse.geotreasure.core.model.LocationSourceKind
+import com.bitse.geotreasure.core.model.SubmitCheckInRequest
+import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlinx.datetime.Instant
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -42,7 +48,7 @@ class CheckInApiTest {
         } else {
             OkHttpClient()
         }
-        return CheckInApi(baseUrl = server.url("/").toString(), authToken = "tok_1", client = client)
+        return CheckInApi(baseUrl = server.url("/api/v1").toString(), authToken = "tok_1", client = client)
     }
 
     private fun receiptJson() = """{"requestId":"req_1","data":{"checkInId":"chk_1","status":"COMPLETED","fragmentGrant":{"fragmentId":"frg_1","puzzleId":"pzl_1","pieceIndex":0,"grantedAt":"2024-01-01T00:00:00Z"}}}"""
@@ -53,7 +59,7 @@ class CheckInApiTest {
         val result = api().queryCheckIn("att_1")
         assertTrue(result is CheckInQueryResult.Success)
         assertEquals("chk_1", (result as CheckInQueryResult.Success).receipt.checkInId)
-        assertEquals("/checkins?attemptId=att_1", server.takeRequest().path)
+        assertEquals("/api/v1/checkins?attemptId=att_1", server.takeRequest().path)
     }
 
     @Test
@@ -125,5 +131,65 @@ class CheckInApiTest {
         val api = CheckInApi(baseUrl = "", authToken = "tok_1")
         val result = api.queryCheckIn("att_1")
         assertEquals(CheckInQueryResult.Unavailable, result)
+    }
+
+    @Test
+    fun uploadPhoto_bindsChallengeAndAttemptHeaders() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"requestId":"req_1","data":{"photoId":"pho_1","objectKey":"checkins/usr_demo01/pho_1.jpg","uploadedAt":"2026-11-04T08:00:00Z"}}""",
+            ),
+        )
+        val photo = File.createTempFile("checkin", ".jpg")
+        photo.writeBytes(byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 0xd9.toByte()))
+        try {
+            api().uploadPhoto(photo, challengeId = "chl_1", attemptId = "att_1")
+            val request = server.takeRequest()
+            assertEquals("/api/v1/checkin-photos", request.path)
+            assertEquals("chl_1", request.getHeader("X-Challenge-Id"))
+            assertEquals("att_1", request.getHeader("X-Attempt-Id"))
+        } finally {
+            photo.delete()
+        }
+    }
+
+    @Test
+    fun submitCheckIn_sendsSourceAndMonotonicEvidence() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson()))
+        val request = SubmitCheckInRequest(
+            landmarkId = "lmk_1",
+            challengeId = "chl_1",
+            photoId = "pho_1",
+            location = LocationSample(
+                point = GeoPoint(39.0, 116.0),
+                accuracyMeters = 8f,
+                capturedAt = Instant.parse("2026-11-04T08:00:00Z"),
+                source = LocationSourceKind.GPS,
+                elapsedRealtimeNanos = 1_000_000_000,
+                submittedElapsedRealtimeNanos = 4_000_000_000,
+            ),
+        )
+
+        api().submitCheckIn(request, "att_1")
+
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"source\":\"GPS\""))
+        assertTrue(body.contains("\"elapsedRealtimeNanos\":1000000000"))
+        assertTrue(body.contains("\"submittedElapsedRealtimeNanos\":4000000000"))
+    }
+
+    @Test
+    fun deletePhoto_202_returnsPendingCleanupStatus() {
+        server.enqueue(
+            MockResponse().setResponseCode(202).setBody(
+                """{"requestId":"req_1","data":{"photoId":"pho_1","status":"DELETED","storageCleanup":"PENDING","deleteAfter":"2026-11-05T08:00:00Z"}}""",
+            ),
+        )
+
+        val result = api().deletePhoto("pho_1")
+
+        assertEquals("pho_1", result.photoId)
+        assertTrue(result.storageCleanupPending)
+        assertEquals("/api/v1/checkin-photos/pho_1", server.takeRequest().path)
     }
 }
