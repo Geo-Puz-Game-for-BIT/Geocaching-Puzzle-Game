@@ -30,6 +30,13 @@ X-Request-Id: <uuid>
 > 普通路由 404、代理 404、405、5xx、超时、以及「baseUrl 未配置」一律归为 `Unavailable`（查询故障，结果未知）。
 > 未配置不得作为「明确未成功」的安全新尝试依据。
 
+### PROCESSING 不得永久卡住（D-1/D-2）
+
+打卡成功与 attempt 状态更新若分属不同请求，中间中断会留下「成功记录已存在、attempt 仍 PROCESSING」。要求服务端：
+
+- `GET /checkins?attemptId=` 须**核对同用户 + 同 attempt 的成功记录**，命中即返回 `200` 成功回执（`checkInId`/`fragmentGrant`），**不得**因 attempt 状态为 PROCESSING 就永久返回 `202`。
+- 若中断发生在真正打卡之前（孤儿 PROCESSING，无成功记录），须提供明确的恢复/补偿/封存语义，**不能**简单超时返回 `404` 后又允许迟到请求成功。
+
 ## 客户端语义（F3 定稿：终态保证成立前，NotFound ≠ 可安全新尝试）
 
 `CheckInQueryResult.NotFound` 仅表示「此刻未查到记录」，**不等于**「旧 POST 已可靠结束、不会再成功」。在服务端交付「可靠终态 + 在途 POST 竞态测试」之前，客户端对 `NotFound` 的处置如下：
@@ -60,6 +67,7 @@ X-Request-Id: <uuid>
 
 - `POST /checkin-challenges` 签发的 challenge 与后续上传的 photo 通过 **attempt** 关联：`POST /checkins` 请求携带 `attemptId`（幂等键）、`challengeId`、`photoId`、冻结定位快照。
 - 服务端「校验→消费→建记录」在同一事务内完成（challenge consumed 语义，ADR 0004），消费即失效，5 分钟过期。
+- **照片上传须绑定本次 challenge（D-3）**：`POST /checkin-photos` 必须携带并校验 `challengeId`，不得「可不传 challenge」就通过；`POST /checkins` 必须校验 `attemptId ↔ challengeId ↔ photoId` 三者关系，拒绝「未绑定照片 / 非本次 challenge 的照片」提交。
 
 ## 客户端已落地（R1）
 
@@ -75,3 +83,7 @@ X-Request-Id: <uuid>
 3. challenge `consumed` 语义（同事务「校验→消费→建记录」）。
 4. `geo.ts` 精度 50m→30m（`validateLocationAccuracy` / `isWithinRadius` / `assertWithinCheckInArea`）。
 5. **可靠终态语义 + 在途 POST 竞态测试**（F3）：只有「可靠结束并阻止旧请求后续生效」才提供可安全放弃的终态；否则 `CHECKIN_NOT_FOUND` 仅表示「暂未查到」，客户端继续保护旧 attempt。
+6. **成功后查询回执（D-1）**：GET 核对同用户同 attempt 的成功记录并返回 200 回执，不得永久 202。
+7. **孤儿 PROCESSING 收敛（D-2）**：中断发生在真正打卡之前时，提供明确恢复/补偿/封存，不得超时 404 后又允许迟到请求成功。
+8. **照片绑定挑战（D-3）**：上传必须带 challenge 并校验；提交校验 attempt↔challenge↔photo 关系。
+9. **删除补偿与数据库证据（D-4）**：补偿筛选不得等满 24h 才启动，需补调度证据与真实数据库测试、迁移、部署版本。
