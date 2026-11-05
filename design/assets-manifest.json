@@ -1,4 +1,3272 @@
 {
-  "version": 1,
-  "assets": []
+  "$comment": "资源与来源清单（复审确认：仓库提供 HTML 原型，actual 可在仓库内执行）。界面状态用稳定引用（protoUrl / Figma 帧键 / PDF 页码）登记，不要求交付重复导出物。改素材后重跑 node design/tools/build-manifest.mjs",
+  "project": "校园地标 Geocaching · 题目三第 4 组",
+  "version": "v1.5（2026-11-05 复审确认：仓库提供 HTML 原型，tokens.mjs actual 记 RUN；v1.4 = 变体态补基准 PDF 页码；v1.3 = 地标对应关系 + 显式 Figma 帧键 + 交付路径口径）",
+  "generatedAt": "2026-11-04 17:24:38",
+  "owner": "向川（2.3 UI/UX 与美工）",
+  "deliveryPolicy": {
+    "repoContains": "design/ 下的源资产（assets、icons、tokens、tools）+ 原型源文件 design/prototype/index.html（HTML 已提供，入库）；不含构建产物。",
+    "releaseArtifacts": "dist/ 下的 PDF / .fig / zip 为发布物，不入库；以 docs/SHA256-*.txt 的哈希登记，路径不写进本条清单的交付判定。",
+    "html": "仓库提供 HTML 原型：源文件 design/prototype/index.html 随包交付（副本 = 交付包 01-可点击原型/拼迹-七页可点击原型.html，与之同哈希 SHA256 b56d6c80…）。2026-11-05 实测：node dist/交付包/04-设计Token/05-token-检查器.mjs all --proto 01-可点击原型/拼迹-七页可点击原型.html → 3/3 通过、退出码 0，actual 在仓库内记 RUN。",
+    "screens": "界面状态不登记切图；用 figma.frameKey / frameName + pdf.page 复核，PDF 版本以 manifest 内 pdf.file 为准（当前 v3.1）。"
+  },
+  "policy": [
+    "未确认许可的素材不进入最终演示；pending 项在评审前必须清零或转为 not-needed。",
+    "位图一律经 design/tools/compress.mjs 产出，单资源 ≤300KB，地标图 ≤220KB。",
+    "拼图一格 = 一个地标的一张打卡照（1:1 裁切）；三校区各 2×2 共 12 片，服务端判定成功后自动点亮，手动拼合只作后续回顾。",
+    "图标只用 Lucide（Android）与 Material Symbols（Web），不手画、不让 AI 随机生成按钮图标。",
+    "AI 图像只做插画/底图/氛围图，不生成界面正文文字。",
+    "界面状态不登记切图：design/exports/screens 与 figma 目录为历史导出（含旧文案），不随包交付、不要求补全。"
+  ],
+  "summary": {
+    "total": 47,
+    "byCategory": {
+      "landmark": 12,
+      "brand": 1,
+      "icon": 30,
+      "font": 2,
+      "spec": 2
+    },
+    "totalKB": 5485.6,
+    "licenseConfirmed": 47,
+    "fileInRepo": 47,
+    "fileNotInRepo": 0,
+    "interfaces": 52,
+    "pending": 2
+  },
+  "sources": {
+    "self": {
+      "type": "原创（本项目自制）",
+      "detail": "由 design/tools 脚本从原型/规范生成，无第三方素材",
+      "license": "项目内部使用",
+      "spdx": "LicenseRef-Proprietary-Internal",
+      "attribution": false,
+      "confirmed": true
+    },
+    "lucide": {
+      "type": "第三方图标库",
+      "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+      "license": "ISC",
+      "spdx": "ISC",
+      "attribution": false,
+      "confirmed": true,
+      "url": "https://lucide.dev/"
+    },
+    "lm": {
+      "type": "项目自制（按实地参考重绘后抠透明底）",
+      "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+      "license": "项目内部使用",
+      "spdx": "LicenseRef-Proprietary-Internal",
+      "attribution": false,
+      "confirmed": true
+    },
+    "material": {
+      "type": "第三方图标字体",
+      "detail": "Google Material Symbols（Outlined 单变体，已裁掉 rounded/sharp，避免 13MB 全量包）",
+      "license": "Apache-2.0",
+      "spdx": "Apache-2.0",
+      "attribution": false,
+      "confirmed": true,
+      "url": "https://fonts.google.com/icons"
+    }
+  },
+  "assets": [
+    {
+      "id": "landmark-LM-001",
+      "name": "地标图 · 疏桐",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-001",
+        "name": "疏桐",
+        "module": "MP-A"
+      },
+      "file": "design/assets/lm/LM-001.png",
+      "format": "png",
+      "width": 420,
+      "height": 277,
+      "bytes": 138678,
+      "sizeKB": 135.4,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-001-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "15b5e33fa3",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-001.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-001.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-002",
+      "name": "地标图 · 博雅",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-002",
+        "name": "博雅",
+        "module": "MP-A"
+      },
+      "file": "design/assets/lm/LM-002.png",
+      "format": "png",
+      "width": 420,
+      "height": 278,
+      "bytes": 161433,
+      "sizeKB": 157.6,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-002-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "46bee374a9",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-002.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-002.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-003",
+      "name": "地标图 · 理教",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-003",
+        "name": "理教",
+        "module": "MP-A"
+      },
+      "file": "design/assets/lm/LM-003.png",
+      "format": "png",
+      "width": 420,
+      "height": 272,
+      "bytes": 119163,
+      "sizeKB": 116.4,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-003-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "6042dd3217",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-003.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-003.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-004",
+      "name": "地标图 · 工业生态楼",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-004",
+        "name": "工业生态楼",
+        "module": "MP-A"
+      },
+      "file": "design/assets/lm/LM-004.png",
+      "format": "png",
+      "width": 420,
+      "height": 284,
+      "bytes": 136483,
+      "sizeKB": 133.3,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-004-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "aba1d081bd",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-004.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-004.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-005",
+      "name": "地标图 · 北湖",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-005",
+        "name": "北湖",
+        "module": "MP-B"
+      },
+      "file": "design/assets/lm/LM-005.png",
+      "format": "png",
+      "width": 420,
+      "height": 280,
+      "bytes": 166080,
+      "sizeKB": 162.2,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-005-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "3f7e00e1a6",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-005.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-005.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-006",
+      "name": "地标图 · 综教",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-006",
+        "name": "综教",
+        "module": "MP-B"
+      },
+      "file": "design/assets/lm/LM-006.png",
+      "format": "png",
+      "width": 420,
+      "height": 271,
+      "bytes": 111146,
+      "sizeKB": 108.5,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-006-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "46628b0bee",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-006.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-006.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-007",
+      "name": "地标图 · 学服",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-007",
+        "name": "学服",
+        "module": "MP-B"
+      },
+      "file": "design/assets/lm/LM-007.png",
+      "format": "png",
+      "width": 420,
+      "height": 254,
+      "bytes": 72181,
+      "sizeKB": 70.5,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-007-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "6d1efeb9df",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-007.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-007.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-008",
+      "name": "地标图 · 图书馆",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-008",
+        "name": "图书馆",
+        "module": "MP-B"
+      },
+      "file": "design/assets/lm/LM-008.png",
+      "format": "png",
+      "width": 420,
+      "height": 263,
+      "bytes": 94957,
+      "sizeKB": 92.7,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-008-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b4440af1ce",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-008.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-008.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-009",
+      "name": "地标图 · 甘棠",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-009",
+        "name": "甘棠",
+        "module": "MP-C"
+      },
+      "file": "design/assets/lm/LM-009.png",
+      "format": "png",
+      "width": 420,
+      "height": 309,
+      "bytes": 201624,
+      "sizeKB": 196.9,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-009-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "ca395f69d2",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-009.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-009.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-010",
+      "name": "地标图 · 勤园",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-010",
+        "name": "勤园",
+        "module": "MP-C"
+      },
+      "file": "design/assets/lm/LM-010.png",
+      "format": "png",
+      "width": 420,
+      "height": 272,
+      "bytes": 153813,
+      "sizeKB": 150.2,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-010-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "db835ea276",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-010.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-010.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-011",
+      "name": "地标图 · 文萃",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-011",
+        "name": "文萃",
+        "module": "MP-C"
+      },
+      "file": "design/assets/lm/LM-011.png",
+      "format": "png",
+      "width": 420,
+      "height": 286,
+      "bytes": 86210,
+      "sizeKB": 84.2,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-011-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b4574390ba",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-011.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-011.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "landmark-LM-012",
+      "name": "地标图 · 文博中心",
+      "category": "landmark",
+      "landmark": {
+        "id": "LM-012",
+        "name": "文博中心",
+        "module": "MP-C"
+      },
+      "file": "design/assets/lm/LM-012.png",
+      "format": "png",
+      "width": 420,
+      "height": 213,
+      "bytes": 71372,
+      "sizeKB": 69.7,
+      "usage": "地标展示：P01 任务卡缩略图、P02 Hero、P03 取景预览、P04 归位格、P05 拼图格、P06 打卡照片",
+      "usedBy": [
+        "P01 探索",
+        "P02 地标详情",
+        "P03 拍照打卡",
+        "P04 打卡结果",
+        "P05 拼图收集",
+        "P06 我的记录"
+      ],
+      "smallVariant": {
+        "file": "design/assets/lm/LM-012-s.png",
+        "note": "200px 小档，同源缩图，随大档一并交付"
+      },
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "a17ef29cad",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/lm/LM-012.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/lm/LM-012.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "brand-header",
+      "name": "品牌头框 · 拼迹（Wordmark + 副标题 + 校园装饰 + 个人入口）",
+      "category": "brand",
+      "file": "design/assets/brand/hdr-brand.png",
+      "format": "png",
+      "width": 575,
+      "height": 128,
+      "bytes": 73532,
+      "sizeKB": 71.8,
+      "usage": "P01 顶部品牌头框整图（412 宽 → 91.7 高），人头圆钮位置叠透明按钮去 P06",
+      "usedBy": [
+        "P01 探索"
+      ],
+      "source": {
+        "type": "项目自制（按实地参考重绘后抠透明底）",
+        "detail": "组内提供的地标图（12 张 1536×1024 透明底）统一裁掉全透明边、缩到 420px 大档与 200px 小档；品牌头图裁掉手机外框后 575×128",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "5b168261e4",
+      "updatedAt": "2026-11-02",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/assets/brand/hdr-brand.png",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/assets/brand/hdr-brand.png",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "alert-triangle",
+      "name": "图标 · alert-triangle",
+      "category": "icon",
+      "file": "design/exports/icons/alert-triangle.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 430,
+      "sizeKB": 0.4,
+      "usage": "定位精度不足、超出半径",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "6e3d8c0524",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/alert-triangle.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/alert-triangle.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "arrow-left",
+      "name": "图标 · arrow-left",
+      "category": "icon",
+      "file": "design/exports/icons/arrow-left.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 343,
+      "sizeKB": 0.3,
+      "usage": "返回",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "da5194250c",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/arrow-left.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/arrow-left.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "award",
+      "name": "图标 · award",
+      "category": "icon",
+      "file": "design/exports/icons/award.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 452,
+      "sizeKB": 0.4,
+      "usage": "成就与奖励（金色 rewardGold）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "9573c9ae8a",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/award.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/award.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "camera",
+      "name": "图标 · camera",
+      "category": "icon",
+      "file": "design/exports/icons/camera.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 514,
+      "sizeKB": 0.5,
+      "usage": "拍摄打卡照（P03）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "1722254fde",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/camera.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/camera.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "check-circle-2",
+      "name": "图标 · check-circle-2",
+      "category": "icon",
+      "file": "design/exports/icons/check-circle-2.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 363,
+      "sizeKB": 0.4,
+      "usage": "打卡成功结果页（P04）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "2c73e899d8",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/check-circle-2.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/check-circle-2.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "chevron-right",
+      "name": "图标 · chevron-right",
+      "category": "icon",
+      "file": "design/exports/icons/chevron-right.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 321,
+      "sizeKB": 0.3,
+      "usage": "列表跳转",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "88a939db97",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/chevron-right.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/chevron-right.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "clock",
+      "name": "图标 · clock",
+      "category": "icon",
+      "file": "design/exports/icons/clock.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 347,
+      "sizeKB": 0.3,
+      "usage": "挑战与倒计时",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "c8219f04b1",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/clock.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/clock.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "cloud-off",
+      "name": "图标 · cloud-off",
+      "category": "icon",
+      "file": "design/exports/icons/cloud-off.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 465,
+      "sizeKB": 0.5,
+      "usage": "离线状态提示（UC-07）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "2628b651d5",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/cloud-off.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/cloud-off.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "compass",
+      "name": "图标 · compass",
+      "category": "icon",
+      "file": "design/exports/icons/compass.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 429,
+      "sizeKB": 0.4,
+      "usage": "底部导航：探索/线索列表",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "43e718db01",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/compass.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/compass.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "crosshair",
+      "name": "图标 · crosshair",
+      "category": "icon",
+      "file": "design/exports/icons/crosshair.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 492,
+      "sizeKB": 0.5,
+      "usage": "定位精度提示",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b6fd888473",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/crosshair.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/crosshair.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "gauge",
+      "name": "图标 · gauge",
+      "category": "icon",
+      "file": "design/exports/icons/gauge.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 354,
+      "sizeKB": 0.3,
+      "usage": "难度等级 difficulty",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "a840b3a1fa",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/gauge.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/gauge.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "image-off",
+      "name": "图标 · image-off",
+      "category": "icon",
+      "file": "design/exports/icons/image-off.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 597,
+      "sizeKB": 0.6,
+      "usage": "图片加载失败占位",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "22d7a1790c",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/image-off.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/image-off.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "images",
+      "name": "图标 · images",
+      "category": "icon",
+      "file": "design/exports/icons/images.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 522,
+      "sizeKB": 0.5,
+      "usage": "底部导航：我的碎片与拼图（P05）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "7c7c3e45e0",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/images.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/images.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "info",
+      "name": "图标 · info",
+      "category": "icon",
+      "file": "design/exports/icons/info.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 369,
+      "sizeKB": 0.4,
+      "usage": "说明与提示",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "ee623ccf6b",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/info.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/info.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "key-round",
+      "name": "图标 · key-round",
+      "category": "icon",
+      "file": "design/exports/icons/key-round.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 533,
+      "sizeKB": 0.5,
+      "usage": "解锁条件与钥匙碎片",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "acefdb5fca",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/key-round.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/key-round.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "lightbulb",
+      "name": "图标 · lightbulb",
+      "category": "icon",
+      "file": "design/exports/icons/lightbulb.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 451,
+      "sizeKB": 0.4,
+      "usage": "任务提示 hint",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "edcb9f873c",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/lightbulb.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/lightbulb.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "locate-fixed",
+      "name": "图标 · locate-fixed",
+      "category": "icon",
+      "file": "design/exports/icons/locate-fixed.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 529,
+      "sizeKB": 0.5,
+      "usage": "回到我的位置",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "7295d79f43",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/locate-fixed.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/locate-fixed.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "lock",
+      "name": "图标 · lock",
+      "category": "icon",
+      "file": "design/exports/icons/lock.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 384,
+      "sizeKB": 0.4,
+      "usage": "未解锁地标 / 上锁区域",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "772ff50c46",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/lock.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/lock.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "map-pin",
+      "name": "图标 · map-pin",
+      "category": "icon",
+      "file": "design/exports/icons/map-pin.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 437,
+      "sizeKB": 0.4,
+      "usage": "地标 Marker",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "4a3a4920f7",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/map-pin.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/map-pin.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "map",
+      "name": "图标 · map",
+      "category": "icon",
+      "file": "design/exports/icons/map.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 590,
+      "sizeKB": 0.6,
+      "usage": "底部导航：地图首页（P01）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "72c422b2ef",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/map.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/map.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "mountain",
+      "name": "图标 · mountain",
+      "category": "icon",
+      "file": "design/exports/icons/mountain.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 327,
+      "sizeKB": 0.3,
+      "usage": "地形难度 terrain",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "01814d5173",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/mountain.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/mountain.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "navigation",
+      "name": "图标 · navigation",
+      "category": "icon",
+      "file": "design/exports/icons/navigation.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 339,
+      "sizeKB": 0.3,
+      "usage": "导航引导箭头、前往现场",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "492ef29f40",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/navigation.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/navigation.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "puzzle",
+      "name": "图标 · puzzle",
+      "category": "icon",
+      "file": "design/exports/icons/puzzle.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 762,
+      "sizeKB": 0.7,
+      "usage": "拼图碎片与归位（UC-04/05）",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b323104084",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/puzzle.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/puzzle.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "refresh-cw",
+      "name": "图标 · refresh-cw",
+      "category": "icon",
+      "file": "design/exports/icons/refresh-cw.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 473,
+      "sizeKB": 0.5,
+      "usage": "重拍 / 重试上传",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "24edaa69b0",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/refresh-cw.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/refresh-cw.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "settings",
+      "name": "图标 · settings",
+      "category": "icon",
+      "file": "design/exports/icons/settings.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 665,
+      "sizeKB": 0.6,
+      "usage": "设置页",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "a0273cc443",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/settings.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/settings.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "unlock",
+      "name": "图标 · unlock",
+      "category": "icon",
+      "file": "design/exports/icons/unlock.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 385,
+      "sizeKB": 0.4,
+      "usage": "解锁成功",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "a08ae06481",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/unlock.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/unlock.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "upload-cloud",
+      "name": "图标 · upload-cloud",
+      "category": "icon",
+      "file": "design/exports/icons/upload-cloud.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 416,
+      "sizeKB": 0.4,
+      "usage": "提交上传、离线草稿同步",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b6312536a7",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/upload-cloud.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/upload-cloud.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "user",
+      "name": "图标 · user",
+      "category": "icon",
+      "file": "design/exports/icons/user.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 374,
+      "sizeKB": 0.4,
+      "usage": "底部导航：个人中心",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "bd5425715b",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/user.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/user.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "wifi-off",
+      "name": "图标 · wifi-off",
+      "category": "icon",
+      "file": "design/exports/icons/wifi-off.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 573,
+      "sizeKB": 0.6,
+      "usage": "弱网与断网空状态",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "1181f028fd",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/wifi-off.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/wifi-off.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "x-circle",
+      "name": "图标 · x-circle",
+      "category": "icon",
+      "file": "design/exports/icons/x-circle.svg",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "bytes": 372,
+      "sizeKB": 0.4,
+      "usage": "打卡失败、校验未通过",
+      "usedBy": [
+        "Android：SVG → VectorDrawable",
+        "Web 管理端：同一图形基线"
+      ],
+      "source": {
+        "type": "第三方图标库",
+        "detail": "lucide-static v1.61.0（design/04-图标/lucide 同步而来，24×24 / stroke 2 / currentColor）",
+        "license": "ISC",
+        "spdx": "ISC",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://lucide.dev/"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "b8e22f5cac",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/icons/x-circle.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/icons/x-circle.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "material-symbols-outlined",
+      "name": "Material Symbols Outlined 字体",
+      "category": "font",
+      "file": "design/04-图标/material-font/material-symbols-outlined.woff2",
+      "format": "woff2",
+      "width": null,
+      "height": null,
+      "bytes": 4001808,
+      "sizeKB": 3908,
+      "usage": "Vue 管理端图标字体（离线可用）",
+      "usedBy": [
+        "Vue 3 管理端"
+      ],
+      "source": {
+        "type": "第三方图标字体",
+        "detail": "Google Material Symbols（Outlined 单变体，已裁掉 rounded/sharp，避免 13MB 全量包）",
+        "license": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://fonts.google.com/icons"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "9c19bb77c7",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/04-图标/material-font/material-symbols-outlined.woff2",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/04-图标/material-font/material-symbols-outlined.woff2",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "material-symbols-css",
+      "name": "Material Symbols 用法样式",
+      "category": "font",
+      "file": "design/04-图标/material-font/material-symbols.css",
+      "format": "css",
+      "width": null,
+      "height": null,
+      "bytes": 952,
+      "sizeKB": 0.9,
+      "usage": "Vue 管理端引入，class=\"material-symbols-outlined\"",
+      "usedBy": [
+        "Vue 3 管理端"
+      ],
+      "source": {
+        "type": "第三方图标字体",
+        "detail": "Google Material Symbols（Outlined 单变体，已裁掉 rounded/sharp，避免 13MB 全量包）",
+        "license": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "attribution": false,
+        "confirmed": true,
+        "url": "https://fonts.google.com/icons"
+      },
+      "status": "sourceConfirmed",
+      "sha1": "cf480bbe7e",
+      "updatedAt": "2026-10-21",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/04-图标/material-font/material-symbols.css",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/04-图标/material-font/material-symbols.css",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "puzzle-module-2x2-spec",
+      "name": "片区模块拼图 · 2×2 切片规范",
+      "category": "spec",
+      "file": "design/exports/puzzle/module-2x2-spec.svg",
+      "format": "svg",
+      "width": 1240,
+      "height": 1240,
+      "bytes": 5519,
+      "sizeKB": 5.4,
+      "usage": "说明一个片区的 4 块碎片怎么切、怎么命名、每块预算；一格 = 一个地标的一张打卡照",
+      "usedBy": [
+        "Android 拼图页（P05 两级视图）",
+        "云端 Module.tiles 字段",
+        "SRS 第 5 章原型说明"
+      ],
+      "source": {
+        "type": "原创（本项目自制）",
+        "detail": "由 design/tools 脚本从原型/规范生成，无第三方素材",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "a50c4a2081",
+      "updatedAt": "2026-10-22",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/puzzle/module-2x2-spec.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/puzzle/module-2x2-spec.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    },
+    {
+      "id": "puzzle-map-assembly-3mod",
+      "name": "完整校园地图 · 三模块装配规范",
+      "category": "spec",
+      "file": "design/exports/puzzle/map-assembly-3mod.svg",
+      "format": "svg",
+      "width": 1240,
+      "height": 740,
+      "bytes": 8693,
+      "sizeKB": 8.5,
+      "usage": "说明 3 个 2×2 模块如何拼成完整地图、12 块如何编号与解锁（含 MP-B/MP-C 占位）",
+      "usedBy": [
+        "Android 拼图页（P05 两级视图）",
+        "云端 Module.tiles 字段",
+        "SRS 第 5 章原型说明"
+      ],
+      "source": {
+        "type": "原创（本项目自制）",
+        "detail": "由 design/tools 脚本从原型/规范生成，无第三方素材",
+        "license": "项目内部使用",
+        "spdx": "LicenseRef-Proprietary-Internal",
+        "attribution": false,
+        "confirmed": true
+      },
+      "status": "sourceConfirmed",
+      "sha1": "33b7a13abf",
+      "updatedAt": "2026-10-22",
+      "delivery": {
+        "licenseStatus": "sourceConfirmed",
+        "fileInRepo": true,
+        "repoPath": "design/exports/puzzle/map-assembly-3mod.svg",
+        "stableRef": {
+          "type": "filePath",
+          "value": "design/exports/puzzle/map-assembly-3mod.svg",
+          "howto": "按本工作树相对路径取文件"
+        },
+        "note": "sourceConfirmed 仅表示「来源与许可已核对」；文件是否随本次交付包提供，看 fileInRepo 与 stableRef"
+      }
+    }
+  ],
+  "interfaces": [
+    {
+      "key": "p01:default",
+      "name": "P01 探索 · 默认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:default",
+        "frameName": "P01 探索 · 默认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 3,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "默认：顶部是品牌区（艺术字 + 副标题 + 校园装饰 + 个人入口）；校区用胶囊分段切换，进度卡给出「片区探索 N/4」；地图上只有倒立水滴标记 —— 已打卡为绿底白勾，未解锁为问号（不显示名称），任务卡缩略图是当前地标的真实图（未解锁时名",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:loading",
+      "name": "P01 探索 · 加载中",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:loading",
+        "frameName": "P01 探索 · 加载中",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=loading&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 3,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "加载中：骨架屏 ≤3s，地图与卡片分块占位，不白屏。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:denied",
+      "name": "P01 探索 · 定位未开启",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:denied",
+        "frameName": "P01 探索 · 定位未开启",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=denied&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 4,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "定位未开启：横幅说明为什么需要 + 去设置；地图仍可看，卡片按钮禁用，不是死路。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:weak",
+      "name": "P01 探索 · 定位不佳",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:weak",
+        "frameName": "P01 探索 · 定位不佳",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=weak&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 4,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "定位不佳：说明是信号问题不是玩家问题，主按钮「等定位稳定」，不画固定的可打卡圆圈。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:neterr",
+      "name": "P01 探索 · 网络中断",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:neterr",
+        "frameName": "P01 探索 · 网络中断",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=neterr&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 5,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "网络中断：只说清「暂时拿不到地标数据」+ 重试，不承诺离线补交。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:error",
+      "name": "P01 探索 · 加载失败",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:error",
+        "frameName": "P01 探索 · 加载失败",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=error&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 5,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "加载失败：保留底图配色 + 重新加载，不用错误码搪塞。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:default",
+      "name": "P02 地标详情 · 默认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:default",
+        "frameName": "P02 地标详情 · 默认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 6,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "默认：缩略图、名称、简介、所属子地图、对应碎片、拍照任务一屏可读；距离与定位状态并列，不给固定打卡半径。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:loading",
+      "name": "P02 地标详情 · 加载中",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:loading",
+        "frameName": "P02 地标详情 · 加载中",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=loading&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 6,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "加载中：Hero 与正文骨架，返回键始终可用。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:done",
+      "name": "P02 地标详情 · 该地标已完成",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:done",
+        "frameName": "P02 地标详情 · 该地标已完成",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=done&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "该地标已完成：显示「该地标已完成」，不重复授奖，主按钮改为查看拼图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:neterr",
+      "name": "P02 地标详情 · 网络中断",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:neterr",
+        "frameName": "P02 地标详情 · 网络中断",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=neterr&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "网络中断：详情不可用，给重试；不提供离线补交入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:error",
+      "name": "P02 地标详情 · 加载失败",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:error",
+        "frameName": "P02 地标详情 · 加载失败",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=error&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 8,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "加载失败：说明 + 重试 + 返回。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:default",
+      "name": "P03 拍照打卡 · 取景",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:default",
+        "frameName": "P03 拍照打卡 · 取景",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 8,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "取景：构图辅助提示人物与地标同框；快门 72dp，符合触控目标。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:preview",
+      "name": "P03 拍照打卡 · 拍后预览",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:preview",
+        "frameName": "P03 拍照打卡 · 拍后预览",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=preview&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 9,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "拍后预览：拍完先看照片，给「重拍」与「确认提交」两个出口，提交前不留歧义。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:denied",
+      "name": "P03 拍照打卡 · 相机未授权",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:denied",
+        "frameName": "P03 拍照打卡 · 相机未授权",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=denied&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 9,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "相机未授权：空态说明 + 去设置 + 返回详情，两个出口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:far",
+      "name": "P03 拍照打卡 · 距离过远",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:far",
+        "frameName": "P03 拍照打卡 · 距离过远",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=far&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 10,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "未到打卡点：快门停用，走近地标后再拍 —— 是否在打卡点由服务端最终判定，界面不写死米数门槛。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:submitting",
+      "name": "P03 拍照打卡 · 提交中",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:submitting",
+        "frameName": "P03 拍照打卡 · 提交中",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=submitting&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 10,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "提交中：进度条 + 明确「不要退出」。不提供取消 —— 已发起的请求会保留，可在「我的记录」用同一条请求恢复，避免出现「取消了但服务端已收到」的未知态。提交后先落到「处理中」，服务端确认后才显示成功。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:neterr",
+      "name": "P03 拍照打卡 · 网络中断",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:neterr",
+        "frameName": "P03 拍照打卡 · 网络中断",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=neterr&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 11,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "网络中断：明确「需要联网才能提交」+ 重试，不留补交入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:error",
+      "name": "P03 拍照打卡 · 提交失败",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:error",
+        "frameName": "P03 拍照打卡 · 提交失败",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=error&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 11,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "提交失败：给出重试与返回，不承诺自动补传。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:success",
+      "name": "P04 打卡结果 · 成功",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:success",
+        "frameName": "P04 打卡结果 · 成功",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=success&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 12,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "成功：服务端已确认 — 碎片自动归位、片区由暗变亮；给「继续探索 / 查看拼图」。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:pending",
+      "name": "P04 打卡结果 · 处理中",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:pending",
+        "frameName": "P04 打卡结果 · 处理中",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=pending&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 12,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "处理中：服务端还在核对，这一步没有结果，不提前显示成功。此时在途请求 1 条 —— 从这里的「去我的记录」进去，就会看到「1 条打卡还在确认」。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:confirm",
+      "name": "P04 打卡结果 · 结果待确认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:confirm",
+        "frameName": "P04 打卡结果 · 结果待确认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=confirm&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 13,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "结果待确认：还需要一点时间，不提前发奖；可从「我的记录」的待确认入口回到这一条。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:fail-radius",
+      "name": "P04 打卡结果 · 未成功·距离",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:fail-radius",
+        "frameName": "P04 打卡结果 · 未成功·距离",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=fail-radius&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 13,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "未成功·距离：说清还没到地标附近，主按钮「走近再拍」。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:fail-accuracy",
+      "name": "P04 打卡结果 · 未成功·定位",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:fail-accuracy",
+        "frameName": "P04 打卡结果 · 未成功·定位",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=fail-accuracy&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 14,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "未成功·定位：说清是定位问题不是玩家问题，给「等定位稳定后重试」。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:fail-photo",
+      "name": "P04 打卡结果 · 未成功·照片",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:fail-photo",
+        "frameName": "P04 打卡结果 · 未成功·照片",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=fail-photo&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 14,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "未成功·照片：说清哪一点不合格，一键重拍；不涉及人脸或身份识别。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p04:fail-network",
+      "name": "P04 打卡结果 · 未成功·网络",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p04:fail-network",
+        "frameName": "P04 打卡结果 · 未成功·网络",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p04&s=fail-network&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 15,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "未成功·网络：这次提交没有成功，给重试与返回。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:progress",
+      "name": "P05 拼图收集 · 总览·打卡前",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:progress",
+        "frameName": "P05 拼图收集 · 总览·打卡前",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=progress&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 15,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "总览 0/3（打卡前）：南 3/4 + 北 1/4 + 东 0/4 = 已收 4/12，三个片区都没集齐。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:overview",
+      "name": "P05 拼图收集 · 总览·打卡后",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:overview",
+        "frameName": "P05 拼图收集 · 总览·打卡后",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=overview&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 16,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "总览 1/3（打卡后）：南 4/4 + 北 1/4 + 东 0/4 = 已收 5/12，已完成 1/3 个片区；总碎片数始终等于三片区之和。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:module",
+      "name": "P05 拼图收集 · 片区",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:module",
+        "frameName": "P05 拼图收集 · 片区",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=module&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 16,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "片区 3/4：点已点亮的格子可查看关联地标与记录；服务端确认打卡成功后碎片自动点亮归位，主流程不要求拖动，手动拼合只作回顾入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:complete",
+      "name": "P05 拼图收集 · 片区已集齐",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:complete",
+        "frameName": "P05 拼图收集 · 片区已集齐",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=complete&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 17,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "片区已集齐 4/4：四块拼合成一个片区 + 成就；拼合由服务端确认结果驱动，手动回顾只作次级入口，不占主按钮。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:mapdone",
+      "name": "P05 拼图收集 · 地图已点亮",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:mapdone",
+        "frameName": "P05 拼图收集 · 地图已点亮",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=mapdone&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 17,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "地图已点亮 3/3：三个片区全部集齐，完整校园地图 + 终极成就。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p06:default",
+      "name": "P06 我的记录 · 默认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p06:default",
+        "frameName": "P06 我的记录 · 默认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p06&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 18,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "默认：账号、碎片数、片区进度、打卡照片。此刻没有在途的打卡请求，「还在确认」这条入口不出现，照片一律标记「私密」。只有真的提交过、服务端还没回结果时才会出现。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p06:nopend",
+      "name": "P06 我的记录 · 无待确认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p06:nopend",
+        "frameName": "P06 我的记录 · 无待确认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p06&s=nopend&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 18,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "无待确认：所有打卡都已由服务端确认（或本就没有在途请求），待确认卡片整体不出现，不会出现「没有待确认却显示一条」的情况。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p06:empty",
+      "name": "P06 我的记录 · 暂无照片",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p06:empty",
+        "frameName": "P06 我的记录 · 暂无照片",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p06&s=empty&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 19,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "暂无照片：还没有打卡照片的空态，给「去探索」出口；此时不存在待确认的打卡，待确认入口不出现。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p06:del",
+      "name": "P06 我的记录 · 删除确认",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p06:del",
+        "frameName": "P06 我的记录 · 删除确认",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p06&s=del&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 19,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "删除确认：明确写出「删除照片不会影响已获得的碎片和打卡记录」。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:live",
+      "name": "P07 3D地图 · 跟随当前进度 4/12",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:live",
+        "frameName": "P07 3D地图 · 跟随当前进度 4/12",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=live&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 20,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "跟随当前进度：从 2D 地图点「3D」进来，迷雾直接读 2D 页同一份进度（南 3/4、北 1/4、东 0/4），已解锁的 4 处各自留一个干净孔洞，其余 8 片云还在。两套地图共用同一份数据，不是两套账。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:fog",
+      "name": "P07 3D地图 · 全云层（初始）",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:fog",
+        "frameName": "P07 3D地图 · 全云层（初始）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=fog&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 20,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "3D 地图 · 初始：2D 地图页保持原样，这里是新增的 3D 形态。整张 3D 校园被云层盖住，云分三层（暗部／云体／高光）并贴合地块边缘，色调取地图的浅绿，不压过实际地图。顶卡显示「已散开 0/12 片 · 0/3 校区」，三个校区各自",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:partial",
+      "name": "P07 3D地图 · 疏桐解锁 · 局部散开",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:partial",
+        "frameName": "P07 3D地图 · 疏桐解锁 · 局部散开",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=partial&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 21,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "单点解锁：疏桐打卡成功 → 只有疏桐周围一圈云散开，其余 11 片仍在。孔洞边缘做了 38% 的柔化过渡，孔洞内是完全干净的地图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:unlock",
+      "name": "P07 3D地图 · 云层打开中",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:unlock",
+        "frameName": "P07 3D地图 · 云层打开中",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=unlock&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 21,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "开云过程（动画中）：孔洞从 0 扩到 62px，同时把周围 2 倍半径内的云团沿径向推开、上浮、淡出，1.9s 播完；可点「重播」重复观看。这里是动画 42% 的一帧。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:campus",
+      "name": "P07 3D地图 · 南校区 4/4 整片散开",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:campus",
+        "frameName": "P07 3D地图 · 南校区 4/4 整片散开",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=campus&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 22,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "整片散开（第二级迷雾）：南校区第 4 片云落下（工业生态楼）→ 该校区 4/4。动画分两段：先开第 4 个孔（前 46%），再让南校区剩下的云整片上浮、淡出（后 54%，共 2.7s）。散完后南校区上方一个云像素都不剩，与「无迷雾」状态一致",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p07:all",
+      "name": "P07 3D地图 · 12/12 全部散开",
+      "module": null,
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p07:all",
+        "frameName": "P07 3D地图 · 12/12 全部散开",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p07&s=all&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 22,
+        "note": "评审/验收直接看 PDF 对应页，不必打开工作树"
+      },
+      "stateNote": "12/12：三个校区全部 4/4，云层完全消失，3D 地图与「无迷雾」状态逐像素相同；给成就与拼图入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:default@MP-B",
+      "name": "P01 探索 · 默认（北校区）",
+      "module": "MP-B",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:default@MP-B",
+        "frameName": "P01 探索 · 默认（北校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 3,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "默认：顶部是品牌区（艺术字 + 副标题 + 校园装饰 + 个人入口）；校区用胶囊分段切换，进度卡给出「片区探索 N/4」；地图上只有倒立水滴标记 —— 已打卡为绿底白勾，未解锁为问号（不显示名称），任务卡缩略图是当前地标的真实图（未解锁时名",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p01:default@MP-C",
+      "name": "P01 探索 · 默认（东校区）",
+      "module": "MP-C",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p01:default@MP-C",
+        "frameName": "P01 探索 · 默认（东校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p01&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 3,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "默认：顶部是品牌区（艺术字 + 副标题 + 校园装饰 + 个人入口）；校区用胶囊分段切换，进度卡给出「片区探索 N/4」；地图上只有倒立水滴标记 —— 已打卡为绿底白勾，未解锁为问号（不显示名称），任务卡缩略图是当前地标的真实图（未解锁时名",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:default@MP-B",
+      "name": "P02 地标详情 · 默认（北校区）",
+      "module": "MP-B",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:default@MP-B",
+        "frameName": "P02 地标详情 · 默认（北校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 6,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "默认：缩略图、名称、简介、所属子地图、对应碎片、拍照任务一屏可读；距离与定位状态并列，不给固定打卡半径。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:default@MP-C",
+      "name": "P02 地标详情 · 默认（东校区）",
+      "module": "MP-C",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p02:default@MP-C",
+        "frameName": "P02 地标详情 · 默认（东校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 6,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "默认：缩略图、名称、简介、所属子地图、对应碎片、拍照任务一屏可读；距离与定位状态并列，不给固定打卡半径。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:default@MP-B",
+      "name": "P03 拍照打卡 · 取景（北校区）",
+      "module": "MP-B",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:default@MP-B",
+        "frameName": "P03 拍照打卡 · 取景（北校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 8,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "取景：构图辅助提示人物与地标同框；快门 72dp，符合触控目标。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p03:default@MP-C",
+      "name": "P03 拍照打卡 · 取景（东校区）",
+      "module": "MP-C",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p03:default@MP-C",
+        "frameName": "P03 拍照打卡 · 取景（东校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p03&s=default&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 8,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "取景：构图辅助提示人物与地标同框；快门 72dp，符合触控目标。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:module@MP-B",
+      "name": "P05 拼图收集 · 片区（北校区）",
+      "module": "MP-B",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:module@MP-B",
+        "frameName": "P05 拼图收集 · 片区（北校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=module&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 16,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "片区 3/4：点已点亮的格子可查看关联地标与记录；服务端确认打卡成功后碎片自动点亮归位，主流程不要求拖动，手动拼合只作回顾入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p05:module@MP-C",
+      "name": "P05 拼图收集 · 片区（东校区）",
+      "module": "MP-C",
+      "landmarkIndex": null,
+      "figma": {
+        "frameKey": "p05:module@MP-C",
+        "frameName": "P05 拼图收集 · 片区（东校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p05&s=module&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 16,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "片区 3/4：点已点亮的格子可查看关联地标与记录；服务端确认打卡成功后碎片自动点亮归位，主流程不要求拖动，手动拼合只作回顾入口。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:done@MP-A:lm1",
+      "name": "P02 地标详情 · 博雅（南校区）",
+      "module": "MP-A",
+      "landmarkIndex": 1,
+      "figma": {
+        "frameKey": "p02:done@MP-A:lm1",
+        "frameName": "P02 地标详情 · 博雅（南校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=done&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "该地标已完成：显示「该地标已完成」，不重复授奖，主按钮改为查看拼图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:done@MP-A:lm2",
+      "name": "P02 地标详情 · 理教（南校区）",
+      "module": "MP-A",
+      "landmarkIndex": 2,
+      "figma": {
+        "frameKey": "p02:done@MP-A:lm2",
+        "frameName": "P02 地标详情 · 理教（南校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=done&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "该地标已完成：显示「该地标已完成」，不重复授奖，主按钮改为查看拼图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:done@MP-A:lm3",
+      "name": "P02 地标详情 · 工业生态楼（南校区）",
+      "module": "MP-A",
+      "landmarkIndex": 3,
+      "figma": {
+        "frameKey": "p02:done@MP-A:lm3",
+        "frameName": "P02 地标详情 · 工业生态楼（南校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=done&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "该地标已完成：显示「该地标已完成」，不重复授奖，主按钮改为查看拼图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    },
+    {
+      "key": "p02:done@MP-B:lm0",
+      "name": "P02 地标详情 · 北湖（北校区）",
+      "module": "MP-B",
+      "landmarkIndex": 0,
+      "figma": {
+        "frameKey": "p02:done@MP-B:lm0",
+        "frameName": "P02 地标详情 · 北湖（北校区）",
+        "note": "Figma 画板帧键；按帧名可在 .fig 中定位同一状态"
+      },
+      "protoUrl": "design/prototype/index.html?p=p02&s=done&bare=1&hold=1",
+      "protoNote": "原型 HTML 仅存在于设计工作区，不入库、不随包交付；复核以 figma.frameName + pdf.page 为准",
+      "pdf": {
+        "file": "dist/拼迹-第4组-七页高保真原型-v3.1.pdf",
+        "page": 7,
+        "note": "变体帧：PDF 仅呈现其中一例（推荐目标），本页为同版式基准态所在页；其余实例按 figma.frameKey 在 .fig 内定位"
+      },
+      "stateNote": "该地标已完成：显示「该地标已完成」，不重复授奖，主按钮改为查看拼图。",
+      "delivery": {
+        "fileInRepo": null,
+        "note": "界面状态不随包交付切图；按 figma.frameKey（或帧名）/ pdf.page 复核，protoUrl 仅设计侧内部复现用"
+      }
+    }
+  ],
+  "pending": [
+    {
+      "item": "4 个地标的实拍打卡照（LM-001 疏桐 / LM-002 博雅 / LM-003 理教 / LM-004 工业生态楼，各 1080×1080，WebP ≤220KB）",
+      "purpose": "P05 片区 2×2 的四格、P02 详情 Hero、P01 卡片缩略图",
+      "why": "需现场拍摄或取得授权；当前用矢量占位插画顶替（一格一图，不再是一张封面切九格）",
+      "owner": "向川",
+      "due": "2026-10-24",
+      "status": "pending"
+    },
+    {
+      "item": "AI 生成的 4 张地标底图（备选方案）",
+      "purpose": "若实拍不可用时，替换片区 2×2 的某几格",
+      "why": "AI 图像授权与可商用性未确认；且禁止生成界面正文文字，只能做底图",
+      "owner": "向川",
+      "due": "2026-10-24",
+      "status": "pending"
+    },
+    {
+      "item": "奖励动效源文件（Rive / Lottie JSON）",
+      "purpose": "P05 合成成功的一次性奖励反馈",
+      "why": "P0 决定用 Compose 属性动画替代，第一版不是必需依赖",
+      "owner": "向川",
+      "due": "P1",
+      "status": "not-needed"
+    }
+  ]
 }
