@@ -102,6 +102,8 @@ data class CameraUiState(
     val restoredDraft: Boolean = false,
     val pendingUnknownDraft: Boolean = false,
     val pendingDraftUploadState: UploadState? = null,
+    val pendingDraftLandmarkId: String? = null,
+    val pendingDraftAttemptId: String? = null,
     val errorMessage: String? = null,
     val faceCheckMessage: String? = null,
 ) {
@@ -124,7 +126,9 @@ sealed interface CameraAction {
 
 sealed interface CameraEffect {
     data class NavigateToResult(val checkInId: String, val landmarkId: String) : CameraEffect
-    data object NavigateBack : CameraEffect
+
+    /** 续用旧草稿：重新导航到旧草稿对应的地标 + attemptId（C-2）。 */
+    data class NavigateToDraft(val landmarkId: String, val attemptId: String) : CameraEffect
 }
 
 class CameraViewModel(
@@ -179,6 +183,8 @@ class CameraViewModel(
                             it.copy(
                                 pendingUnknownDraft = true,
                                 pendingDraftUploadState = saved.uploadState,
+                                pendingDraftLandmarkId = saved.landmarkId,
+                                pendingDraftAttemptId = saved.id,
                             )
                         }
                     }
@@ -194,6 +200,8 @@ class CameraViewModel(
         uploadedPhotoId = saved.uploadedPhotoId
         frozenLocation = saved.frozenLocation
         draftCreatedAt = saved.createdAt
+        // C-1：恢复「是否已发送」事实——明确失败的 FAILED（已发送）重拍须换新 ID，上传失败（未发送）可同 attempt 重试
+        requestSent = saved.requestSent
         // F1：无条件恢复 uploadState；照片缺失只影响预览，不影响「已发出/未知」状态与查询恢复入口
         val path = saved.localPhoto?.absolutePath
         val patch = CheckInFlowRules.buildRecoveredDraftPatch(
@@ -201,9 +209,6 @@ class CameraViewModel(
             localPhotoPath = path,
             photoExists = path != null && File(path).exists(),
         )
-        if (patch.markRequestSent) {
-            requestSent = true
-        }
         mutableUiState.update {
             it.copy(
                 photoPath = patch.photoPath,
@@ -239,8 +244,15 @@ class CameraViewModel(
             CameraAction.Confirm -> submitFlow()
             CameraAction.RefreshLocation -> refreshGate()
             CameraAction.DiscardPendingDraft -> discardPendingDraft()
-            CameraAction.KeepPendingDraft -> effectChannel.trySend(CameraEffect.NavigateBack)
+            CameraAction.KeepPendingDraft -> keepPendingDraft()
         }
+    }
+
+    /** 「继续上一个」：真正续用旧草稿，导航到旧地标 + 原 attemptId（C-2）。 */
+    private fun keepPendingDraft() {
+        val landmarkId = mutableUiState.value.pendingDraftLandmarkId ?: return
+        val attemptId = mutableUiState.value.pendingDraftAttemptId ?: return
+        effectChannel.trySend(CameraEffect.NavigateToDraft(landmarkId = landmarkId, attemptId = attemptId))
     }
 
     /** 取位 + 门控（仅刷新 UI 门控展示，不冻结定位；冻结只在开拍动作发生时进行）。 */
@@ -275,11 +287,6 @@ class CameraViewModel(
             return
         }
         viewModelScope.launch {
-            // F2：旧尝试已发出（如明确失败后重拍）时，新照片属于新 attempt，先原子重置上下文（不删旧照）
-            if (requestSent) {
-                resetAttemptContext()
-                mutableUiState.update { it.copy(attemptId = currentAttemptId) }
-            }
             // 开拍动作发生时重新取位 + 重新门控（不依赖缓存 gate），通过即冻结本次定位
             val (location, gate) = fetchLocationAndGate()
             if (gate !is CheckInGateResult.Ready) {
@@ -292,7 +299,8 @@ class CameraViewModel(
             mutableUiState.update {
                 it.copy(isCapturing = true, gate = gate, errorMessage = null, faceCheckMessage = null)
             }
-            if (!hasValidChallenge()) {
+            // 新尝试（旧已发送）或旧挑战过期时，拍摄前领取新挑战（C-N02「每尝试一次、拍摄前签发」）
+            if (requestSent || !hasValidChallenge()) {
                 try {
                     val challenge = checkInRepository.createChallenge(landmarkId)
                     challengeId = challenge.id
@@ -314,12 +322,17 @@ class CameraViewModel(
             cameraManager.takePhoto(
                 rotation = rotation,
                 onCaptured = { file ->
+                    // C-1：新照成功采用时才落实新 attempt（旧已发送 → 换新 ID，保留刚领的 challenge 与冻结位置）
+                    if (requestSent) {
+                        rotateAttemptId()
+                    }
                     // 新照成功才替换旧照；首拍无旧照
                     val old = mutableUiState.value.photoPath
                     if (old != null && old != file.absolutePath) CameraXManager.deletePhoto(old)
                     uploadedPhotoId = null
                     mutableUiState.update {
                         it.copy(
+                            attemptId = currentAttemptId,
                             photoPath = file.absolutePath,
                             isCapturing = false,
                             retaking = false,
@@ -332,6 +345,7 @@ class CameraViewModel(
                     )
                 },
                 onError = { e ->
+                    // 拍摄失败：不换 ID、不删旧照，保留旧上下文（C-1）
                     mutableUiState.update { it.copy(isCapturing = false, errorMessage = e.message) }
                 },
             )
@@ -455,6 +469,15 @@ class CameraViewModel(
 
             // 标记已发送：此后冻结内容不可变，重试即查询恢复（不重放）
             requestSent = true
+            // C-1：立即持久化「已发送」事实，避免 submit 期间进程被杀后草稿丢失 requestSent
+            persistDraft(
+                localPhoto = LocalPhotoRef(
+                    processed.file.absolutePath,
+                    "image/jpeg",
+                    processed.file.length(),
+                ),
+                uploadState = UploadState.UPLOADED,
+            )
             when (val outcome = submitCoordinator.submit(landmarkId, currentAttemptId, challenge, photoId, location)) {
                 is SubmitOutcome.Success -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
@@ -577,8 +600,8 @@ class CameraViewModel(
     }
 
     /**
-     * 原子生成新 attemptId 并清空本次尝试的冻结状态（不触碰照片/预览/uploadState，F2）。
-     * 用于「新照成功采用」前重置上下文，确保新请求不复用旧 key。
+     * 原子生成新 attemptId 并清空本次尝试的冻结状态（不触碰照片/预览/uploadState）。
+     * 用于 beginNewAttempt：可靠确认旧尝试已结束（明确未成功）后换新 attempt 重拍。
      */
     private fun resetAttemptContext() {
         currentAttemptId = "att_" + UUID.randomUUID().toString()
@@ -586,6 +609,17 @@ class CameraViewModel(
         challengeExpiresAt = null
         uploadedPhotoId = null
         frozenLocation = null
+        requestSent = false
+        draftCreatedAt = null
+    }
+
+    /**
+     * 仅换新 attemptId（保留刚领的 challenge 与刚冻结的 location），并把「已发送」清零。
+     * 用于 capture 新照片成功采用时：旧尝试已发送 → 新照片对应新 attempt，避免复用旧 key（C-1）。
+     * 不删旧照、不改 uploadState——调用方在采用新照时统一处理。
+     */
+    private fun rotateAttemptId() {
+        currentAttemptId = "att_" + UUID.randomUUID().toString()
         requestSent = false
         draftCreatedAt = null
     }
@@ -646,6 +680,7 @@ class CameraViewModel(
                     uploadState = uploadState,
                     createdAt = createdAt,
                     updatedAt = now,
+                    requestSent = requestSent,
                 ),
             )
         }
@@ -707,6 +742,7 @@ fun CameraScreen(
     viewModel: CameraViewModel,
     onBack: () -> Unit,
     onResult: (String, String) -> Unit,
+    onOpenDraft: (String, String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -716,7 +752,7 @@ fun CameraScreen(
         viewModel.effects.collect { effect ->
             when (effect) {
                 is CameraEffect.NavigateToResult -> onResult(effect.checkInId, effect.landmarkId)
-                CameraEffect.NavigateBack -> onBack()
+                is CameraEffect.NavigateToDraft -> onOpenDraft(effect.landmarkId, effect.attemptId)
             }
         }
     }
@@ -809,12 +845,12 @@ private fun PendingDraftDialog(canDiscard: Boolean, onDiscard: () -> Unit, onKee
             if (canDiscard) {
                 TextButton(onClick = onDiscard) { Text("放弃并重新开始") }
             } else {
-                TextButton(onClick = onKeep) { Text("返回继续上一个") }
+                TextButton(onClick = onKeep) { Text("继续上一个") }
             }
         },
         dismissButton = {
             if (canDiscard) {
-                TextButton(onClick = onKeep) { Text("返回继续上一个") }
+                TextButton(onClick = onKeep) { Text("继续上一个") }
             }
         },
     )

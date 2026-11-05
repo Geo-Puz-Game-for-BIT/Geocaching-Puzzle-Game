@@ -2,14 +2,13 @@ package com.bitse.geotreasure.core.checkin
 
 import com.bitse.geotreasure.core.model.UploadState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CheckInFlowRulesTest {
 
-    // ---------- F1：提交入口分流（先已发出/未知 → RECOVER，再明确失败 → NEW_ATTEMPT） ----------
+    // ---------- 提交入口分流（先已发出/未知 → RECOVER，再明确失败 → NEW_ATTEMPT） ----------
 
     @Test
     fun submitRoute_unknownMissingPhoto_recovers() {
@@ -31,7 +30,7 @@ class CheckInFlowRulesTest {
 
     @Test
     fun submitRoute_failedAfterSent_newAttempt() {
-        // 明确失败（已发出且被明确拒绝）→ 换新尝试
+        // C-1：明确失败（已发出且被明确拒绝）→ 换新尝试，不得复用旧 key
         assertEquals(
             SubmitRoute.NEW_ATTEMPT,
             CheckInFlowRules.submitRoute(UploadState.FAILED, requestSent = true, isProcessing = false),
@@ -40,7 +39,7 @@ class CheckInFlowRulesTest {
 
     @Test
     fun submitRoute_failedBeforeSent_firstSubmit() {
-        // 照片上传失败（未发出）→ 同一 attempt 重试首提
+        // C-1：照片上传失败（未发出）→ 同一 attempt 重试首提
         assertEquals(
             SubmitRoute.FIRST_SUBMIT,
             CheckInFlowRules.submitRoute(UploadState.FAILED, requestSent = false, isProcessing = false),
@@ -67,11 +66,11 @@ class CheckInFlowRulesTest {
         )
     }
 
-    // ---------- F1：恢复草稿无条件恢复 uploadState，照片缺失仅影响预览 ----------
+    // ---------- 恢复草稿无条件恢复 uploadState，照片缺失仅影响预览 ----------
 
     @Test
     fun recoverDraft_unknownMissingPhoto_stillUnknown() {
-        // F1 回归：UNKNOWN 草稿 + 照片缺失 → uploadState 仍 UNKNOWN（不得回退 EMPTY），且标记已发出
+        // F1 回归：UNKNOWN 草稿 + 照片缺失 → uploadState 仍 UNKNOWN（不得回退 EMPTY）
         val patch = CheckInFlowRules.buildRecoveredDraftPatch(
             uploadState = UploadState.UNKNOWN,
             localPhotoPath = "/tmp/gone.jpg",
@@ -79,7 +78,6 @@ class CheckInFlowRulesTest {
         )
         assertEquals(UploadState.UNKNOWN, patch.uploadState)
         assertNull(patch.photoPath)
-        assertTrue(patch.markRequestSent)
         assertTrue(patch.restoredDraft)
     }
 
@@ -92,7 +90,7 @@ class CheckInFlowRulesTest {
         )
         assertEquals(UploadState.UNKNOWN, patch.uploadState)
         assertEquals("/tmp/p.jpg", patch.photoPath)
-        assertTrue(patch.markRequestSent)
+        assertTrue(patch.restoredDraft)
     }
 
     @Test
@@ -104,7 +102,6 @@ class CheckInFlowRulesTest {
         )
         assertEquals(UploadState.FAILED, patch.uploadState)
         assertNull(patch.photoPath)
-        assertFalse(patch.markRequestSent)
     }
 
     @Test
@@ -117,6 +114,5 @@ class CheckInFlowRulesTest {
         assertEquals(UploadState.EMPTY, patch.uploadState)
         assertEquals("/tmp/p.jpg", patch.photoPath)
         assertNull(patch.errorMessage)
-        assertFalse(patch.markRequestSent)
     }
 }

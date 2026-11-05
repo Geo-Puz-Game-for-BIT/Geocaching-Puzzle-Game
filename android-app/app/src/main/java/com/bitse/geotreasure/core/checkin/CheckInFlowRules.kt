@@ -23,7 +23,6 @@ data class RecoveredDraftPatch(
     val uploadState: UploadState,
     val restoredDraft: Boolean,
     val errorMessage: String?,
-    val markRequestSent: Boolean,
 )
 
 /**
@@ -52,6 +51,7 @@ object CheckInFlowRules {
     /**
      * 恢复草稿 → UI 补丁（F1）：uploadState 无条件恢复；
      * 照片文件缺失时 photoPath 置 null（预览不可用），但「已发出/未知」状态与恢复入口不受影响。
+     * 「是否已发送」由 CheckInDraft.requestSent 持久化恢复，不在此推断。
      */
     fun buildRecoveredDraftPatch(
         uploadState: UploadState,
@@ -66,6 +66,5 @@ object CheckInFlowRules {
             UploadState.FAILED -> "上次提交失败，请重试"
             else -> null
         },
-        markRequestSent = uploadState == UploadState.UNKNOWN,
     )
 }

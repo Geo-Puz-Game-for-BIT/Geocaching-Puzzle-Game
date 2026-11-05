@@ -108,6 +108,12 @@ data class CheckInDraft(
     val uploadState: UploadState,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /**
+     * 本次 attempt 是否已发出过至少一次提交请求。
+     * 持久化用于恢复「已发送」事实：明确失败的 FAILED（已发送）重拍须换新 attemptId，
+     * 而照片上传失败的 FAILED（未发送）可同一 attempt 重试。
+     */
+    val requestSent: Boolean = false,
 )
 
 data class LocalPhotoRef(
