@@ -12,4 +12,4 @@ V1.0（仅实现基础设计，五页可点击基础原型） https://www.figma.
 
 V1.4 https://www.figma.com/design/7IQjQeBslurxQKDzhcOEuQ/Untitled?node-id=1-6771&t=H1h8c8EmbPSPoKjI-1
 
-V1.7 https://www.figma.com/proto/RdkfdWHicvkFmdIClBCtPY/Untitled?page-id=0%3A1&node-id=2-2618&p=f&viewport=313%2C25%2C0.13&t=n8DAKGeJrT5ZHr3D-1&scaling=min-zoom&content-scaling=fixed&starting-point-node-id=2%3A2  （此次设计采用该版本）
+V1.7 https://www.figma.com/proto/RdkfdWHicvkFmdIClBCtPY/Untitled?page-id=0%3A1&node-id=2-2618&p=f&viewport=313%2C25%2C0.13&t=n8DAKGeJrT5ZHr3D-1&scaling=min-zoom&content-scaling=fixed&starting-point-node-id=2%3A2  （此次设计采用该版本，同时pdf采用拼迹-第四组-七页高保真原型V3.1.pdf）
