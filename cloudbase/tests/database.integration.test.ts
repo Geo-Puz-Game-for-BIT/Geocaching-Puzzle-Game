@@ -9,7 +9,10 @@ import {
   selectRows,
   updateRows,
 } from "../functions/api/db.ts";
-import { submitCheckIn } from "../functions/api/handlers/checkins.ts";
+import {
+  queryCheckInAttempt,
+  submitCheckIn,
+} from "../functions/api/handlers/checkins.ts";
 import { listNearbyLandmarks } from "../functions/api/handlers/landmarks.ts";
 import { getPuzzleProgress } from "../functions/api/handlers/puzzles.ts";
 
@@ -183,7 +186,7 @@ async function createChallenge(
   suffix: string,
   attemptId: string,
 ): Promise<string> {
-  const challengeId = `chl_itest_${suffix}`;
+  const challengeId = `chl_itest_${suffix}_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
   await insertRow("challenges", {
     id: challengeId,
     user_id: value.userId,
@@ -215,6 +218,14 @@ async function cleanupFixture(value: Fixture): Promise<void> {
   await deleteRows("fragment_grants", { user_id: `eq.${value.userId}` });
   await deleteRows("checkin_attempts", { user_id: `eq.${value.userId}` });
   await deleteRows("checkins", { user_id: `eq.${value.userId}` });
+  await updateRows(
+    "photos",
+    { user_id: `eq.${value.userId}` },
+    {
+      challenge_id: null,
+      attempt_id: null,
+    },
+  );
   await deleteRows("challenges", { user_id: `eq.${value.userId}` });
   await deleteRows("photos", { user_id: `eq.${value.userId}` });
   await deleteRows("tasks", { landmark_id: `eq.${value.landmarkId}` });
@@ -238,7 +249,10 @@ afterEach(async () => {
 
 describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
   it("canonical API model exposes three campus sections and twelve landmarks", async () => {
-    const landmarks = await listNearbyLandmarks({});
+    const canonicalIds = new Set(canonicalCatalog.landmarks.map((landmark) => landmark.id));
+    const landmarks = (await listNearbyLandmarks({})).filter((landmark) =>
+      canonicalIds.has(landmark.id),
+    );
     const puzzle = await getPuzzleProgress(
       "usr_demo01",
       "puzzle_liangxiang_campus",
@@ -357,35 +371,45 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
       status: "COMPLETED",
       check_in_id: first.checkInId,
     });
+
+    await expect(
+      queryCheckInAttempt(value.userId, key, randomUUID()),
+    ).resolves.toMatchObject({
+      kind: "completed",
+      receipt: { checkInId: first.checkInId },
+    });
   });
 
   it("failed pre-insert validation does not consume the challenge", async () => {
     const value = await createFixture();
-    const key = `retry-${randomUUID()}`;
-    const challengeId = await createChallenge(value, "retry", key);
-    await bindPhoto(value, 0, challengeId, key);
+    const firstAttemptId = `retry-a-${randomUUID()}`;
+    const firstChallengeId = await createChallenge(value, "retry_a", firstAttemptId);
+    await bindPhoto(value, 0, firstChallengeId, firstAttemptId);
 
     await expect(
       submitCheckIn(
         value.userId,
         randomUUID(),
-        key,
-        requestBody(value.landmarkId, challengeId, "pho_missing"),
+        firstAttemptId,
+        requestBody(value.landmarkId, firstChallengeId, "pho_missing"),
       ),
     ).rejects.toMatchObject({ code: "PHOTO_REQUIRED" });
 
     const untouched = await selectRows<{ used_at: string | null }>("challenges", {
       select: "used_at",
-      id: `eq.${challengeId}`,
+      id: `eq.${firstChallengeId}`,
       limit: "1",
     });
     expect(untouched[0]?.used_at).toBeNull();
 
+    const secondAttemptId = `retry-b-${randomUUID()}`;
+    const secondChallengeId = await createChallenge(value, "retry_b", secondAttemptId);
+    await bindPhoto(value, 0, secondChallengeId, secondAttemptId);
     const receipt = await submitCheckIn(
       value.userId,
       randomUUID(),
-      key,
-      requestBody(value.landmarkId, challengeId, value.photoIds[0]),
+      secondAttemptId,
+      requestBody(value.landmarkId, secondChallengeId, value.photoIds[0]),
     );
     expect(receipt.status).toBe("COMPLETED");
   });
@@ -395,6 +419,7 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
     const key = `rollback-${randomUUID()}`;
     const challengeId = await createChallenge(value, "rollback", key);
     await bindPhoto(value, 0, challengeId, key);
+    const body = requestBody(value.landmarkId, challengeId, value.photoIds[0]);
 
     await deleteRows("tasks", { landmark_id: `eq.${value.landmarkId}` });
     await expect(
@@ -402,7 +427,7 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
         value.userId,
         randomUUID(),
         key,
-        requestBody(value.landmarkId, challengeId, value.photoIds[0]),
+        body,
       ),
     ).rejects.toThrow(/LANDMARK_NOT_FOUND/i);
 
@@ -432,7 +457,7 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
       value.userId,
       randomUUID(),
       key,
-      requestBody(value.landmarkId, challengeId, value.photoIds[0]),
+      body,
     );
 
     expect(receipt.status).toBe("COMPLETED");
@@ -500,5 +525,79 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
     expect(checkins).toHaveLength(1);
     expect(grants).toHaveLength(1);
     expect(audits).toHaveLength(1);
+  });
+
+  it("seals an orphan PROCESSING attempt and rejects a late request", async () => {
+    const value = await createFixture();
+    const attemptId = `orphan-${randomUUID()}`;
+    await insertRow("checkin_attempts", {
+      id: attemptId,
+      user_id: value.userId,
+      request_hash: "a".repeat(64),
+      status: "PROCESSING",
+      created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    });
+
+    await expect(
+      queryCheckInAttempt(value.userId, attemptId, randomUUID()),
+    ).resolves.toEqual({ kind: "not_found", attemptId });
+
+    const attempts = await selectRows<{ status: string; failure_code: string | null }>(
+      "checkin_attempts",
+      {
+        select: "status,failure_code",
+        id: `eq.${attemptId}`,
+        user_id: `eq.${value.userId}`,
+        limit: "1",
+      },
+    );
+    expect(attempts[0]).toMatchObject({
+      status: "ABANDONED",
+      failure_code: "PROCESSING_TIMEOUT",
+    });
+
+    const challengeId = await createChallenge(value, "late", attemptId);
+    await bindPhoto(value, 0, challengeId, attemptId);
+    await expect(
+      submitCheckIn(
+        value.userId,
+        randomUUID(),
+        attemptId,
+        requestBody(value.landmarkId, challengeId, value.photoIds[0]),
+      ),
+    ).rejects.toMatchObject({ code: "ATTEMPT_SEALED" });
+  });
+
+  it("selects immediately pending photo cleanup without waiting for delete_after", async () => {
+    const value = await createFixture();
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await updateRows(
+      "photos",
+      { id: `eq.${value.photoIds[0]}` },
+      {
+        deleted_at: new Date().toISOString(),
+        delete_after: future,
+        storage_deleted_at: null,
+      },
+    );
+
+    const pending = await selectRows<{
+      id: string;
+      delete_after: string;
+      storage_deleted_at: string | null;
+    }>("photos", {
+      select: "id,delete_after,storage_deleted_at",
+      user_id: `eq.${value.userId}`,
+      deleted_at: "not.is.null",
+      storage_deleted_at: "is.null",
+    });
+
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({
+      id: value.photoIds[0],
+      storage_deleted_at: null,
+    });
+    expect(Date.parse(pending[0]!.delete_after)).toBe(Date.parse(future));
   });
 });

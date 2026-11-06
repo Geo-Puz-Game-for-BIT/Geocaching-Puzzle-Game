@@ -10,7 +10,7 @@
     "test": "vitest run",
     "build:cloud": "npm run build:cloud:api && npm run build:cleanup",
     "build:cloud:api": "esbuild src/cloudbase-server.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/dist/main.cjs",
-    "build:cleanup": "esbuild src/cleanup-handler.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/photo-cleanup/dist/main.cjs",
+    "build:cleanup": "esbuild src/cleanup-handler.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/photo-cleanup/index.js",
     "api:check": "npm run typecheck && npm run test && npm run api:contract",
     "deploy": "npm run build:cloud && tcb deploy --config-file cloudbaserc.json --only functions --force --yes",
     "cloudbase": "tcb",

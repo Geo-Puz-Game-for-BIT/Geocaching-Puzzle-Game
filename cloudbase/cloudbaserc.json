@@ -31,7 +31,7 @@
       "name": "photo-cleanup",
       "runtime": "Nodejs20.19",
       "dir": "deploy/photo-cleanup",
-      "entry": "dist/main.cjs",
+      "handler": "index.main",
       "memorySize": 256,
       "timeout": 30,
       "installDependency": false,

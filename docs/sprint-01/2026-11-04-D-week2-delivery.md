@@ -12,9 +12,9 @@
 | D-N02 | 源码完成，待真实事务环境复跑 | attempt 与 `request_hash` 分离保存；相同 key 改请求继续冲突；未知结果保留 PROCESSING；恢复路径复用原打卡/奖励/审计 |
 | D-N03 | 源码完成，边界已记录 | 服务端精度统一 30m；增加来源、采集时间和设备单调时钟字段；照片可绑定 challenge/attempt；服务端时间窗口交叉校验 |
 | D-N04 | 外部依赖阻塞 | 未接入人脸/照片核验服务，未把客户端初检写成服务端已验证；协议和验收边界见 `docs/api/photo-verification.md` |
-| D-N05 | 源码完成 | 新增照片逻辑删除、归属校验、PROCESSING attempt 阻止删除、即时补偿扫描和每 10 分钟 CloudBase timer 配置 |
+| D-N05 | 已部署验证 | 照片逻辑删除、归属校验、PROCESSING attempt 阻止删除、即时补偿扫描和每 10 分钟 CloudBase timer 均已部署；手动调用成功 |
 | D-N06 | 源码完成 | Android 统一 `/api/v1`、取消异常透传、地图/地标在线状态可辨；已合入 C 的 attempt 状态机，AppContainer 同时装配 CloudBase 地标和 RemoteCheckInRepository |
-| D-N07 | 本轮完成 | OpenAPI、错误码、恢复/删除契约和迁移顺序已同步；未执行线上部署 |
+| D-N07 | 已部署验证 | OpenAPI、错误码、恢复/删除契约、迁移和线上部署已同步；health 的 UUID 头体一致 |
 
 ## 后端验证
 
@@ -27,8 +27,9 @@ npm run api:check --workspace @geotreasure/cloudbase
 结果：
 
 - TypeScript 类型检查通过。
-- Vitest：67 通过，6 个真实数据库用例因未应用本轮迁移而跳过。
+- Vitest：67 通过。
 - OpenAPI 与三校区 canonical fixture 校验通过。
+- 真实 PostgreSQL：8 通过，包含事务、冲突、审计恢复、并发、孤儿封存、迟到请求拒绝和即时清理候选。
 
 已覆盖：
 
@@ -44,11 +45,11 @@ npm run api:check --workspace @geotreasure/cloudbase
 
 ## 迁移与部署顺序
 
-1. 先应用 `cloudbase/migrations/20261104120000_checkin_recovery_and_photo_deletion.sql`。
-2. 构建并部署与迁移同一 SHA 的 `api` 与 `photo-cleanup` 云函数。
-3. 部署后先验证 `/health` 的 UUID、响应头与响应体一致。
-4. 再执行 attempt 查询、照片删除和失败补偿 smoke test。
-5. 最后运行真实 PostgreSQL 并发、事务回滚和计数测试。
+1. 已应用 `cloudbase/migrations/20261104120000_checkin_recovery_and_photo_deletion.sql`。
+2. 已部署 `api` 与 `photo-cleanup` 云函数。
+3. `/health` 已返回 UUID，响应头与响应体一致。
+4. attempt 查询和 challenge attempt 必填验证已通过线上 smoke test。
+5. 真实 PostgreSQL 8/8 通过。
 
 本轮迁移是增量迁移，旧服务可继续忽略新增表和字段。应用回退时先回退云函数，保留新增列和 attempt 审计数据；不得直接删除 `checkin_attempts`，否则无法解释未知历史和补偿。需要完整数据库回退时，必须先导出 attempt/photo 删除审计并经 E 批准。
 
@@ -63,7 +64,16 @@ npm run api:check --workspace @geotreasure/cloudbase
 
 ## 尚未完成的外部条件
 
-- 当前环境未应用本轮迁移，因此真实 PostgreSQL 测试显示 skip，不能标记 PASS。
-- `photo-cleanup` timer 配置已进入源码，但尚未部署；当前没有线上调度运行记录或部署版本证据。
 - 尚未获得照片核验服务地址、账号、阈值和数据处理条款。
 - E 尚未使用固定 SHA 安装 APK 做实机打卡、断网、强杀和照片删除验收。
+
+## 线上部署证据（2026-11-06）
+
+- `api`：Deployment completed，FunctionId `lam-btbif7il`，ModTime `2026-11-06 16:22:28`
+- `photo-cleanup`：Active，FunctionId `lam-f8b470dr`，ModTime `2026-11-06 16:27:47`
+- timer：`photo-cleanup-every-10-minutes`，cron `0 */10 * * * * *`
+- 手动调用 RequestId：`aae31edf-d4aa-4ca7-aeb7-a4106fae9bc6`
+- 手动调用结果：`{"scanned":0,"cleaned":0,"failed":0}`，耗时 260ms
+- 线上 health RequestId：`91281d25-5683-452d-8060-11fe61330236`，状态 200，响应头与响应体 UUID 一致
+- 线上 attempt 查询：404 `CHECKIN_NOT_FOUND`
+- 线上无 `X-Attempt-Id` 创建 challenge：400 `INVALID_REQUEST`
