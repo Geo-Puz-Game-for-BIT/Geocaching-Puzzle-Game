@@ -28,13 +28,18 @@ X-Request-Id: <uuid>
 - POST 开始前写入 `checkin_attempts(PROCESSING)`；数据库事务成功后更新为 `COMPLETED`。
 - 已明确失败且未消费 challenge 的 attempt 标记为 `FAILED`，查询返回 `CHECKIN_NOT_FOUND`。
 - 进程中断或响应丢失时保留 `PROCESSING`，重试只恢复同一 attempt，不能生成第二个打卡。
+- 查询必须先核对当前用户与 attempt 的成功 check-in；成功记录存在时必须返回 200，不能永久返回 202。
+- `PROCESSING` 超过 2 分钟且没有成功记录时转换为 `ABANDONED`，随后查询返回明确无记录。
+- 数据库触发器在 check-in 写入时锁定 attempt；`ABANDONED` 或其它非 PROCESSING 状态拒绝迟到请求，避免“先 404、后又成功”。
 - `request_hash` 覆盖地标、challenge、照片、坐标、精度、采集时间、来源和单调时钟字段。
 - 同 attempt 不同请求继续返回 `IDEMPOTENCY_CONFLICT`。
 
 ## 时间与照片关联
 
 - challenge 拍前签发，有效期 5 分钟，单次消费。
-- 照片上传可携带 `X-Challenge-Id` 和 `X-Attempt-Id`；打卡时照片若已绑定 challenge，必须与提交 challenge 一致。
+- challenge 签发时必须携带 `X-Attempt-Id` 并持久化绑定。
+- 照片上传必须携带 `X-Challenge-Id` 和 `X-Attempt-Id`；服务端校验 challenge 属于当前用户和同一 attempt。
+- 打卡提交校验 attempt、challenge、photo 三者关系，任一不一致返回 `PHOTO_INVALID`。
 - 服务端只接受 30 秒内采集的定位；未来时间超过 5 秒拒绝。
 - 客户端同时提供 `elapsedRealtimeNanos` 和 `submittedElapsedRealtimeNanos` 时，服务端比较墙钟年龄与单调区间，偏差超过 5 秒判定时钟异常。
 - EXIF 只作为辅助证据，不能替代服务端时间和范围校验。
@@ -50,7 +55,8 @@ Authorization: Bearer <token>
 - 关联 attempt 为 `PROCESSING` 时返回 `CHECKIN_RESULT_UNKNOWN`，先恢复结果。
 - 数据库先写 `deleted_at` 和 24 小时清理窗口，再删除存储对象。
 - 删除照片不撤销已成功打卡、碎片或统计。
-- 存储清理失败返回 202，后台可依据 `delete_after` 与 `storage_deleted_at` 补偿。
+- 存储清理失败返回 202；补偿任务不等 `delete_after` 到期，而是立即扫描 `deleted_at IS NOT NULL AND storage_deleted_at IS NULL`。
+- `delete_after` 只表示审计/备份保留窗口，不是清理任务的等待条件。
 
 ## 真实验证边界
 

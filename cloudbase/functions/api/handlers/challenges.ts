@@ -12,10 +12,17 @@ const createChallengeSchema = z.object({
   landmarkId: z.string().min(1),
 });
 
-export async function createCheckInChallenge(userId: string, body: unknown) {
+export async function createCheckInChallenge(
+  userId: string,
+  attemptId: string,
+  body: unknown,
+) {
   const input = createChallengeSchema.safeParse(body);
   if (!input.success) {
     throw new ApiError("INVALID_REQUEST", "landmarkId is required");
+  }
+  if (!attemptId || attemptId.length > 128) {
+    throw new ApiError("INVALID_REQUEST", "A valid attemptId is required");
   }
 
   await requireActiveLandmark(input.data.landmarkId);
@@ -26,12 +33,14 @@ export async function createCheckInChallenge(userId: string, body: unknown) {
     id,
     user_id: userId,
     landmark_id: input.data.landmarkId,
+    attempt_id: attemptId,
     expires_at: expiresAt.toISOString(),
   });
 
   return {
     id,
     landmarkId: input.data.landmarkId,
+    attemptId,
     expiresAt: expiresAt.toISOString(),
   };
 }

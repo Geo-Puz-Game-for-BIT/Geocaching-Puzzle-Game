@@ -16,6 +16,7 @@ secrets.properties
 # Node.js / CloudBase
 node_modules/
 cloudbase/deploy/dist/
+cloudbase/deploy/photo-cleanup/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

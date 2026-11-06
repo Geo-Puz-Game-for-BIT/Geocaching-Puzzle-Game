@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS checkin_attempts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT ck_checkin_attempts_request_hash CHECK (request_hash ~ '^[0-9a-f]{64}$'),
   CONSTRAINT ck_checkin_attempts_status CHECK (
-    status IN ('PROCESSING', 'COMPLETED', 'FAILED')
+    status IN ('PROCESSING', 'COMPLETED', 'FAILED', 'ABANDONED')
   ),
   CONSTRAINT ck_checkin_attempts_completed CHECK (
     (status = 'COMPLETED' AND check_in_id IS NOT NULL) OR
@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS checkin_attempts (
   CONSTRAINT fk_checkin_attempts_checkin_owner FOREIGN KEY (check_in_id, user_id)
     REFERENCES checkins(id, user_id)
 );
+
+ALTER TABLE challenges
+  ADD COLUMN IF NOT EXISTS attempt_id text;
 
 ALTER TABLE photos
   ADD COLUMN IF NOT EXISTS challenge_id text REFERENCES challenges(id),
@@ -52,6 +55,44 @@ CREATE INDEX IF NOT EXISTS idx_checkin_attempts_user_status
 CREATE INDEX IF NOT EXISTS idx_photos_pending_cleanup
   ON photos (delete_after)
   WHERE deleted_at IS NOT NULL AND storage_deleted_at IS NULL;
+
+CREATE OR REPLACE FUNCTION checkin_00_guard_attempt()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  attempt_status text;
+BEGIN
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended(NEW.user_id || ':' || NEW.idempotency_key, 0)
+  );
+
+  SELECT status
+  INTO attempt_status
+  FROM checkin_attempts
+  WHERE id = NEW.idempotency_key
+    AND user_id = NEW.user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'CHECKIN_ATTEMPT_REQUIRED'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  IF attempt_status <> 'PROCESSING' THEN
+    RAISE EXCEPTION 'ATTEMPT_SEALED'
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS checkin_00_guard_attempt ON checkins;
+CREATE TRIGGER checkin_00_guard_attempt
+BEFORE INSERT ON checkins
+FOR EACH ROW
+EXECUTE FUNCTION checkin_00_guard_attempt();
 
 INSERT INTO checkin_attempts (
   id,

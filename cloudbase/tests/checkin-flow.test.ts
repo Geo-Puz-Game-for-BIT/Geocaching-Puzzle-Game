@@ -30,7 +30,7 @@ interface FakeAttempt {
   id: string;
   user_id: string;
   request_hash: string;
-  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "ABANDONED";
   check_in_id: string | null;
   failure_code: string | null;
   created_at: string;
@@ -159,6 +159,7 @@ function installFetch(state: FakeState): void {
             ? [{
                 id: photoId,
                 challenge_id: state.photoChallenges[photoId] ?? null,
+                attempt_id: "idem_test",
                 deleted_at: null,
               }]
             : [],
@@ -247,7 +248,10 @@ function newState(overrides: Partial<FakeState> = {}): FakeState {
     audits: [],
     validChallenges: new Set(["chl_test"]),
     photos: new Set(["pho_test"]),
-    photoChallenges: {},
+    photoChallenges: {
+      pho_test: "chl_test",
+      pho_other: "chl_test",
+    },
     failCheckInOnce: false,
     ...overrides,
   };
@@ -430,5 +434,22 @@ describe("submitCheckIn", () => {
     expect(state.checkins).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
     expect(state.audits).toHaveLength(1);
+  });
+
+  it("givenAbandonedAttempt_whenLateRequestArrives_thenRejectsAttemptSealed", async () => {
+    const state = newState();
+    installFetch(state);
+    await submitCheckIn("usr_demo01", "req_1", "idem_test", validBody());
+
+    state.attempts[0]!.status = "ABANDONED";
+    state.checkins.length = 0;
+    state.grants.length = 0;
+    state.audits.length = 0;
+    state.validChallenges.add("chl_test");
+
+    await expect(
+      submitCheckIn("usr_demo01", "req_2", "idem_test", validBody()),
+    ).rejects.toMatchObject({ code: "ATTEMPT_SEALED" });
+    expect(state.checkins).toHaveLength(0);
   });
 });

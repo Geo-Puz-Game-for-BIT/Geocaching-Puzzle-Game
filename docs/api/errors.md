@@ -24,6 +24,7 @@
 | 404 | `CHECKIN_NOT_FOUND` | 当前用户的该 attempt 没有成功打卡记录；只有这个错误码表示“明确无记录” |
 | 404 | `PHOTO_NOT_FOUND` | 照片不存在或不属于当前用户 |
 | 409 | `CHALLENGE_EXPIRED` | challenge 已过期或已使用 |
+| 409 | `ATTEMPT_SEALED` | 超时孤儿 attempt 已封存，迟到请求不得再创建打卡 |
 | 409 | `IDEMPOTENCY_CONFLICT` | 同一幂等键对应不同请求 |
 | 409 | `CHECKIN_RESULT_UNKNOWN` | attempt 仍在处理中，不能删除唯一照片或开始新尝试 |
 | 422 | `LOCATION_STALE` | 定位样本超过服务端允许的最大年龄 |
@@ -57,6 +58,8 @@
 | 404 + `CHECKIN_NOT_FOUND` | 明确没有成功记录，可按客户端状态机决定是否生成新 attempt |
 
 普通路由 404、405、5xx、超时和代理错误不得映射成 `CHECKIN_NOT_FOUND`。
+
+服务端会先按当前用户和 attempt 查询实际 check-in；即使 attempt 状态残留为 `PROCESSING`，只要成功记录存在就必须返回 200。没有成功记录且 `PROCESSING` 超过 2 分钟时，attempt 转为 `ABANDONED / PROCESSING_TIMEOUT`，查询返回 404，并由数据库触发器拒绝该 attempt 的迟到写入。
 
 ## 照片删除
 

@@ -6,7 +6,8 @@ interface FakeAttempt {
   id: string;
   user_id: string;
   request_hash: string;
-  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "ABANDONED";
+  updated_at?: string;
   check_in_id: string | null;
   failure_code: string | null;
 }
@@ -50,13 +51,17 @@ function eqValue(value: string | null): string | undefined {
   return value?.startsWith("eq.") ? value.slice(3) : value ?? undefined;
 }
 
-function installFetch(attempt: FakeAttempt | null): void {
+function installFetch(attempt: FakeAttempt | null, hasCheckIn = false): void {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
       const table = url.pathname.split("/").pop();
       const method = init?.method ?? "GET";
+      const body =
+        typeof init?.body === "string" && init.body.length > 0
+          ? (JSON.parse(init.body) as Record<string, unknown>)
+          : undefined;
       const get = (key: string) => url.searchParams.get(key);
 
       if (table === "checkin_attempts" && method === "GET") {
@@ -70,8 +75,19 @@ function installFetch(attempt: FakeAttempt | null): void {
         return jsonResponse(rows);
       }
 
+      if (table === "checkin_attempts" && method === "PATCH") {
+        if (attempt && get("status") === `eq.${attempt.status}`) {
+          const status = String(body?.status);
+          attempt.status = status as FakeAttempt["status"];
+          attempt.failure_code = String(body?.failure_code);
+          attempt.updated_at = String(body?.updated_at);
+          return jsonResponse([attempt]);
+        }
+        return jsonResponse([]);
+      }
+
       if (table === "checkins" && method === "GET") {
-        const rows = [checkIn].filter(
+        const rows = (hasCheckIn ? [checkIn] : []).filter(
           (row) =>
             (!get("id") || row.id === eqValue(get("id"))) &&
             (!get("idempotency_key") ||
@@ -125,7 +141,7 @@ describe("queryCheckInAttempt", () => {
       status: "PROCESSING",
       check_in_id: null,
       failure_code: null,
-    });
+    }, false);
 
     await expect(
       queryCheckInAttempt("usr_demo01", "att_test", "req_query"),
@@ -140,7 +156,7 @@ describe("queryCheckInAttempt", () => {
       status: "COMPLETED",
       check_in_id: "chk_test",
       failure_code: null,
-    });
+    }, true);
 
     const result = await queryCheckInAttempt("usr_demo01", "att_test", "req_query");
 
@@ -171,5 +187,39 @@ describe("queryCheckInAttempt", () => {
     await expect(
       queryCheckInAttempt("usr_demo01", "att_missing", "req_query"),
     ).resolves.toEqual({ kind: "not_found", attemptId: "att_missing" });
+  });
+
+  it("returns 200 when a stored successful check-in exists despite stale PROCESSING state", async () => {
+    installFetch({
+      id: "att_test",
+      user_id: "usr_demo01",
+      request_hash: "a".repeat(64),
+      status: "PROCESSING",
+      check_in_id: null,
+      failure_code: null,
+    }, true);
+
+    const result = await queryCheckInAttempt("usr_demo01", "att_test", "req_query");
+
+    expect(result.kind).toBe("completed");
+  });
+
+  it("seals an orphan PROCESSING attempt before returning not_found", async () => {
+    const attempt: FakeAttempt = {
+      id: "att_test",
+      user_id: "usr_demo01",
+      request_hash: "a".repeat(64),
+      status: "PROCESSING",
+      check_in_id: null,
+      failure_code: null,
+      updated_at: "2026-11-04T07:00:00.000Z",
+    };
+    installFetch(attempt, false);
+
+    const result = await queryCheckInAttempt("usr_demo01", "att_test", "req_query");
+
+    expect(result).toEqual({ kind: "not_found", attemptId: "att_test" });
+    expect(attempt.status).toBe("ABANDONED");
+    expect(attempt.failure_code).toBe("PROCESSING_TIMEOUT");
   });
 });

@@ -72,7 +72,15 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
         response.end("Method Not Allowed");
         return;
       }
-      const data = await createCheckInChallenge(userId, await readJsonBody(request));
+      const attemptId = headerValue(request, "x-attempt-id");
+      if (!attemptId) {
+        throw new ApiError("INVALID_REQUEST", "X-Attempt-Id header is required");
+      }
+      const data = await createCheckInChallenge(
+        userId,
+        attemptId,
+        await readJsonBody(request),
+      );
       sendJson(response, 200, requestId, { requestId, data });
       return;
     }

@@ -74,7 +74,7 @@ interface CheckInAttemptRow {
   id: string;
   user_id: string;
   request_hash: string;
-  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  status: "PROCESSING" | "COMPLETED" | "FAILED" | "ABANDONED";
   check_in_id: string | null;
   failure_code: string | null;
   created_at: string;
@@ -96,6 +96,8 @@ export type CheckInAttemptQueryResult =
   | { kind: "completed"; receipt: CheckInReceipt }
   | { kind: "processing" }
   | { kind: "not_found"; attemptId: string };
+
+const PROCESSING_TIMEOUT_MS = 2 * 60 * 1000;
 
 function requestHash(input: z.infer<typeof checkInSchema>): string {
   const canonical = JSON.stringify([
@@ -163,11 +165,29 @@ async function beginCheckInAttempt(
       "The attempt identifier is already owned by another user",
     );
   }
+  if (attempt.status === "ABANDONED") {
+    throw new ApiError(
+      "ATTEMPT_SEALED",
+      "This attempt was abandoned after a processing timeout; start a new attempt",
+    );
+  }
   if (attempt.request_hash !== requestHashValue) {
     throw new ApiError(
       "IDEMPOTENCY_CONFLICT",
       "The Idempotency-Key was already used with a different request",
     );
+  }
+  if (attempt.status === "PROCESSING") {
+    const rows = await updateRows<CheckInAttemptRow>(
+      "checkin_attempts",
+      {
+        id: `eq.${attemptId}`,
+        user_id: `eq.${userId}`,
+        status: "eq.PROCESSING",
+      },
+      { updated_at: new Date().toISOString() },
+    );
+    return rows[0] ?? { ...attempt, updated_at: new Date().toISOString() };
   }
   if (attempt.status === "FAILED") {
     const rows = await updateRows<CheckInAttemptRow>(
@@ -226,6 +246,35 @@ async function markAttemptFailed(
       error,
     });
   }
+}
+
+async function abandonStaleAttempt(
+  userId: string,
+  attempt: CheckInAttemptRow,
+): Promise<boolean> {
+  const now = Date.now();
+  const updatedAt = Date.parse(attempt.updated_at);
+  if (
+    attempt.status !== "PROCESSING" ||
+    !Number.isFinite(updatedAt) ||
+    now - updatedAt < PROCESSING_TIMEOUT_MS
+  ) {
+    return false;
+  }
+  const rows = await updateRows<CheckInAttemptRow>(
+    "checkin_attempts",
+    {
+      id: `eq.${attempt.id}`,
+      user_id: `eq.${userId}`,
+      status: "eq.PROCESSING",
+    },
+    {
+      status: "ABANDONED",
+      failure_code: "PROCESSING_TIMEOUT",
+      updated_at: new Date(now).toISOString(),
+    },
+  );
+  return rows.length > 0;
 }
 
 async function getTask(landmarkId: string): Promise<TaskRow | null> {
@@ -290,6 +339,7 @@ async function toReceipt(
   checkIn: CheckInRow,
   status: CheckInReceipt["status"],
   requestId: string,
+  ensureAudit = true,
 ): Promise<CheckInReceipt> {
   const grant = await grantFragmentOnce(checkIn);
   const fragment = await getFragment(grant.fragment_id);
@@ -308,7 +358,9 @@ async function toReceipt(
     },
   };
 
-  await ensureCheckInGrantedAudit(checkIn, receipt, requestId);
+  if (ensureAudit) {
+    await ensureCheckInGrantedAudit(checkIn, receipt, requestId);
+  }
   return receipt;
 }
 
@@ -359,6 +411,15 @@ async function ensureCheckInGrantedAudit(
 function translateChallengeError(error: unknown): void {
   if (
     error instanceof PostgrestError &&
+    /ATTEMPT_SEALED/i.test(error.message)
+  ) {
+    throw new ApiError(
+      "ATTEMPT_SEALED",
+      "This attempt is sealed and cannot create a late check-in",
+    );
+  }
+  if (
+    error instanceof PostgrestError &&
     /CHALLENGE_EXPIRED/i.test(error.message)
   ) {
     throw new ApiError("CHALLENGE_EXPIRED", "Challenge is expired or already used", {
@@ -376,22 +437,32 @@ export async function queryCheckInAttempt(
     throw new ApiError("INVALID_REQUEST", "A valid attemptId is required");
   }
 
+  const storedCheckIn = await findCheckIn("idempotency_key", userId, attemptId);
   const attempt = await findCheckInAttempt(userId, attemptId);
-  if (!attempt) {
-    const legacy = await findCheckIn("idempotency_key", userId, attemptId);
-    if (legacy) {
-      return {
-        kind: "completed",
-        receipt: await toReceipt(legacy, "COMPLETED", requestId),
-      };
+  if (storedCheckIn) {
+    if (attempt?.status === "PROCESSING") {
+      await markAttemptCompleted(userId, attemptId, storedCheckIn.id);
     }
+    return {
+      kind: "completed",
+      receipt: await toReceipt(storedCheckIn, "COMPLETED", requestId, false),
+    };
+  }
+  if (!attempt) {
     return { kind: "not_found", attemptId };
   }
 
   if (attempt.status === "PROCESSING") {
+    if (await abandonStaleAttempt(userId, attempt)) {
+      return { kind: "not_found", attemptId };
+    }
     return { kind: "processing" };
   }
-  if (attempt.status === "FAILED" || !attempt.check_in_id) {
+  if (
+    attempt.status === "FAILED" ||
+    attempt.status === "ABANDONED" ||
+    !attempt.check_in_id
+  ) {
     return { kind: "not_found", attemptId };
   }
 
@@ -401,7 +472,7 @@ export async function queryCheckInAttempt(
   }
   return {
     kind: "completed",
-    receipt: await toReceipt(checkIn, "COMPLETED", requestId),
+    receipt: await toReceipt(checkIn, "COMPLETED", requestId, false),
   };
 }
 
@@ -454,9 +525,10 @@ export async function submitCheckIn(
     const photoRows = await selectRows<{
       id: string;
       challenge_id: string | null;
+      attempt_id: string | null;
       deleted_at: string | null;
     }>("photos", {
-      select: "id,challenge_id,deleted_at",
+      select: "id,challenge_id,attempt_id,deleted_at",
       id: `eq.${input.photoId}`,
       user_id: `eq.${userId}`,
       limit: "1",
@@ -465,8 +537,14 @@ export async function submitCheckIn(
     if (!photo || photo.deleted_at) {
       throw new ApiError("PHOTO_REQUIRED", "A valid uploaded photo is required");
     }
-    if (photo.challenge_id && photo.challenge_id !== input.challengeId) {
-      throw new ApiError("PHOTO_INVALID", "The photo belongs to a different challenge");
+    if (
+      photo.challenge_id !== input.challengeId ||
+      photo.attempt_id !== idempotencyKey
+    ) {
+      throw new ApiError(
+        "PHOTO_INVALID",
+        "The photo does not belong to this attempt and challenge",
+      );
     }
 
     validateLocationTime(input.location);

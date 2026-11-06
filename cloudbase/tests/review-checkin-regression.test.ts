@@ -152,7 +152,16 @@ function installFetch(state: FakeState): void {
 
       if (table === "photos" && method === "GET") {
         const photoId = eqValue(get("id"));
-        return jsonResponse(photoId && state.photos.has(photoId) ? [{ id: photoId }] : []);
+        return jsonResponse(
+          photoId && state.photos.has(photoId)
+            ? [{
+                id: photoId,
+                challenge_id: "chl_test",
+                attempt_id: "idem_test",
+                deleted_at: null,
+              }]
+            : [],
+        );
       }
 
       if (table === "landmarks" && method === "GET") {

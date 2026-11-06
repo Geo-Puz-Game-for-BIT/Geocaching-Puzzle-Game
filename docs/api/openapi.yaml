@@ -154,6 +154,12 @@ paths:
       summary: Create a short-lived, single-use challenge
       parameters:
         - $ref: "#/components/parameters/RequestId"
+        - name: X-Attempt-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -202,14 +208,14 @@ paths:
         - $ref: "#/components/parameters/RequestId"
         - name: X-Challenge-Id
           in: header
-          required: false
+          required: true
           description: Associate the uploaded photo with the challenge issued before capture.
           schema:
             type: string
             maxLength: 128
         - name: X-Attempt-Id
           in: header
-          required: false
+          required: true
           description: Associate the uploaded photo with the client attempt identifier.
           schema:
             type: string
@@ -376,7 +382,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/CheckInReceipt"
         "202":
-          description: The attempt is still processing
+          description: The attempt is still processing. A processing attempt older than two minutes is sealed as abandoned and later returns CHECKIN_NOT_FOUND.
           content:
             application/json:
               schema:
@@ -717,6 +723,7 @@ components:
                 - LOCATION_ACCURACY_TOO_LOW
                 - OUT_OF_RANGE
                 - CHALLENGE_EXPIRED
+                - ATTEMPT_SEALED
                 - CHECKIN_RESULT_UNKNOWN
                 - PHOTO_REQUIRED
                 - PHOTO_INVALID
@@ -890,11 +897,13 @@ components:
           nullable: true
     CheckInChallenge:
       type: object
-      required: [id, landmarkId, expiresAt]
+      required: [id, landmarkId, attemptId, expiresAt]
       properties:
         id:
           type: string
         landmarkId:
+          type: string
+        attemptId:
           type: string
         expiresAt:
           type: string

@@ -93,36 +93,6 @@ export async function storeCheckInPhoto(userId: string, request: IncomingMessage
   const attemptHeader = request.headers["x-attempt-id"];
   const challengeId = Array.isArray(challengeHeader) ? challengeHeader[0] : challengeHeader;
   const attemptId = Array.isArray(attemptHeader) ? attemptHeader[0] : attemptHeader;
-  if (challengeId && challengeId.length > 128) {
-    throw new ApiError("INVALID_REQUEST", "x-challenge-id is invalid");
-  }
-  if (attemptId && attemptId.length > 128) {
-    throw new ApiError("INVALID_REQUEST", "x-attempt-id is invalid");
-  }
-
-  if (challengeId) {
-    const challenges = await selectRows<{
-      id: string;
-      user_id: string;
-      used_at: string | null;
-      expires_at: string;
-    }>("challenges", {
-      select: "id,user_id,used_at,expires_at",
-      id: `eq.${challengeId}`,
-      user_id: `eq.${userId}`,
-      limit: "1",
-    });
-    const challenge = challenges[0];
-    if (!challenge) {
-      throw new ApiError("INVALID_REQUEST", "Challenge does not exist for this user");
-    }
-    if (
-      challenge.used_at ||
-      Date.parse(challenge.expires_at) <= Date.now()
-    ) {
-      throw new ApiError("CHALLENGE_EXPIRED", "Challenge is expired or already used");
-    }
-  }
 
   let bytes: Buffer;
 
@@ -136,6 +106,39 @@ export async function storeCheckInPhoto(userId: string, request: IncomingMessage
 
   validateJpeg(bytes);
 
+  if (!challengeId || !attemptId) {
+    throw new ApiError(
+      "INVALID_REQUEST",
+      "X-Challenge-Id and X-Attempt-Id headers are required",
+    );
+  }
+  if (challengeId.length > 128 || attemptId.length > 128) {
+    throw new ApiError("INVALID_REQUEST", "Challenge or attempt identifier is invalid");
+  }
+
+  const challenges = await selectRows<{
+    id: string;
+    user_id: string;
+    used_at: string | null;
+    expires_at: string;
+    attempt_id: string | null;
+  }>("challenges", {
+    select: "id,user_id,used_at,expires_at,attempt_id",
+    id: `eq.${challengeId}`,
+    user_id: `eq.${userId}`,
+    limit: "1",
+  });
+  const challenge = challenges[0];
+  if (!challenge || challenge.attempt_id !== attemptId) {
+    throw new ApiError(
+      "INVALID_REQUEST",
+      "Challenge does not belong to the supplied attempt",
+    );
+  }
+  if (challenge.used_at || Date.parse(challenge.expires_at) <= Date.now()) {
+    throw new ApiError("CHALLENGE_EXPIRED", "Challenge is expired or already used");
+  }
+
   const photoId = `pho_${randomUUID()}`;
   const objectKey = buildPhotoObjectKey(userId, photoId);
   await uploadPhotoObject(objectKey, bytes);
@@ -147,8 +150,8 @@ export async function storeCheckInPhoto(userId: string, request: IncomingMessage
       object_key: objectKey,
       mime_type: JPEG_MIME_TYPE,
       size_bytes: bytes.length,
-      challenge_id: challengeId ?? null,
-      attempt_id: attemptId ?? null,
+      challenge_id: challengeId,
+      attempt_id: attemptId,
     });
 
     return {
@@ -243,7 +246,7 @@ export async function deleteCheckInPhoto(
   }
 }
 
-export async function cleanupPendingPhotoDeletions(now: Date = new Date()) {
+export async function cleanupPendingPhotoDeletions() {
   const rows = await selectRows<{
     id: string;
     user_id: string;
@@ -252,8 +255,7 @@ export async function cleanupPendingPhotoDeletions(now: Date = new Date()) {
     select: "id,user_id,object_key",
     deleted_at: "not.is.null",
     storage_deleted_at: "is.null",
-    delete_after: `lte.${now.toISOString()}`,
-    order: "delete_after.asc",
+    order: "deleted_at.asc",
     limit: "50",
   });
 

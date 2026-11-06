@@ -178,15 +178,36 @@ async function createFixture(): Promise<Fixture> {
   return value;
 }
 
-async function createChallenge(value: Fixture, suffix: string): Promise<string> {
+async function createChallenge(
+  value: Fixture,
+  suffix: string,
+  attemptId: string,
+): Promise<string> {
   const challengeId = `chl_itest_${suffix}`;
   await insertRow("challenges", {
     id: challengeId,
     user_id: value.userId,
     landmark_id: value.landmarkId,
+    attempt_id: attemptId,
     expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   });
   return challengeId;
+}
+
+async function bindPhoto(
+  value: Fixture,
+  photoIndex: number,
+  challengeId: string,
+  attemptId: string,
+): Promise<void> {
+  await updateRows(
+    "photos",
+    { id: `eq.${value.photoIds[photoIndex]}` },
+    {
+      challenge_id: challengeId,
+      attempt_id: attemptId,
+    },
+  );
 }
 
 async function cleanupFixture(value: Fixture): Promise<void> {
@@ -292,8 +313,9 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
 
   it("same key with a changed photo is a conflict and keeps one persisted result", async () => {
     const value = await createFixture();
-    const challengeId = await createChallenge(value, "idem");
     const key = `idem-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "idem", key);
+    await bindPhoto(value, 0, challengeId, key);
 
     const first = await submitCheckIn(
       value.userId,
@@ -339,8 +361,9 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
 
   it("failed pre-insert validation does not consume the challenge", async () => {
     const value = await createFixture();
-    const challengeId = await createChallenge(value, "retry");
     const key = `retry-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "retry", key);
+    await bindPhoto(value, 0, challengeId, key);
 
     await expect(
       submitCheckIn(
@@ -369,8 +392,9 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
 
   it("transaction rolls back challenge and check-in when reward materialization fails", async () => {
     const value = await createFixture();
-    const challengeId = await createChallenge(value, "rollback");
     const key = `rollback-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "rollback", key);
+    await bindPhoto(value, 0, challengeId, key);
 
     await deleteRows("tasks", { landmark_id: `eq.${value.landmarkId}` });
     await expect(
@@ -416,8 +440,9 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
 
   it("retry repairs a missing audit while preserving one check-in and one grant", async () => {
     const value = await createFixture();
-    const challengeId = await createChallenge(value, "audit");
     const key = `audit-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "audit", key);
+    await bindPhoto(value, 0, challengeId, key);
     const body = requestBody(value.landmarkId, challengeId, value.photoIds[0]);
 
     await submitCheckIn(value.userId, randomUUID(), key, body);
@@ -439,20 +464,24 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
 
   it("concurrent different keys still produce one check-in and one grant", async () => {
     const value = await createFixture();
-    const firstChallenge = await createChallenge(value, "concurrent_a");
-    const secondChallenge = await createChallenge(value, "concurrent_b");
+    const firstKey = `concurrent-a-${randomUUID()}`;
+    const secondKey = `concurrent-b-${randomUUID()}`;
+    const firstChallenge = await createChallenge(value, "concurrent_a", firstKey);
+    const secondChallenge = await createChallenge(value, "concurrent_b", secondKey);
+    await bindPhoto(value, 0, firstChallenge, firstKey);
+    await bindPhoto(value, 1, secondChallenge, secondKey);
 
     const results = await Promise.all([
       submitCheckIn(
         value.userId,
         randomUUID(),
-        `concurrent-a-${randomUUID()}`,
+        firstKey,
         requestBody(value.landmarkId, firstChallenge, value.photoIds[0]),
       ),
       submitCheckIn(
         value.userId,
         randomUUID(),
-        `concurrent-b-${randomUUID()}`,
+        secondKey,
         requestBody(value.landmarkId, secondChallenge, value.photoIds[1]),
       ),
     ]);

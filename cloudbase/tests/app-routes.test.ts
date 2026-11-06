@@ -21,6 +21,7 @@ function call(
   baseUrl: string,
   path: string,
   method = "GET",
+  body?: string,
 ): Promise<JsonResponse> {
   return new Promise((resolve, reject) => {
     const request = httpRequest(
@@ -30,6 +31,7 @@ function call(
         headers: {
           Authorization: "Bearer test-token",
           "X-Request-Id": "123e4567-e89b-42d3-a456-426614174000",
+          ...(body ? { "Content-Type": "application/json" } : {}),
         },
       },
       (response) => {
@@ -47,7 +49,7 @@ function call(
       },
     );
     request.on("error", reject);
-    request.end();
+    request.end(body);
   });
 }
 
@@ -158,6 +160,28 @@ describe("recovery and deletion routes", () => {
       expect(response.status).toBe(409);
       expect(response.body).toMatchObject({
         error: { code: "CHECKIN_RESULT_UNKNOWN", retryable: true },
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  it("requires X-Attempt-Id when creating a challenge", async () => {
+    const server = createApp();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address() as AddressInfo;
+    try {
+      const response = await call(
+        `http://127.0.0.1:${String(address.port)}`,
+        "/api/v1/checkin-challenges",
+        "POST",
+        JSON.stringify({ landmarkId: "lmk_library" }),
+      );
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        error: { code: "INVALID_REQUEST" },
       });
     } finally {
       await new Promise<void>((resolve, reject) =>

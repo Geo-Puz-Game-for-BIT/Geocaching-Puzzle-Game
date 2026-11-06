@@ -46,6 +46,17 @@ describe("storeCheckInPhoto", () => {
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
         calls.push(url);
+        if (url.includes("/rdb/rest/challenges")) {
+          return response([
+            {
+              id: "chl_test",
+              user_id: "usr_demo01",
+              used_at: null,
+              expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              attempt_id: "att_test",
+            },
+          ]);
+        }
         if (url.includes("/v1/storages/object/")) {
           return response({}, 200);
         }
@@ -63,17 +74,24 @@ describe("storeCheckInPhoto", () => {
 
     const result = await storeCheckInPhoto(
       "usr_demo01",
-      requestWithBody(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), "image/jpeg"),
+      requestWithBody(
+        Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        "image/jpeg",
+        {
+          "x-challenge-id": "chl_test",
+          "x-attempt-id": "att_test",
+        },
+      ),
     );
 
     expect(result.objectKey).toMatch(
       /^checkins\/usr_demo01\/pho_[0-9a-f-]+\.jpg$/,
     );
     expect(result.uploadedAt).toBe("2026-10-20T08:17:21.000Z");
-    expect(calls[0]).toContain(
+    expect(calls.some((call) => call.includes(
       "/v1/storages/object/checkin-photos/checkins/usr_demo01/",
-    );
-    expect(calls[1]).toContain("/v1/rdb/rest/photos");
+    ))).toBe(true);
+    expect(calls.some((call) => call.includes("/v1/rdb/rest/photos"))).toBe(true);
   });
 
   it("givenWrongMime_whenStore_thenRejectsPhotoInvalid", async () => {
@@ -83,6 +101,46 @@ describe("storeCheckInPhoto", () => {
         requestWithBody(Buffer.from([0xff, 0xd8, 0xff]), "image/png"),
       ),
     ).rejects.toMatchObject({ code: "PHOTO_INVALID" });
+  });
+
+  it("requires challenge and attempt binding headers for a valid upload", async () => {
+    await expect(
+      storeCheckInPhoto(
+        "usr_demo01",
+        requestWithBody(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), "image/jpeg"),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+  });
+
+  it("rejects a challenge bound to a different attempt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response([
+          {
+            id: "chl_test",
+            user_id: "usr_demo01",
+            used_at: null,
+            expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            attempt_id: "att_other",
+          },
+        ]),
+      ),
+    );
+
+    await expect(
+      storeCheckInPhoto(
+        "usr_demo01",
+        requestWithBody(
+          Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          "image/jpeg",
+          {
+            "x-challenge-id": "chl_test",
+            "x-attempt-id": "att_test",
+          },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
   });
 
   it("associates an uploaded photo with its challenge and attempt", async () => {
@@ -98,6 +156,7 @@ describe("storeCheckInPhoto", () => {
               user_id: "usr_demo01",
               used_at: null,
               expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              attempt_id: "att_test",
             },
           ]);
         }
@@ -310,12 +369,14 @@ describe("deleteCheckInPhoto", () => {
 describe("cleanupPendingPhotoDeletions", () => {
   it("removes due storage objects and marks cleanup completed", async () => {
     const methods: string[] = [];
+    const requestUrls: string[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
         const url = String(input);
         const method = init?.method ?? "GET";
         methods.push(method);
+        requestUrls.push(url);
         if (url.includes("/rdb/rest/photos") && method === "GET") {
           return response([
             {
@@ -339,12 +400,15 @@ describe("cleanupPendingPhotoDeletions", () => {
     );
 
     await expect(
-      cleanupPendingPhotoDeletions(new Date("2026-11-05T09:00:00.000Z")),
+      cleanupPendingPhotoDeletions(),
     ).resolves.toEqual({
       scanned: 1,
       cleaned: 1,
       failed: 0,
     });
     expect(methods).toContain("PATCH");
+    expect(
+      requestUrls.some((url) => url.includes("delete_after=lte.")),
+    ).toBe(false);
   });
 });
