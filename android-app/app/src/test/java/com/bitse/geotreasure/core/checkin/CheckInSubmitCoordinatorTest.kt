@@ -51,7 +51,10 @@ class CheckInSubmitCoordinatorTest {
         ): UploadedPhoto =
             UploadedPhoto("pho_1", "obj", Instant.fromEpochMilliseconds(0L))
 
-        override suspend fun createChallenge(landmarkId: String): CheckInChallenge =
+        override suspend fun createChallenge(
+            landmarkId: String,
+            attemptId: String,
+        ): CheckInChallenge =
             CheckInChallenge("chl_1", landmarkId, Instant.fromEpochMilliseconds(0L))
 
         override suspend fun submitCheckIn(request: SubmitCheckInRequest, idempotencyKey: String): CheckInReceipt {

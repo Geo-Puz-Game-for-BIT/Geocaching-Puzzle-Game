@@ -154,6 +154,21 @@ class CheckInApiTest {
     }
 
     @Test
+    fun createChallenge_bindsAttemptHeader() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"requestId":"req_1","data":{"id":"chl_1","landmarkId":"lmk_1","expiresAt":"2026-11-04T08:05:00Z"}}""",
+            ),
+        )
+
+        api().createChallenge("lmk_1", "att_1")
+
+        val request = server.takeRequest()
+        assertEquals("/api/v1/checkin-challenges", request.path)
+        assertEquals("att_1", request.getHeader("X-Attempt-Id"))
+    }
+
+    @Test
     fun submitCheckIn_sendsSourceAndMonotonicEvidence() {
         server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson()))
         val request = SubmitCheckInRequest(

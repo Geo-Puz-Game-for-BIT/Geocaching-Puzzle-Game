@@ -67,12 +67,13 @@ class CheckInApi(
         return envelope.data.toDomain()
     }
 
-    fun createChallenge(landmarkId: String): CheckInChallenge {
+    fun createChallenge(landmarkId: String, attemptId: String): CheckInChallenge {
         val json = gson.toJson(ChallengeRequestDto(landmarkId))
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkin-challenges")
                 .header("Authorization", "Bearer $authToken")
+                .header("X-Attempt-Id", attemptId)
                 .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build(),
         )

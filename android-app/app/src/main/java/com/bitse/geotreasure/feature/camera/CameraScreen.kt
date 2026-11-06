@@ -289,7 +289,10 @@ class CameraViewModel(
             }
             if (!hasValidChallenge()) {
                 try {
-                    val challenge = checkInRepository.createChallenge(landmarkId)
+                    val challenge = checkInRepository.createChallenge(
+                        landmarkId = landmarkId,
+                        attemptId = currentAttemptId,
+                    )
                     challengeId = challenge.id
                     challengeExpiresAt = challenge.expiresAt
                     persistDraft(
