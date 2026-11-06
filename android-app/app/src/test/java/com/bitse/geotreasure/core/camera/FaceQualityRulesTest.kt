@@ -18,8 +18,8 @@ class FaceQualityRulesTest {
     }
 
     @Test
-    fun evaluateFaceCount_manyIsTooMany() {
-        assertEquals(FaceQualityRules.FaceCountVerdict.TOO_MANY, FaceQualityRules.evaluateFaceCount(2))
+    fun evaluateFaceCount_manyIsStillOk() {
+        assertEquals(FaceQualityRules.FaceCountVerdict.OK, FaceQualityRules.evaluateFaceCount(2))
     }
 
     @Test
@@ -39,6 +39,22 @@ class FaceQualityRulesTest {
         assertTrue(FaceQualityRules.isFaceTooSmall(faceWidth = 90, imageWidth = 1000))
         assertFalse(FaceQualityRules.isFaceTooSmall(faceWidth = 100, imageWidth = 1000))
         assertTrue(FaceQualityRules.isFaceTooSmall(faceWidth = 50, imageWidth = 0))
+    }
+
+    @Test
+    fun hasQualifiedFace_firstSmallThenLarge_isTrue() {
+        // 第一张小脸、后续有合格大脸 → 仍应判定「至少一张合格」
+        assertTrue(FaceQualityRules.hasQualifiedFace(listOf(50, 200), imageWidth = 1000))
+    }
+
+    @Test
+    fun hasQualifiedFace_allSmall_isFalse() {
+        assertFalse(FaceQualityRules.hasQualifiedFace(listOf(50, 60), imageWidth = 1000))
+    }
+
+    @Test
+    fun hasQualifiedFace_empty_isFalse() {
+        assertFalse(FaceQualityRules.hasQualifiedFace(emptyList(), imageWidth = 1000))
     }
 
     @Test

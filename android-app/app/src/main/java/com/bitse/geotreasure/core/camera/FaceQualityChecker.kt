@@ -1,7 +1,6 @@
 package com.bitse.geotreasure.core.camera
 
 import android.graphics.Bitmap
-import android.graphics.Rect
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -24,7 +23,6 @@ sealed interface FaceCheckResult {
 
 enum class FaceCheckFailureReason(val message: String) {
     NO_FACE("未检测到人脸，请正对镜头重拍"),
-    TOO_MANY_FACES("检测到多张人脸，请单人拍摄"),
     FACE_TOO_SMALL("人脸过小，请靠近镜头重拍"),
     TOO_DARK("照片过暗，请到光线充足处重拍"),
     TOO_BLURRY("照片模糊，请持稳手机重拍"),
@@ -33,7 +31,7 @@ enum class FaceCheckFailureReason(val message: String) {
 
 /**
  * 人脸存在性 + 照片质量初检（ML Kit bundled，离线，不依赖 GMS）。
- * 只证「有人参与拍摄」，不做身份识别；建筑识别不在本类职责内。
+ * 只证「有人参与拍摄」（至少一张清晰合格人脸），不做身份识别；建筑识别不在本类职责内。
  */
 class FaceQualityChecker(
     private val detector: FaceDetector = defaultDetector(),
@@ -49,15 +47,15 @@ class FaceQualityChecker(
         }
 
         val countVerdict = FaceQualityRules.evaluateFaceCount(faces.size)
-        val faceWidthRatio = faces.firstOrNull()?.let { faceWidthRatio(it.boundingBox, bitmap.width) } ?: 0f
+        val faceWidths = faces.map { it.boundingBox.width() }
+        val faceWidthRatio = faceWidths.maxOrNull()?.let { faceWidthRatio(it, bitmap.width) } ?: 0f
+
+        // 「至少一张合格脸」：任一 face 尺寸达标即通过，不只看返回列表第一张
+        val hasQualifiedFace = FaceQualityRules.hasQualifiedFace(faceWidths, bitmap.width)
 
         val reason = when {
             countVerdict == FaceQualityRules.FaceCountVerdict.NONE -> FaceCheckFailureReason.NO_FACE
-            countVerdict == FaceQualityRules.FaceCountVerdict.TOO_MANY -> FaceCheckFailureReason.TOO_MANY_FACES
-            FaceQualityRules.isFaceTooSmall(
-                faces.first().boundingBox.width(),
-                bitmap.width,
-            ) -> FaceCheckFailureReason.FACE_TOO_SMALL
+            !hasQualifiedFace -> FaceCheckFailureReason.FACE_TOO_SMALL
             FaceQualityRules.isTooDark(brightness) -> FaceCheckFailureReason.TOO_DARK
             FaceQualityRules.isTooBlurry(sharpness) -> FaceCheckFailureReason.TOO_BLURRY
             else -> null
@@ -86,8 +84,8 @@ class FaceQualityChecker(
                 }
         }
 
-    private fun faceWidthRatio(box: Rect, imageWidth: Int): Float =
-        if (imageWidth <= 0) 0f else box.width().toFloat() / imageWidth
+    private fun faceWidthRatio(faceWidth: Int, imageWidth: Int): Float =
+        if (imageWidth <= 0) 0f else faceWidth.toFloat() / imageWidth
 
     private data class GrayImage(val pixels: IntArray, val width: Int, val height: Int)
 
