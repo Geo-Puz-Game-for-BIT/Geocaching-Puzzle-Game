@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -17,6 +17,8 @@ import { listNearbyLandmarks } from "../functions/api/handlers/landmarks.ts";
 import { getPuzzleProgress } from "../functions/api/handlers/puzzles.ts";
 
 const runDatabaseIntegration = process.env.RUN_DATABASE_INTEGRATION === "1";
+const sleep = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 interface CanonicalFragment {
   id: string;
   landmarkId: string;
@@ -88,6 +90,25 @@ function requestBody(landmarkId: string, challengeId: string, photoId: string) {
       capturedAt: new Date().toISOString(),
     },
   };
+}
+
+function requestHash(body: ReturnType<typeof requestBody>): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        body.landmarkId,
+        body.challengeId,
+        body.photoId,
+        body.location.point.latitude,
+        body.location.point.longitude,
+        body.location.accuracyMeters,
+        body.location.capturedAt,
+        "UNKNOWN",
+        null,
+        null,
+      ]),
+    )
+    .digest("hex");
 }
 
 async function createFixture(): Promise<Fixture> {
@@ -567,6 +588,97 @@ describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
         requestBody(value.landmarkId, challengeId, value.photoIds[0]),
       ),
     ).rejects.toMatchObject({ code: "ATTEMPT_SEALED" });
+  });
+
+  it("keeps POST-first interleaving from returning a false 404", async () => {
+    const value = await createFixture();
+    const key = `post-first-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "post_first", key);
+    await bindPhoto(value, 0, challengeId, key);
+    const body = requestBody(value.landmarkId, challengeId, value.photoIds[0]);
+    await insertRow("checkin_attempts", {
+      id: key,
+      user_id: value.userId,
+      request_hash: requestHash(body),
+      status: "PROCESSING",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const submitPromise = submitCheckIn(value.userId, randomUUID(), key, body);
+    const queryPromise = (async () => {
+      await sleep(25);
+      return queryCheckInAttempt(value.userId, key, randomUUID());
+    })();
+
+    const [submitResult, queryResult] = await Promise.allSettled([
+      submitPromise,
+      queryPromise,
+    ]);
+    expect(submitResult.status).toBe("fulfilled");
+    expect(queryResult.status).toBe("fulfilled");
+    if (queryResult.status === "fulfilled") {
+      expect(queryResult.value.kind).not.toBe("not_found");
+    }
+
+    await expect(
+      queryCheckInAttempt(value.userId, key, randomUUID()),
+    ).resolves.toMatchObject({ kind: "completed" });
+    const checkins = await selectRows("checkins", {
+      user_id: `eq.${value.userId}`,
+    });
+    expect(checkins).toHaveLength(1);
+  });
+
+  it("keeps seal-first and submit-first interleavings internally consistent", async () => {
+    const value = await createFixture();
+    const attemptId = `seal-race-${randomUUID()}`;
+    const challengeId = await createChallenge(value, "seal_race", attemptId);
+    await bindPhoto(value, 0, challengeId, attemptId);
+    const body = requestBody(value.landmarkId, challengeId, value.photoIds[0]);
+    await insertRow("checkin_attempts", {
+      id: attemptId,
+      user_id: value.userId,
+      request_hash: requestHash(body),
+      status: "PROCESSING",
+      created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    });
+
+    const queryPromise = queryCheckInAttempt(value.userId, attemptId, randomUUID());
+    const submitPromise = (async () => {
+      await sleep(10);
+      return submitCheckIn(value.userId, randomUUID(), attemptId, body);
+    })();
+    const [queryResult, submitResult] = await Promise.allSettled([
+      queryPromise,
+      submitPromise,
+    ]);
+
+    expect(queryResult.status).toBe("fulfilled");
+    if (submitResult.status === "fulfilled") {
+      if (queryResult.status === "fulfilled") {
+        expect(queryResult.value.kind).toBe("completed");
+      }
+      const checkins = await selectRows("checkins", {
+        user_id: `eq.${value.userId}`,
+        idempotency_key: `eq.${attemptId}`,
+      });
+      expect(checkins).toHaveLength(1);
+    } else {
+      expect(submitResult.reason).toMatchObject({ code: "ATTEMPT_SEALED" });
+      if (queryResult.status === "fulfilled") {
+        expect(queryResult.value.kind).toBe("not_found");
+      }
+      const attempts = await selectRows("checkin_attempts", {
+        id: `eq.${attemptId}`,
+        user_id: `eq.${value.userId}`,
+      });
+      expect(attempts[0]).toMatchObject({
+        status: "ABANDONED",
+        failure_code: "PROCESSING_TIMEOUT",
+      });
+    }
   });
 
   it("selects immediately pending photo cleanup without waiting for delete_after", async () => {

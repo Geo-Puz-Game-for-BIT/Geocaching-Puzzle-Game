@@ -71,6 +71,9 @@ describe("recovery and deletion routes", () => {
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.includes("/rpc/reconcile_checkin_attempt")) {
+          return jsonResponse({ status: "PROCESSING" });
+        }
         if (url.includes("/rdb/rest/checkin_attempts")) {
           return jsonResponse([
             {
@@ -106,7 +109,10 @@ describe("recovery and deletion routes", () => {
   });
 
   it("returns CHECKIN_NOT_FOUND when no attempt or legacy check-in exists", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse([])));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ status: "NOT_FOUND" })),
+    );
     const server = createApp();
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address() as AddressInfo;

@@ -29,7 +29,7 @@ npm run api:check --workspace @geotreasure/cloudbase
 - TypeScript 类型检查通过。
 - Vitest：67 通过。
 - OpenAPI 与三校区 canonical fixture 校验通过。
-- 真实 PostgreSQL：8 通过，包含事务、冲突、审计恢复、并发、孤儿封存、迟到请求拒绝和即时清理候选。
+- 真实 PostgreSQL：10 通过，包含事务、冲突、审计恢复、并发、POST-first / seal-first 交错、孤儿封存、迟到请求拒绝和即时清理候选。
 
 已覆盖：
 
@@ -45,7 +45,7 @@ npm run api:check --workspace @geotreasure/cloudbase
 
 ## 迁移与部署顺序
 
-1. 已应用 `cloudbase/migrations/20261104120000_checkin_recovery_and_photo_deletion.sql`。
+1. 已应用 `cloudbase/migrations/20261104120000_checkin_recovery_and_photo_deletion.sql` 和 `20261107100000_atomic_checkin_reconciliation.sql`。
 2. 已部署 `api` 与 `photo-cleanup` 云函数。
 3. `/health` 已返回 UUID，响应头与响应体一致。
 4. attempt 查询和 challenge attempt 必填验证已通过线上 smoke test。

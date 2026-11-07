@@ -56,7 +56,8 @@ function installFetch(attempt: FakeAttempt | null, hasCheckIn = false): void {
     "fetch",
     vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === "string" ? input : input.toString());
-      const table = url.pathname.split("/").pop();
+      const path = url.pathname;
+      const table = path.split("/").pop();
       const method = init?.method ?? "GET";
       const body =
         typeof init?.body === "string" && init.body.length > 0
@@ -64,26 +65,29 @@ function installFetch(attempt: FakeAttempt | null, hasCheckIn = false): void {
           : undefined;
       const get = (key: string) => url.searchParams.get(key);
 
-      if (table === "checkin_attempts" && method === "GET") {
-        const rows = attempt
-          ? [attempt].filter(
-              (row) =>
-                row.id === eqValue(get("id")) &&
-                row.user_id === eqValue(get("user_id")),
-            )
-          : [];
-        return jsonResponse(rows);
-      }
-
-      if (table === "checkin_attempts" && method === "PATCH") {
-        if (attempt && get("status") === `eq.${attempt.status}`) {
-          const status = String(body?.status);
-          attempt.status = status as FakeAttempt["status"];
-          attempt.failure_code = String(body?.failure_code);
-          attempt.updated_at = String(body?.updated_at);
-          return jsonResponse([attempt]);
+      if (path.endsWith("/rpc/reconcile_checkin_attempt") && method === "POST") {
+        expect(body?.p_user_id).toBe("usr_demo01");
+        expect(typeof body?.p_attempt_id).toBe("string");
+        expect(body?.p_timeout_seconds).toBe(120);
+        if (hasCheckIn) {
+          if (attempt) {
+            attempt.status = "COMPLETED";
+            attempt.check_in_id = checkIn.id;
+            attempt.failure_code = null;
+          }
+          return jsonResponse({ status: "COMPLETED", checkInId: checkIn.id });
         }
-        return jsonResponse([]);
+        if (!attempt) return jsonResponse({ status: "NOT_FOUND" });
+        if (attempt.status === "PROCESSING") {
+          const updatedAt = Date.parse(attempt.updated_at ?? "");
+          if (!Number.isFinite(updatedAt) || Date.now() - updatedAt >= 120_000) {
+            attempt.status = "ABANDONED";
+            attempt.failure_code = "PROCESSING_TIMEOUT";
+            return jsonResponse({ status: "NOT_FOUND" });
+          }
+          return jsonResponse({ status: "PROCESSING" });
+        }
+        return jsonResponse({ status: "NOT_FOUND" });
       }
 
       if (table === "checkins" && method === "GET") {
@@ -141,6 +145,7 @@ describe("queryCheckInAttempt", () => {
       status: "PROCESSING",
       check_in_id: null,
       failure_code: null,
+      updated_at: new Date().toISOString(),
     }, false);
 
     await expect(

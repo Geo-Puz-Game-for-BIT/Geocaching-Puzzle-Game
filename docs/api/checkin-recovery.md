@@ -31,6 +31,7 @@ X-Request-Id: <uuid>
 - 查询必须先核对当前用户与 attempt 的成功 check-in；成功记录存在时必须返回 200，不能永久返回 202。
 - `PROCESSING` 超过 2 分钟且没有成功记录时转换为 `ABANDONED`，随后查询返回明确无记录。
 - 数据库触发器在 check-in 写入时锁定 attempt；`ABANDONED` 或其它非 PROCESSING 状态拒绝迟到请求，避免“先 404、后又成功”。
+- GET 通过 `reconcile_checkin_attempt` PostgreSQL RPC 在单个事务内完成 attempt 行锁、成功记录核对、超时判断以及封存/COMPLETED 修复，禁止拆成多个 PostgREST 请求。
 - `request_hash` 覆盖地标、challenge、照片、坐标、精度、采集时间、来源和单调时钟字段。
 - 同 attempt 不同请求继续返回 `IDEMPOTENCY_CONFLICT`。
 

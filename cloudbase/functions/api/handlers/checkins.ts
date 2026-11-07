@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import {
+  callRpc,
   insertRow,
   insertRowIfAbsent,
   PostgrestError,
@@ -97,7 +98,7 @@ export type CheckInAttemptQueryResult =
   | { kind: "processing" }
   | { kind: "not_found"; attemptId: string };
 
-const PROCESSING_TIMEOUT_MS = 2 * 60 * 1000;
+const PROCESSING_TIMEOUT_SECONDS = 2 * 60;
 
 function requestHash(input: z.infer<typeof checkInSchema>): string {
   const canonical = JSON.stringify([
@@ -246,35 +247,6 @@ async function markAttemptFailed(
       error,
     });
   }
-}
-
-async function abandonStaleAttempt(
-  userId: string,
-  attempt: CheckInAttemptRow,
-): Promise<boolean> {
-  const now = Date.now();
-  const updatedAt = Date.parse(attempt.updated_at);
-  if (
-    attempt.status !== "PROCESSING" ||
-    !Number.isFinite(updatedAt) ||
-    now - updatedAt < PROCESSING_TIMEOUT_MS
-  ) {
-    return false;
-  }
-  const rows = await updateRows<CheckInAttemptRow>(
-    "checkin_attempts",
-    {
-      id: `eq.${attempt.id}`,
-      user_id: `eq.${userId}`,
-      status: "eq.PROCESSING",
-    },
-    {
-      status: "ABANDONED",
-      failure_code: "PROCESSING_TIMEOUT",
-      updated_at: new Date(now).toISOString(),
-    },
-  );
-  return rows.length > 0;
 }
 
 async function getTask(landmarkId: string): Promise<TaskRow | null> {
@@ -437,43 +409,29 @@ export async function queryCheckInAttempt(
     throw new ApiError("INVALID_REQUEST", "A valid attemptId is required");
   }
 
-  const storedCheckIn = await findCheckIn("idempotency_key", userId, attemptId);
-  const attempt = await findCheckInAttempt(userId, attemptId);
-  if (storedCheckIn) {
-    if (attempt?.status === "PROCESSING") {
-      await markAttemptCompleted(userId, attemptId, storedCheckIn.id);
+  const reconciled = await callRpc<{
+    status: "COMPLETED" | "PROCESSING" | "NOT_FOUND";
+    checkInId?: string;
+  }>("reconcile_checkin_attempt", {
+    p_user_id: userId,
+    p_attempt_id: attemptId,
+    p_timeout_seconds: PROCESSING_TIMEOUT_SECONDS,
+  });
+
+  if (reconciled.status === "COMPLETED" && reconciled.checkInId) {
+    const storedCheckIn = await findCheckIn("id", userId, reconciled.checkInId);
+    if (!storedCheckIn) {
+      throw new ApiError("INTERNAL_ERROR", "Reconciled check-in could not be loaded");
     }
     return {
       kind: "completed",
       receipt: await toReceipt(storedCheckIn, "COMPLETED", requestId, false),
     };
   }
-  if (!attempt) {
-    return { kind: "not_found", attemptId };
-  }
-
-  if (attempt.status === "PROCESSING") {
-    if (await abandonStaleAttempt(userId, attempt)) {
-      return { kind: "not_found", attemptId };
-    }
+  if (reconciled.status === "PROCESSING") {
     return { kind: "processing" };
   }
-  if (
-    attempt.status === "FAILED" ||
-    attempt.status === "ABANDONED" ||
-    !attempt.check_in_id
-  ) {
-    return { kind: "not_found", attemptId };
-  }
-
-  const checkIn = await findCheckIn("id", userId, attempt.check_in_id);
-  if (!checkIn) {
-    return { kind: "not_found", attemptId };
-  }
-  return {
-    kind: "completed",
-    receipt: await toReceipt(checkIn, "COMPLETED", requestId, false),
-  };
+  return { kind: "not_found", attemptId };
 }
 
 export async function submitCheckIn(
