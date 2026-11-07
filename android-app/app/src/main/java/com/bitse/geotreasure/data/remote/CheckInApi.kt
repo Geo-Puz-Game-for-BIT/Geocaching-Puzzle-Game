@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.remote
 
+import com.bitse.geotreasure.core.checkin.CheckInQueryResult
 import com.bitse.geotreasure.core.model.CheckInChallenge
 import com.bitse.geotreasure.core.model.CheckInReceipt
 import com.bitse.geotreasure.core.model.CheckInStatus
@@ -57,8 +58,8 @@ class CheckInApi(
         return envelope.data.toDomain()
     }
 
-    fun createChallenge(landmarkId: String): CheckInChallenge {
-        val json = gson.toJson(ChallengeRequestDto(landmarkId))
+    fun createChallenge(landmarkId: String, attemptId: String): CheckInChallenge {
+        val json = gson.toJson(ChallengeRequestDto(landmarkId, attemptId))
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkin-challenges")
@@ -84,6 +85,49 @@ class CheckInApi(
         val envelope = parseOrThrow<ReceiptEnvelope>(response)
         return envelope.data.toDomain()
     }
+
+    /**
+     * 按 attempt 查询本次尝试是否已成功（幂等恢复用），返回有类型结果。
+     *
+     * 契约（`docs/api/checkin-recovery.md`，服务端 `GET /checkins?attemptId=` 待 D 落地）：
+     * - 已成功 → `200 { requestId, data: { checkInId, status, fragmentGrant } }` → [CheckInQueryResult.Success]；
+     * - 处理中 → `202 { requestId, data: { status: "PROCESSING" } }` → [CheckInQueryResult.Processing]；
+     * - 明确无记录 → `404 { requestId, error: { code: "CHECKIN_NOT_FOUND" } }` → [CheckInQueryResult.NotFound]；
+     * - 其它（普通 404 / 405 / 5xx / 超时 / 未配置）→ [CheckInQueryResult.Unavailable]（查询故障，结果未知）。
+     *
+     * 关键：普通路由 404、代理 404 与「未配置」**不得**当作「明确无记录」，否则会误删旧照、放开重拍。
+     */
+    fun queryCheckIn(attemptId: String): CheckInQueryResult {
+        if (rootUrl.isBlank()) return CheckInQueryResult.Unavailable
+        val request = Request.Builder()
+            .url("$rootUrl/checkins?attemptId=$attemptId")
+            .header("Authorization", "Bearer $authToken")
+            .get()
+            .build()
+        return try {
+            client.newCall(request).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                when {
+                    resp.code == 200 -> {
+                        val envelope = parseOrThrow<QueryEnvelope>(body)
+                        val data = envelope.data
+                            ?: return CheckInQueryResult.Unavailable
+                        CheckInQueryResult.Success(data.toDomain())
+                    }
+                    resp.code == 202 -> CheckInQueryResult.Processing
+                    resp.code == 404 && isCheckInNotFound(body) -> CheckInQueryResult.NotFound
+                    else -> CheckInQueryResult.Unavailable
+                }
+            }
+        } catch (e: Throwable) {
+            CheckInQueryResult.Unavailable
+        }
+    }
+
+    /** 仅当错误体明确携带 `error.code == "CHECKIN_NOT_FOUND"` 才视为「明确无记录」。 */
+    private fun isCheckInNotFound(body: String): Boolean =
+        runCatching { gson.fromJson(body, CheckInErrorEnvelope::class.java).error?.code }
+            .getOrNull() == "CHECKIN_NOT_FOUND"
 
     private fun execute(request: Request): String {
         if (rootUrl.isBlank()) {
@@ -124,7 +168,7 @@ class CheckInApi(
 
 // ---------- DTO（JSON 字段与 D 组契约一一对应） ----------
 
-private data class ChallengeRequestDto(val landmarkId: String)
+private data class ChallengeRequestDto(val landmarkId: String, val attemptId: String)
 
 private data class ChallengeEnvelope(val requestId: String, val data: ChallengeDto)
 private data class ChallengeDto(val id: String, val landmarkId: String, val expiresAt: String) {
@@ -135,6 +179,8 @@ private data class PhotoEnvelope(val requestId: String, val data: PhotoDto)
 private data class PhotoDto(val photoId: String, val objectKey: String, val uploadedAt: String) {
     fun toDomain() = UploadedPhoto(photoId = photoId, objectKey = objectKey, uploadedAt = Instant.parse(uploadedAt))
 }
+
+private data class QueryEnvelope(val requestId: String?, val data: ReceiptDto?)
 
 private data class ReceiptEnvelope(val requestId: String, val data: ReceiptDto)
 private data class ReceiptDto(val checkInId: String, val status: String, val fragmentGrant: FragmentGrantDto) {
