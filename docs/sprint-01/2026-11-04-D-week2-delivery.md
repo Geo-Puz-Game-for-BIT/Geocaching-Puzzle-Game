@@ -69,11 +69,12 @@ npm run api:check --workspace @geotreasure/cloudbase
 
 ## 线上部署证据（2026-11-06）
 
-- `api`：Deployment completed，FunctionId `lam-btbif7il`，ModTime `2026-11-06 16:22:28`
+- `api`：Active，FunctionId `lam-btbif7il`，ModTime `2026-11-07 22:50:35`
 - `photo-cleanup`：Active，FunctionId `lam-f8b470dr`，ModTime `2026-11-06 16:27:47`
 - timer：`photo-cleanup-every-10-minutes`，cron `0 */10 * * * * *`
+- 原子查询 RPC：`reconcile_checkin_attempt`，行锁、成功记录核对、超时判断和状态修复在同一事务内
 - 手动调用 RequestId：`aae31edf-d4aa-4ca7-aeb7-a4106fae9bc6`
 - 手动调用结果：`{"scanned":0,"cleaned":0,"failed":0}`，耗时 260ms
-- 线上 health RequestId：`91281d25-5683-452d-8060-11fe61330236`，状态 200，响应头与响应体 UUID 一致
+- 线上 health RequestId：`f49f44d6-6b8a-4f4a-bc53-251327a56f24`，状态 200，响应头与响应体 UUID 一致
 - 线上 attempt 查询：404 `CHECKIN_NOT_FOUND`
 - 线上无 `X-Attempt-Id` 创建 challenge：400 `INVALID_REQUEST`
