@@ -625,11 +625,12 @@ class CameraViewModel(
     }
 
     /**
-     * 清空本次尝试的冻结状态（不触碰照片/预览/uploadState）。
-     * 用于 beginNewAttempt：可靠确认旧尝试已结束（明确未成功）后，清空挑战/定位/已发送标记，准备重拍。
-     * 新 attemptId 不在此生成——challenge 拍前绑定 attempt，新 ID 由 capture 的候选准备（领 challenge）时生成。
+     * 可靠结束旧尝试（明确未成功）后，原子生成新 attemptId 并清空本次尝试的冻结状态（不触碰照片/预览/uploadState）。
+     * 新 ID 必须在此生成——否则清掉 requestSent 后，capture 候选看到 requestSent=false 会继续复用旧 ID，
+     * 触发 D 的幂等冲突。后续 capture 复用此新 ID 领新 challenge，challenge/上传/POST 全程同一 ID。
      */
     private fun resetAttemptContext() {
+        currentAttemptId = "att_" + UUID.randomUUID().toString()
         challengeId = null
         challengeExpiresAt = null
         uploadedPhotoId = null

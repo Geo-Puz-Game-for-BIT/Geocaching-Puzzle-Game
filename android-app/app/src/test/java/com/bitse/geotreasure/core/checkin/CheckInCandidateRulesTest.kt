@@ -168,6 +168,40 @@ class CheckInCandidateRulesTest {
         assertEquals(candidate, afterCommit.official)
     }
 
+    // ---------- 明确失败→重新开始：新 ID 回归 ----------
+
+    @Test
+    fun resetForNewAttempt_generatesFreshAttemptId() {
+        val reset = CheckInCandidateRules.resetForNewAttempt("att_new")
+        assertEquals("att_new", reset.attemptId)
+        assertNull(reset.challengeId)
+        assertNull(reset.challengeExpiresAt)
+        assertNull(reset.frozenLocation)
+    }
+
+    @Test
+    fun afterReset_captureReusesTheNewAttemptId_notOldId() {
+        // 回归：已发送明确失败 → 点重新开始（reset 生成新 ID + 清 requestSent/challenge）→ 再次拍摄，
+        // 候选必须复用 reset 的新 ID（而非因 requestSent=false 复用旧 ID），challenge 绑定新 ID，全程同一 ID。
+        val reset = CheckInCandidateRules.resetForNewAttempt("att_new")
+        val flow = CandidateFlow(official = reset)
+        val candidate = CheckInCandidateRules.buildCandidate(
+            official = flow.official,
+            requestSent = false,        // reset 已清 requestSent
+            hasValidChallenge = false,  // reset 已清 challenge
+            newAttemptId = "att_unused",
+            newChallengeId = "chl_new",
+            newChallengeExpiresAt = expiresNew,
+            location = location,
+        )
+        assertEquals("att_new", candidate.attemptId)
+        assertEquals("chl_new", candidate.challengeId)
+
+        val committed = CheckInCandidateRules.commit(flow.copy(candidate = candidate))
+        assertEquals("att_new", committed.official.attemptId)
+        assertEquals("chl_new", committed.official.challengeId)
+    }
+
     // ---------- 决策谓词 ----------
 
     @Test

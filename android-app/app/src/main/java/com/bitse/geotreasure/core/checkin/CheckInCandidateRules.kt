@@ -67,6 +67,20 @@ object CheckInCandidateRules {
         else -> AttemptSnapshot(official.attemptId, official.challengeId, official.challengeExpiresAt, location)
     }
 
+    /**
+     * 可靠结束旧尝试（明确未成功）后的全新官方上下文：新 attemptId + 空 challenge/定位。
+     *
+     * 新 ID 必须在此（可靠结束时刻）生成——若只在 capture 候选阶段依据 requestSent 判断是否换 ID，
+     * 一旦 requestSent 被清掉而 ID 未换，候选会看到 requestSent=false 继续复用旧 ID，
+     * 触发服务端幂等冲突（旧 ID 已被登记）。后续 capture 复用此新 ID 领新 challenge，全程同一 ID。
+     */
+    fun resetForNewAttempt(newAttemptId: String): AttemptSnapshot = AttemptSnapshot(
+        attemptId = newAttemptId,
+        challengeId = null,
+        challengeExpiresAt = null,
+        frozenLocation = null,
+    )
+
     /** 拍摄成功：候选提升为官方上下文（attemptId 与 challengeId 保持一致绑定）。 */
     fun commit(flow: CandidateFlow): CandidateFlow =
         flow.candidate?.let { CandidateFlow(official = it) } ?: flow
