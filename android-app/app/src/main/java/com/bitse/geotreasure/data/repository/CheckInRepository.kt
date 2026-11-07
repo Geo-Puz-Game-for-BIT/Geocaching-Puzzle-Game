@@ -15,8 +15,12 @@ interface CheckInRepository {
     /** 上传照片，返回服务端 photoId。 */
     suspend fun uploadPhoto(photoFile: File): UploadedPhoto
 
-    /** 领一次性 challenge（每次尝试一次，绑定本次拍摄；不在 submit 内重复领取）。 */
-    suspend fun createChallenge(landmarkId: String): CheckInChallenge
+    /**
+     * 领一次性 challenge（每次尝试一次，不在 submit 内重复领取）。
+     * [attemptId] 为本次尝试的幂等键：challenge 在**拍摄前**就与 attempt 绑定（D 契约），
+     * 拍摄成功后客户端采用同一 attemptId 提交，保证 challenge↔attempt 一致。
+     */
+    suspend fun createChallenge(landmarkId: String, attemptId: String): CheckInChallenge
 
     /** 提交打卡（幂等键 [idempotencyKey] = attemptId，内容须已冻结）。 */
     suspend fun submitCheckIn(request: SubmitCheckInRequest, idempotencyKey: String): CheckInReceipt
@@ -33,8 +37,8 @@ class RemoteCheckInRepository(private val api: CheckInApi) : CheckInRepository {
     override suspend fun uploadPhoto(photoFile: File): UploadedPhoto =
         withContext(Dispatchers.IO) { api.uploadPhoto(photoFile) }
 
-    override suspend fun createChallenge(landmarkId: String): CheckInChallenge =
-        withContext(Dispatchers.IO) { api.createChallenge(landmarkId) }
+    override suspend fun createChallenge(landmarkId: String, attemptId: String): CheckInChallenge =
+        withContext(Dispatchers.IO) { api.createChallenge(landmarkId, attemptId) }
 
     override suspend fun submitCheckIn(
         request: SubmitCheckInRequest,

@@ -55,8 +55,10 @@ import com.bitse.geotreasure.core.camera.CameraXManager
 import com.bitse.geotreasure.core.camera.FaceCheckResult
 import com.bitse.geotreasure.core.camera.FaceQualityChecker
 import com.bitse.geotreasure.core.camera.PhotoCompressor
+import com.bitse.geotreasure.core.checkin.AttemptSnapshot
 import com.bitse.geotreasure.core.checkin.BlockReason
 import com.bitse.geotreasure.core.checkin.CheckInAttemptRules
+import com.bitse.geotreasure.core.checkin.CheckInCandidateRules
 import com.bitse.geotreasure.core.checkin.CheckInFlowRules
 import com.bitse.geotreasure.core.checkin.CheckInGate
 import com.bitse.geotreasure.core.checkin.CheckInGateResult
@@ -160,6 +162,8 @@ class CameraViewModel(
     private var attachedPreviewView: PreviewView? = null
     /** 本 attempt 是否已发出过至少一次提交请求（true 后冻结内容不可变，重试即查询恢复）。 */
     private var requestSent: Boolean = false
+    /** 拍摄前的候选尝试（尚未 commit）：拍摄成功才采用，失败/取消即丢弃、保留官方上下文。 */
+    private var candidateAttempt: AttemptSnapshot? = null
 
     init {
         loadLandmarkAndDraft()
@@ -287,7 +291,7 @@ class CameraViewModel(
             return
         }
         viewModelScope.launch {
-            // 开拍动作发生时重新取位 + 重新门控（不依赖缓存 gate），通过即冻结本次定位
+            // 开拍动作发生时重新取位 + 重新门控（不依赖缓存 gate），通过后进入候选准备
             val (location, gate) = fetchLocationAndGate()
             if (gate !is CheckInGateResult.Ready) {
                 mutableUiState.update {
@@ -295,21 +299,23 @@ class CameraViewModel(
                 }
                 return@launch
             }
-            frozenLocation = location
-            mutableUiState.update {
-                it.copy(isCapturing = true, gate = gate, errorMessage = null, faceCheckMessage = null)
+
+            // 准备候选尝试（C-4）：已发送的 attempt 不可复用 → 换新候选 ID；否则沿用当前 attemptId。
+            // 需领 challenge 时用候选 attemptId 领取（challenge 拍前绑定 attempt，D 契约）；
+            // 候选不落正式字段、不覆盖草稿，拍摄成功才 commit、失败/取消即丢弃。
+            val candidateAttemptId = if (CheckInCandidateRules.needsNewAttemptId(requestSent)) {
+                "att_" + UUID.randomUUID().toString()
+            } else {
+                currentAttemptId
             }
-            // 新尝试（旧已发送）或旧挑战过期时，拍摄前领取新挑战（C-N02「每尝试一次、拍摄前签发」）
-            if (requestSent || !hasValidChallenge()) {
+            val candidate = if (CheckInCandidateRules.needsNewChallenge(requestSent, hasValidChallenge())) {
                 try {
-                    val challenge = checkInRepository.createChallenge(landmarkId)
-                    challengeId = challenge.id
-                    challengeExpiresAt = challenge.expiresAt
-                    persistDraft(
-                        localPhoto = mutableUiState.value.photoPath?.let {
-                            LocalPhotoRef(it, "image/jpeg", File(it).length())
-                        },
-                        uploadState = mutableUiState.value.uploadState,
+                    val challenge = checkInRepository.createChallenge(landmarkId, candidateAttemptId)
+                    AttemptSnapshot(
+                        attemptId = candidateAttemptId,
+                        challengeId = challenge.id,
+                        challengeExpiresAt = challenge.expiresAt,
+                        frozenLocation = location,
                     )
                 } catch (e: Throwable) {
                     mutableUiState.update {
@@ -317,19 +323,37 @@ class CameraViewModel(
                     }
                     return@launch
                 }
+            } else {
+                AttemptSnapshot(
+                    attemptId = currentAttemptId,
+                    challengeId = challengeId,
+                    challengeExpiresAt = challengeExpiresAt,
+                    frozenLocation = location,
+                )
+            }
+            candidateAttempt = candidate
+
+            mutableUiState.update {
+                it.copy(isCapturing = true, gate = gate, errorMessage = null, faceCheckMessage = null)
             }
             val rotation = attachedPreviewView?.display?.rotation ?: Surface.ROTATION_0
             cameraManager.takePhoto(
                 rotation = rotation,
                 onCaptured = { file ->
-                    // C-1：新照成功采用时才落实新 attempt（旧已发送 → 换新 ID，保留刚领的 challenge 与冻结位置）
-                    if (requestSent) {
-                        rotateAttemptId()
+                    // 拍摄成功：commit 候选——采用候选的 attempt/challenge/定位（保持 challenge↔attempt 一致），再替换照片
+                    val adopted = candidateAttempt
+                    candidateAttempt = null
+                    if (adopted != null) {
+                        currentAttemptId = adopted.attemptId
+                        challengeId = adopted.challengeId
+                        challengeExpiresAt = adopted.challengeExpiresAt
+                        frozenLocation = adopted.frozenLocation
                     }
+                    uploadedPhotoId = null
+                    requestSent = false
                     // 新照成功才替换旧照；首拍无旧照
                     val old = mutableUiState.value.photoPath
                     if (old != null && old != file.absolutePath) CameraXManager.deletePhoto(old)
-                    uploadedPhotoId = null
                     mutableUiState.update {
                         it.copy(
                             attemptId = currentAttemptId,
@@ -345,7 +369,8 @@ class CameraViewModel(
                     )
                 },
                 onError = { e ->
-                    // 拍摄失败：不换 ID、不删旧照，保留旧上下文（C-1）
+                    // 拍摄失败：abort 候选，保留官方上下文（旧 challenge/定位/照片/attempt 全部不变）
+                    candidateAttempt = null
                     mutableUiState.update { it.copy(isCapturing = false, errorMessage = e.message) }
                 },
             )
@@ -600,26 +625,15 @@ class CameraViewModel(
     }
 
     /**
-     * 原子生成新 attemptId 并清空本次尝试的冻结状态（不触碰照片/预览/uploadState）。
-     * 用于 beginNewAttempt：可靠确认旧尝试已结束（明确未成功）后换新 attempt 重拍。
+     * 清空本次尝试的冻结状态（不触碰照片/预览/uploadState）。
+     * 用于 beginNewAttempt：可靠确认旧尝试已结束（明确未成功）后，清空挑战/定位/已发送标记，准备重拍。
+     * 新 attemptId 不在此生成——challenge 拍前绑定 attempt，新 ID 由 capture 的候选准备（领 challenge）时生成。
      */
     private fun resetAttemptContext() {
-        currentAttemptId = "att_" + UUID.randomUUID().toString()
         challengeId = null
         challengeExpiresAt = null
         uploadedPhotoId = null
         frozenLocation = null
-        requestSent = false
-        draftCreatedAt = null
-    }
-
-    /**
-     * 仅换新 attemptId（保留刚领的 challenge 与刚冻结的 location），并把「已发送」清零。
-     * 用于 capture 新照片成功采用时：旧尝试已发送 → 新照片对应新 attempt，避免复用旧 key（C-1）。
-     * 不删旧照、不改 uploadState——调用方在采用新照时统一处理。
-     */
-    private fun rotateAttemptId() {
-        currentAttemptId = "att_" + UUID.randomUUID().toString()
         requestSent = false
         draftCreatedAt = null
     }

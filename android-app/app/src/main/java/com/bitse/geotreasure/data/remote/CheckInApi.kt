@@ -58,8 +58,8 @@ class CheckInApi(
         return envelope.data.toDomain()
     }
 
-    fun createChallenge(landmarkId: String): CheckInChallenge {
-        val json = gson.toJson(ChallengeRequestDto(landmarkId))
+    fun createChallenge(landmarkId: String, attemptId: String): CheckInChallenge {
+        val json = gson.toJson(ChallengeRequestDto(landmarkId, attemptId))
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkin-challenges")
@@ -168,7 +168,7 @@ class CheckInApi(
 
 // ---------- DTO（JSON 字段与 D 组契约一一对应） ----------
 
-private data class ChallengeRequestDto(val landmarkId: String)
+private data class ChallengeRequestDto(val landmarkId: String, val attemptId: String)
 
 private data class ChallengeEnvelope(val requestId: String, val data: ChallengeDto)
 private data class ChallengeDto(val id: String, val landmarkId: String, val expiresAt: String) {

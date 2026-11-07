@@ -65,7 +65,8 @@ X-Request-Id: <uuid>
 
 ## 拍前 challenge 与照片关联
 
-- `POST /checkin-challenges` 签发的 challenge 与后续上传的 photo 通过 **attempt** 关联：`POST /checkins` 请求携带 `attemptId`（幂等键）、`challengeId`、`photoId`、冻结定位快照。
+- **challenge 拍前绑定 attempt（C-4）**：`POST /checkin-challenges` 请求携带 `landmarkId` + `attemptId`，签发的 challenge 即与本次 attempt 绑定；客户端在**拍摄前**用候选 `attemptId` 领取 challenge，**拍摄成功后**才正式采用该 `attemptId` 提交，保证 `attemptId ↔ challengeId` 一致（避免「challenge 绑旧 ID、上传用新 ID」）。
+- `POST /checkins` 请求携带 `attemptId`（幂等键）、`challengeId`、`photoId`、冻结定位快照。
 - 服务端「校验→消费→建记录」在同一事务内完成（challenge consumed 语义，ADR 0004），消费即失效，5 分钟过期。
 - **照片上传须绑定本次 challenge（D-3）**：`POST /checkin-photos` 必须携带并校验 `challengeId`，不得「可不传 challenge」就通过；`POST /checkins` 必须校验 `attemptId ↔ challengeId ↔ photoId` 三者关系，拒绝「未绑定照片 / 非本次 challenge 的照片」提交。
 
