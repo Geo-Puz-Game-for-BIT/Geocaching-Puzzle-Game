@@ -102,6 +102,16 @@ export async function deleteRows(
   });
 }
 
+export async function callRpc<T>(
+  functionName: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  return restRequest<T>(`rpc/${functionName}`, {
+    method: "POST",
+    body,
+  });
+}
+
 export async function insertRowIfAbsent<T>(table: string, body: unknown): Promise<T | null> {
   try {
     return await insertRow<T>(table, body);

@@ -14,7 +14,9 @@ GET  /health
 GET  /landmarks
 POST /checkin-challenges
 POST /checkin-photos
+DELETE /checkin-photos/{photoId}
 POST /checkins
+GET  /checkins?attemptId=
 GET  /puzzles/{puzzleId}
 ```
 
@@ -31,6 +33,8 @@ npm run build:cloud
 ```
 
 云端部署使用 `cloudbaserc.json` 和 `deploy/`，运行时为 Node.js 20.19。真实环境 ID、Token 和 API Key 只放在被忽略的私有配置或云函数环境变量中；交付文档见 `docs/sprint-01/cloudbase-collaboration-handoff.md`。
+
+`photo-cleanup` 是独立定时函数，`cloudbaserc.json` 配置为每 10 分钟扫描即时待清理的照片对象；`delete_after` 只表示审计/备份保留窗口，不作为扫描等待条件。调度和部署必须在授权环境验证后才能标记 PASS。
 
 自定义端口时将 `.env.example` 复制为 `.env`，同步覆盖 Bruno 的 API_BASE_URL。
 登录或操作云环境前由 D/E 确认目标，通过 `npm run cloudbase -- ...` 使用锁定 CLI。
