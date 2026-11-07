@@ -128,6 +128,46 @@ class CheckInCandidateRulesTest {
         assertEquals(location, candidate.frozenLocation)
     }
 
+    // ---------- 失败保留 / 全程同 attemptId 回归 ----------
+
+    @Test
+    fun captureFailure_keepsOfficialDraftFullyUntouched() {
+        // 拍摄失败/取消：官方草稿（attemptId/challengeId/expiresAt/frozenLocation）任何字段都不得被候选改写
+        val before = official()
+        val flow = CandidateFlow(official = before)
+        val withCandidate = flow.copy(
+            candidate = AttemptSnapshot("att_new", "chl_new", expiresNew, location),
+        )
+        val afterAbort = CheckInCandidateRules.abort(withCandidate)
+
+        assertEquals(before, afterAbort.official)
+        assertNull(afterAbort.candidate)
+    }
+
+    @Test
+    fun fullFlow_success_keepsSingleAttemptIdEndToEnd() {
+        // 全程同 attemptId：领 challenge 用候选 ID，commit 后 attemptId 仍为该 ID，challenge 始终绑定它，不发生二次换 ID
+        val flow = CandidateFlow(official = official())
+        val candidate = CheckInCandidateRules.buildCandidate(
+            official = flow.official,
+            requestSent = true,
+            hasValidChallenge = false,
+            newAttemptId = "att_new",
+            newChallengeId = "chl_new",
+            newChallengeExpiresAt = expiresNew,
+            location = location,
+        )
+        // 候选内：challenge 绑定 attemptId
+        assertEquals("att_new", candidate.attemptId)
+        assertEquals("chl_new", candidate.challengeId)
+
+        // commit：attemptId 与 challenge 一致采用，未发生二次换 ID
+        val afterCommit = CheckInCandidateRules.commit(flow.copy(candidate = candidate))
+        assertEquals("att_new", afterCommit.official.attemptId)
+        assertEquals("chl_new", afterCommit.official.challengeId)
+        assertEquals(candidate, afterCommit.official)
+    }
+
     // ---------- 决策谓词 ----------
 
     @Test
