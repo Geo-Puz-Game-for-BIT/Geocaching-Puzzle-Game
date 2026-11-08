@@ -103,13 +103,17 @@ class CheckInSubmitCoordinator(
     /**
      * 已发出提交的 attempt 的恢复入口：只按 [attemptId] 查询，不重放 POST、不依赖本地冻结内容。
      * 用于 UNKNOWN 草稿恢复 / 结果未知后的「重试恢复」。
+     *
+     * F3：在服务端「可靠终态」保证成立前，查询无记录（NotFound）不能证明旧 POST 不会稍后成功
+     * （存在在途请求先查无记录、后写入的竞态），因此一律保持未知（不返回 CONFIRMED_ABSENT），
+     * 禁止据此换新 ID / 删旧照。待 D 落地终态语义 + 竞态测试后再放行 CONFIRMED_ABSENT。
      */
     suspend fun recover(attemptId: String): SubmitOutcome =
         when (val q = queryStatus(attemptId)) {
             is CheckInQueryResult.Success -> SubmitOutcome.Recovered(q.receipt)
             CheckInQueryResult.NotFound -> SubmitOutcome.Failed(
-                CheckInApiException("CHECKIN_NOT_FOUND", false, "本次尝试未成功"),
-                unknownResult = false,
+                CheckInApiException("CHECKIN_NOT_FOUND", true, "服务端暂未确认本次尝试结果，请稍后重试"),
+                unknownResult = true,
             )
             CheckInQueryResult.Processing -> SubmitOutcome.Failed(
                 CheckInApiException("RECOVERY_PROCESSING", true, "服务端处理中，请稍后重试"),

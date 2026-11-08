@@ -92,6 +92,12 @@ fun GeoTreasureNavHost() {
                 onResult = { checkInId, completedLandmarkId ->
                     navController.navigate(AppRoutes.checkInResult(checkInId, completedLandmarkId))
                 },
+                onOpenDraft = { draftLandmarkId, draftAttemptId ->
+                    // C-2：续用旧草稿，替换当前 camera 入口，避免旧弹窗残留
+                    navController.navigate(AppRoutes.camera(draftLandmarkId, draftAttemptId)) {
+                        popUpTo(AppRoutes.CAMERA) { inclusive = true }
+                    }
+                },
             )
         }
         composable(

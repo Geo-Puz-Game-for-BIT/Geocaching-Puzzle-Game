@@ -3,6 +3,7 @@ package com.bitse.geotreasure.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -49,6 +50,7 @@ class CheckInDraftStore(private val context: Context) {
     private val frozenCapturedAtKey = longPreferencesKey("frozen_captured_at")
     private val frozenSourceKey = stringPreferencesKey("frozen_source")
     private val frozenElapsedRealtimeKey = longPreferencesKey("frozen_elapsed_realtime_nanos")
+    private val requestSentKey = booleanPreferencesKey("request_sent")
 
     val draft: Flow<CheckInDraft?> = appContext.checkInDraftDataStore.data.map { prefs ->
         val id = prefs[draftIdKey] ?: return@map null
@@ -88,6 +90,7 @@ class CheckInDraftStore(private val context: Context) {
                 ?: UploadState.EMPTY,
             createdAt = Instant.fromEpochMilliseconds(prefs[createdAtKey] ?: 0L),
             updatedAt = Instant.fromEpochMilliseconds(prefs[updatedAtKey] ?: 0L),
+            requestSent = prefs[requestSentKey] ?: false,
         )
     }
 
@@ -133,6 +136,7 @@ class CheckInDraftStore(private val context: Context) {
             prefs[uploadStateKey] = draft.uploadState.name
             prefs[createdAtKey] = draft.createdAt.toEpochMilliseconds()
             prefs[updatedAtKey] = draft.updatedAt.toEpochMilliseconds()
+            prefs[requestSentKey] = draft.requestSent
         }
     }
 

@@ -13,7 +13,10 @@ object CheckInAttemptRules {
     /** 结果未知（网络中断/服务端 5xx/查询故障）。 */
     fun isOutcomeUnknown(uploadState: UploadState): Boolean = uploadState == UploadState.UNKNOWN
 
-    /** 是否可重拍 / 换新尝试：非处理中、非未知、非已确认。 */
+    /**
+     * 是否可进入重拍预览（F2）：非处理中、非未知、非已确认。
+     * 仅表示「可切到重拍预览」，不触发新 attemptId / 不删旧照；新照成功采用时才落实新 attempt。
+     */
     fun canRetake(uploadState: UploadState, isProcessing: Boolean): Boolean =
         !isProcessing && !isOutcomeUnknown(uploadState) && uploadState != UploadState.CONFIRMED
 
