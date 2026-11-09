@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.components
+package com.bitse.geotreasure.core.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -22,12 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
 
 /**
  * A-N03：空态 / 错误态公共组件。
