@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.components
+package com.bitse.geotreasure.core.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,18 +39,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bitse.geotreasure.R
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.CameraSurface
-import com.bitse.geotreasure.ui.theme.Dimen
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.R
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.CameraSurface
+import com.bitse.geotreasure.core.ui.theme.Dimen
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
 
 /**
  * 首页品牌头图（P01 顶部）。
