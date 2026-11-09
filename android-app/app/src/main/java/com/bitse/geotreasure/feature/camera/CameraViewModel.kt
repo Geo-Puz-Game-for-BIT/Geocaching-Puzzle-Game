@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.camera
+package com.bitse.geotreasure.feature.camera
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
