@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.result
+package com.bitse.geotreasure.feature.result
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
