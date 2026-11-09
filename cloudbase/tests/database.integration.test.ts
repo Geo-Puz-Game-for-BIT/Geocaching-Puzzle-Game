@@ -153,8 +153,8 @@ async function createFixture(): Promise<Fixture> {
     coordinate_system: "GCJ02",
     check_in_radius_meters: 55,
     status: "active",
-    campus_zone: null,
-    piece_index: null,
+    campus_zone: "NORTH",
+    piece_index: 0,
     coordinate_verified: false,
     check_in_area: { type: "circle", radiusMeters: 55 },
     difficulty: 1,
@@ -269,6 +269,28 @@ afterEach(async () => {
 });
 
 describe.skipIf(!runDatabaseIntegration)("real PostgreSQL consistency", () => {
+  it("rejects an active landmark with incomplete player catalog fields", async () => {
+    const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+    await expect(
+      insertRow("landmarks", {
+        id: `lmk_incomplete_${suffix}`,
+        name: "Incomplete Landmark",
+        latitude: 39.7366,
+        longitude: 116.1666,
+        coordinate_system: "GCJ02",
+        check_in_radius_meters: 55,
+        status: "active",
+        campus_zone: null,
+        piece_index: null,
+        coordinate_verified: false,
+        check_in_area: { type: "circle", radiusMeters: 55 },
+        difficulty: 1,
+        terrain: 1,
+        hint: null,
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
   it("canonical API model exposes three campus sections and twelve landmarks", async () => {
     const canonicalIds = new Set(canonicalCatalog.landmarks.map((landmark) => landmark.id));
     const landmarks = (await listNearbyLandmarks({})).filter((landmark) =>

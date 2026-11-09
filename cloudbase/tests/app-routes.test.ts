@@ -196,3 +196,105 @@ describe("recovery and deletion routes", () => {
     }
   });
 });
+
+describe("player landmark list", () => {
+  it("omits incomplete active landmarks instead of failing the whole response", async () => {
+    const validTask = {
+      id: "task_north_lake",
+      landmark_id: "lmk_north_lake",
+      type: "photo",
+      instructions: "Take a photo.",
+      puzzle_id: "puzzle_liangxiang_campus",
+      fragment_id: "fragment_north_lake",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes("/rdb/rest/landmarks")) {
+          return jsonResponse([
+            {
+              id: "lmk_north_lake",
+              name: "North Lake",
+              latitude: 39.7366,
+              longitude: 116.1666,
+              coordinate_system: "GCJ02",
+              check_in_radius_meters: 55,
+              campus_zone: "NORTH",
+              piece_index: 0,
+              fragment_id: "fragment_north_lake",
+              coordinate_verified: false,
+              check_in_area: { type: "circle", radiusMeters: 55 },
+              difficulty: 1,
+              terrain: 1,
+              hint: null,
+              status: "active",
+            },
+            {
+              id: "lmk_itest_null_catalog",
+              name: "Integration Landmark",
+              latitude: 39.7366,
+              longitude: 116.1666,
+              coordinate_system: "GCJ02",
+              check_in_radius_meters: 55,
+              campus_zone: null,
+              piece_index: null,
+              fragment_id: "fragment_itest_null_catalog",
+              coordinate_verified: false,
+              check_in_area: { type: "circle", radiusMeters: 55 },
+              difficulty: 1,
+              terrain: 1,
+              hint: null,
+              status: "active",
+            },
+            {
+              id: "lmk_itest_missing_task",
+              name: "Integration Landmark Without Task",
+              latitude: 39.7366,
+              longitude: 116.1666,
+              coordinate_system: "GCJ02",
+              check_in_radius_meters: 55,
+              campus_zone: "NORTH",
+              piece_index: 1,
+              fragment_id: "fragment_itest_missing_task",
+              coordinate_verified: false,
+              check_in_area: { type: "circle", radiusMeters: 55 },
+              difficulty: 1,
+              terrain: 1,
+              hint: null,
+              status: "active",
+            },
+          ]);
+        }
+        if (url.includes("/rdb/rest/tasks")) {
+          return jsonResponse([validTask]);
+        }
+        return jsonResponse([]);
+      }),
+    );
+
+    const server = createApp();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address() as AddressInfo;
+    try {
+      const response = await call(
+        `http://127.0.0.1:${String(address.port)}`,
+        "/api/v1/landmarks",
+      );
+      expect(response.status).toBe(200);
+      expect(response.body.requestId).toBe("123e4567-e89b-42d3-a456-426614174000");
+      expect(response.body.data).toEqual([
+        expect.objectContaining({
+          id: "lmk_north_lake",
+          campusZone: "NORTH",
+          pieceIndex: 0,
+          task: expect.objectContaining({ id: "task_north_lake" }),
+        }),
+      ]);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+});
