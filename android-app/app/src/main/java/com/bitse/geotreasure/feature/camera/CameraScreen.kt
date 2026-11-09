@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.camera
+package com.bitse.geotreasure.feature.camera
 
 import android.Manifest
 import android.content.Intent
@@ -82,19 +82,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.domain.model.Landmark
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.BannerBar
-import com.bitse.geotreasure.ui.components.BannerTone
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.components.PageHeader
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.CameraScrim
-import com.bitse.geotreasure.ui.theme.CameraSurface
-import com.bitse.geotreasure.ui.theme.Dimen
-import com.bitse.geotreasure.ui.theme.ErrorRed
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.BannerBar
+import com.bitse.geotreasure.core.ui.components.BannerTone
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.CameraScrim
+import com.bitse.geotreasure.core.ui.theme.CameraSurface
+import com.bitse.geotreasure.core.ui.theme.Dimen
+import com.bitse.geotreasure.core.ui.theme.ErrorRed
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.Radius
 import java.io.File
 
 /**
