@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.theme
+package com.bitse.geotreasure.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
