@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.puzzle
+package com.bitse.geotreasure.feature.puzzle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,21 +34,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bitse.geotreasure.domain.model.Landmark
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.theme.GoldText
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.RewardGold
-import com.bitse.geotreasure.ui.theme.RewardGoldSurface
-import com.bitse.geotreasure.ui.theme.RewardGoldSurfaceEnd
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.theme.GoldText
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.RewardGold
+import com.bitse.geotreasure.core.ui.theme.RewardGoldSurface
+import com.bitse.geotreasure.core.ui.theme.RewardGoldSurfaceEnd
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
 
 /** 细进度条：集齐时变金色（原型 .ptrack i.gold） */
 @Composable
