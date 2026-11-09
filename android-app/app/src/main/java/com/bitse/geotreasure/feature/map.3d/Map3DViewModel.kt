@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.map3d
+package com.bitse.geotreasure.feature.map3d
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
