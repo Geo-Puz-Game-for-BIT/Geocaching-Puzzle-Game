@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.components
+package com.bitse.geotreasure.core.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
@@ -42,12 +42,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
-import com.bitse.geotreasure.ui.assets.LandmarkImages
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.RewardGold
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.assets.LandmarkImages
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.RewardGold
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
 
 /**
  * 地标照片的统一入口。
