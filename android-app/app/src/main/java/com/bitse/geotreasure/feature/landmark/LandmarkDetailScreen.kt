@@ -5,7 +5,8 @@ package com.bitse.geotreasure.feature.landmark
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-@@ -8,193 +10,406 @@ import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -116,7 +117,7 @@ fun LandmarkDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.draftId)
+                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.attemptId)
             }
         }
     }

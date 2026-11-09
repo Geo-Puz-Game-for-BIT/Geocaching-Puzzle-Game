@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: GeoTreasure CloudBase HTTP API
-  version: 1.1.0-poc
+  version: 1.2.0-poc
   license:
     name: Course Project
     url: https://github.com/Geo-Puz-Game-for-BIT/Geocaching-Puzzle-Game
@@ -16,7 +16,7 @@ info:
     - The canonical campus puzzle is `puzzle_liangxiang_campus` with three 2x2
       campus sections and twelve landmark-bound fragments.
     - Errors always use the unified response envelope.
-  x-contract-version: 1.1.0-poc
+  x-contract-version: 1.2.0-poc
 servers:
   - url: https://{cloudbaseHost}/api/v1
     description: Private CloudBase development environment
@@ -154,17 +154,27 @@ paths:
       summary: Create a short-lived, single-use challenge
       parameters:
         - $ref: "#/components/parameters/RequestId"
+        - name: X-Attempt-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [landmarkId]
+              required: [landmarkId, attemptId]
               properties:
                 landmarkId:
                   type: string
                   example: lmk_north_lake
+                attemptId:
+                  type: string
+                  description: 本次尝试幂等键，challenge 拍前即与其绑定，提交时须用同一 attemptId
+                  example: att_8f3c2a1d
       responses:
         "200":
           description: Challenge created
@@ -200,6 +210,20 @@ paths:
       summary: Upload a JPEG check-in photo
       parameters:
         - $ref: "#/components/parameters/RequestId"
+        - name: X-Challenge-Id
+          in: header
+          required: true
+          description: Associate the uploaded photo with the challenge issued before capture.
+          schema:
+            type: string
+            maxLength: 128
+        - name: X-Attempt-Id
+          in: header
+          required: true
+          description: Associate the uploaded photo with the client attempt identifier.
+          schema:
+            type: string
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -262,7 +286,139 @@ paths:
                       code: PHOTO_INVALID
                       message: Only image/jpeg is accepted
                       retryable: false
+  /checkin-photos/{photoId}:
+    delete:
+      operationId: deleteCheckInPhoto
+      tags: [checkins]
+      summary: Logically delete an owned photo and clean its storage object
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Photo is no longer readable and storage cleanup completed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requestId, data]
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                  data:
+                    $ref: "#/components/schemas/PhotoDeletion"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                data:
+                  photoId: pho_01JTEST
+                  status: DELETED
+                  storageCleanup: COMPLETED
+                  deleteAfter: "2026-11-05T08:17:21.000Z"
+        "202":
+          description: Photo is logically deleted but storage cleanup is pending
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requestId, data]
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                  data:
+                    $ref: "#/components/schemas/PhotoDeletion"
+        "401":
+          $ref: "#/components/responses/AuthRequired"
+        "404":
+          description: Photo does not exist or is not owned by the current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                error:
+                  code: PHOTO_NOT_FOUND
+                  message: Photo does not exist
+                  retryable: false
+        "409":
+          description: The related check-in attempt is still processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                error:
+                  code: CHECKIN_RESULT_UNKNOWN
+                  message: Resolve the active check-in attempt before deleting its only photo
+                  retryable: true
   /checkins:
+    get:
+      operationId: queryCheckInAttempt
+      tags: [checkins]
+      summary: Query the current user's result for one attempt
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: attemptId
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          description: The attempt completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requestId, data]
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                  data:
+                    $ref: "#/components/schemas/CheckInReceipt"
+        "202":
+          description: The attempt is still processing. A processing attempt older than two minutes is sealed as abandoned and later returns CHECKIN_NOT_FOUND.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requestId, data]
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                  data:
+                    $ref: "#/components/schemas/ProcessingCheckIn"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                data:
+                  attemptId: att_01JTEST
+                  status: PROCESSING
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "401":
+          $ref: "#/components/responses/AuthRequired"
+        "404":
+          description: No successful check-in exists for this attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+              example:
+                requestId: 123e4567-e89b-42d3-a456-426614174000
+                error:
+                  code: CHECKIN_NOT_FOUND
+                  message: No successful check-in exists for this attempt
+                  retryable: false
     post:
       operationId: submitCheckIn
       tags: [checkins]
@@ -368,7 +524,7 @@ paths:
                     requestId: 123e4567-e89b-42d3-a456-426614174000
                     error:
                       code: LOCATION_ACCURACY_TOO_LOW
-                      message: Location accuracy must be 50m or better
+                      message: Location accuracy must be 30m or better
                       retryable: false
                       details:
                         accuracyMeters: 80
@@ -563,10 +719,16 @@ components:
                 - INVALID_REQUEST
                 - LANDMARK_NOT_FOUND
                 - PUZZLE_NOT_FOUND
+                - CHECKIN_NOT_FOUND
+                - PHOTO_NOT_FOUND
                 - LOCATION_REQUIRED
+                - LOCATION_STALE
+                - LOCATION_CLOCK_INVALID
                 - LOCATION_ACCURACY_TOO_LOW
                 - OUT_OF_RANGE
                 - CHALLENGE_EXPIRED
+                - ATTEMPT_SEALED
+                - CHECKIN_RESULT_UNKNOWN
                 - PHOTO_REQUIRED
                 - PHOTO_INVALID
                 - IDEMPOTENCY_CONFLICT
@@ -739,12 +901,15 @@ components:
           nullable: true
     CheckInChallenge:
       type: object
-      required: [id, landmarkId, expiresAt]
+      required: [id, landmarkId, attemptId, expiresAt]
       properties:
         id:
           type: string
         landmarkId:
           type: string
+        attemptId:
+          type: string
+          description: 回显本 challenge 绑定的 attemptId（与请求一致）
         expiresAt:
           type: string
           format: date-time
@@ -760,6 +925,30 @@ components:
         uploadedAt:
           type: string
           format: date-time
+    PhotoDeletion:
+      type: object
+      required: [photoId, status, storageCleanup, deleteAfter]
+      properties:
+        photoId:
+          type: string
+        status:
+          type: string
+          enum: [DELETED]
+        storageCleanup:
+          type: string
+          enum: [COMPLETED, PENDING]
+        deleteAfter:
+          type: string
+          format: date-time
+    ProcessingCheckIn:
+      type: object
+      required: [attemptId, status]
+      properties:
+        attemptId:
+          type: string
+        status:
+          type: string
+          enum: [PROCESSING]
     LocationSample:
       type: object
       required: [point, accuracyMeters, capturedAt]
@@ -773,6 +962,21 @@ components:
         capturedAt:
           type: string
           format: date-time
+          description: UTC capture time. Server rejects samples older than 30 seconds and future samples beyond 5 seconds.
+        source:
+          type: string
+          enum: [GPS, WIFI, CELL, NETWORK, CACHE, DEMO, UNKNOWN]
+          default: UNKNOWN
+        elapsedRealtimeNanos:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Device monotonic clock at capture; provide together with submittedElapsedRealtimeNanos.
+        submittedElapsedRealtimeNanos:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Device monotonic clock when constructing the request.
     SubmitCheckInRequest:
       type: object
       required: [landmarkId, challengeId, photoId, location]

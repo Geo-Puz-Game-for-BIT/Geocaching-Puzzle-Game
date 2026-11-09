@@ -35,6 +35,23 @@ export interface LandmarkListQuery {
   radiusMeters?: number;
 }
 
+const CAMPUS_ZONES = new Set(["NORTH", "EAST", "SOUTH"]);
+
+function isCompletePlayerLandmark(landmark: LandmarkRow, task: TaskRow | undefined): boolean {
+  return (
+    landmark.coordinate_system === "GCJ02" &&
+    landmark.campus_zone !== null &&
+    CAMPUS_ZONES.has(landmark.campus_zone) &&
+    landmark.fragment_id !== null &&
+    landmark.piece_index !== null &&
+    Number.isInteger(landmark.piece_index) &&
+    landmark.piece_index >= 0 &&
+    landmark.piece_index <= 3 &&
+    task !== undefined &&
+    task.fragment_id === landmark.fragment_id
+  );
+}
+
 export async function listNearbyLandmarks(input: LandmarkListQuery) {
   const [landmarks, tasks] = await Promise.all([
     selectRows<LandmarkRow>("landmarks", {
@@ -52,6 +69,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
   const taskByLandmark = new Map(tasks.map((task) => [task.landmark_id, task]));
 
   return landmarks
+    .filter((landmark) => isCompletePlayerLandmark(landmark, taskByLandmark.get(landmark.id)))
     .map((landmark) => {
       const task = taskByLandmark.get(landmark.id);
       return {
@@ -74,16 +92,13 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
         difficulty: landmark.difficulty,
         terrain: landmark.terrain,
         hint: landmark.hint,
-        task:
-          task === undefined
-            ? null
-            : {
-                id: task.id,
-                type: task.type,
-                instructions: task.instructions,
-                puzzleId: task.puzzle_id,
-                fragmentId: task.fragment_id,
-              },
+        task: {
+          id: task!.id,
+          type: task!.type,
+          instructions: task!.instructions,
+          puzzleId: task!.puzzle_id,
+          fragmentId: task!.fragment_id,
+        },
       };
     })
     .filter((landmark) => {

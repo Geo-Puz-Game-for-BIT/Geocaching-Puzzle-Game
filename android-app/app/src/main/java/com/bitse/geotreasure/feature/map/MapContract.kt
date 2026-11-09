@@ -28,6 +28,7 @@ data class MapUiState(
     val permissionState: LocationPermissionState = LocationPermissionState.UNKNOWN,
     val permissionRequestCount: Int = 0,
     val usingDemoMap: Boolean = true,
+    val usingDemoLandmarks: Boolean = true,
     val message: String? = null,
     val exploredCenters: List<GeoPoint> = emptyList(),
     val locationSignalActive: Boolean = false,

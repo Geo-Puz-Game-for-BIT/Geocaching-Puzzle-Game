@@ -2,7 +2,8 @@ package com.bitse.geotreasure.feature.puzzle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-@@ -7,317 +7,367 @@ import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -76,19 +77,19 @@ import kotlinx.coroutines.launch
 data class PuzzleUiState(
     val puzzleId: String,
     val revealMode: PuzzleRevealMode = LiangxiangTreasureCatalog.puzzle.defaultRevealMode,
-    val ownedFragmentIds: Set<String> = DEMO_OWNED_FRAGMENT_IDS,
+    val ownedFragmentIds: Set<String> = emptySet(),
 )
 
-private val DEMO_OWNED_FRAGMENT_IDS = setOf(
-    "fragment_north_lake",
-    "fragment_north_library",
-    "fragment_east_wencui",
-)
-
+/**
+ * 真实拼图进度：只由「已完成地标」推导碎片，不预置任何默认演示碎片。
+ * 未打卡 → 不点亮；服务端确认成功后经 markLandmarkCompleted 写入才点亮；
+ * 失败/UNKNOWN 不提前点亮；重复打卡由集合幂等去重；进度经 DataStore 持久化，重启保留。
+ */
 internal fun ownedFragmentIdsFor(completedLandmarkIds: Set<String>): Set<String> =
-    DEMO_OWNED_FRAGMENT_IDS + LiangxiangTreasureCatalog.landmarks
+    LiangxiangTreasureCatalog.landmarks
         .filter { it.id in completedLandmarkIds }
         .map { it.fragmentId }
+        .toSet()
 
 sealed interface PuzzleAction {
     data class ChangeRevealMode(val revealMode: PuzzleRevealMode) : PuzzleAction

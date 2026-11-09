@@ -8,7 +8,9 @@
     "dev": "node --env-file-if-exists=.env src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:cloud": "esbuild src/cloudbase-server.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/dist/main.cjs",
+    "build:cloud": "npm run build:cloud:api && npm run build:cleanup",
+    "build:cloud:api": "esbuild src/cloudbase-server.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/dist/main.cjs",
+    "build:cleanup": "esbuild src/cleanup-handler.ts --bundle --platform=node --format=cjs --target=node20 --outfile=deploy/photo-cleanup/index.js",
     "api:check": "npm run typecheck && npm run test && npm run api:contract",
     "deploy": "npm run build:cloud && tcb deploy --config-file cloudbaserc.json --only functions --force --yes",
     "cloudbase": "tcb",
@@ -17,8 +19,10 @@
     "api:test": "cd ../api-tests && bru run health --env local --bail",
     "api:test:development": "cd ../api-tests && bru run health --env-file environments/private/development.bru --bail",
     "api:test:database": "node --env-file-if-exists=.env scripts/run-database-integration.mjs",
+    "api:test:landmark-constraint": "node --env-file-if-exists=.env scripts/run-landmark-constraint-check.mjs",
     "api:test:live": "node --env-file-if-exists=.env scripts/live-checkin-regression.mjs",
-    "api:smoke": "node scripts/smoke.mjs"
+    "api:smoke": "node scripts/smoke.mjs",
+    "photo:cleanup": "node --env-file-if-exists=.env scripts/cleanup-deleted-photos.mjs"
   },
   "dependencies": {
     "busboy": "1.6.0",

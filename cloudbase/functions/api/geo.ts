@@ -1,6 +1,10 @@
 import { ApiError } from "./errors.ts";
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
+export const MAX_CHECK_IN_ACCURACY_METERS = 30;
+export const MAX_CHECK_IN_LOCATION_AGE_MS = 30_000;
+export const MAX_LOCATION_FUTURE_SKEW_MS = 5_000;
+export const MAX_CLOCK_CROSS_CHECK_DELTA_MS = 5_000;
 
 export interface LocalOffsetMeters {
   eastMeters: number;
@@ -97,14 +101,80 @@ export function isWithinRadius(
   radiusMeters: number,
   accuracyMeters: number,
 ): boolean {
-  return distance <= radiusMeters && accuracyMeters <= 50;
+  return distance <= radiusMeters && accuracyMeters <= MAX_CHECK_IN_ACCURACY_METERS;
 }
 
 export function validateLocationAccuracy(accuracyMeters: number): void {
-  if (accuracyMeters > 50) {
-    throw new ApiError("LOCATION_ACCURACY_TOO_LOW", "Location accuracy must be 50m or better", {
+  if (accuracyMeters > MAX_CHECK_IN_ACCURACY_METERS) {
+    throw new ApiError("LOCATION_ACCURACY_TOO_LOW", "Location accuracy must be 30m or better", {
       details: { accuracyMeters },
     });
+  }
+}
+
+export interface LocationTimeEvidence {
+  capturedAt: string;
+  elapsedRealtimeNanos?: number;
+  submittedElapsedRealtimeNanos?: number;
+}
+
+export function validateLocationTime(
+  location: LocationTimeEvidence,
+  now: Date = new Date(),
+): void {
+  const capturedAtMs = Date.parse(location.capturedAt);
+  if (!Number.isFinite(capturedAtMs)) {
+    throw new ApiError("LOCATION_CLOCK_INVALID", "Captured time must be a valid UTC timestamp");
+  }
+
+  const wallAgeMs = now.getTime() - capturedAtMs;
+  if (wallAgeMs < -MAX_LOCATION_FUTURE_SKEW_MS) {
+    throw new ApiError("LOCATION_CLOCK_INVALID", "Location timestamp is too far in the future", {
+      details: { wallAgeMs },
+    });
+  }
+  if (wallAgeMs > MAX_CHECK_IN_LOCATION_AGE_MS) {
+    throw new ApiError("LOCATION_STALE", "Location sample is stale", {
+      details: {
+        wallAgeMs,
+        maxAgeMs: MAX_CHECK_IN_LOCATION_AGE_MS,
+      },
+    });
+  }
+
+  const hasCapturedElapsed = location.elapsedRealtimeNanos !== undefined;
+  const hasSubmittedElapsed = location.submittedElapsedRealtimeNanos !== undefined;
+  if (hasCapturedElapsed !== hasSubmittedElapsed) {
+    throw new ApiError(
+      "LOCATION_CLOCK_INVALID",
+      "Both captured and submitted monotonic timestamps are required together",
+    );
+  }
+  if (!hasCapturedElapsed || !hasSubmittedElapsed) {
+    return;
+  }
+
+  const monotonicAgeMs =
+    (Number(location.submittedElapsedRealtimeNanos) -
+      Number(location.elapsedRealtimeNanos)) /
+    1_000_000;
+  const clockDeltaMs = Math.abs(wallAgeMs - monotonicAgeMs);
+  if (
+    monotonicAgeMs < 0 ||
+    monotonicAgeMs > MAX_CHECK_IN_LOCATION_AGE_MS ||
+    clockDeltaMs > MAX_CLOCK_CROSS_CHECK_DELTA_MS
+  ) {
+    throw new ApiError(
+      "LOCATION_CLOCK_INVALID",
+      "Device wall clock and monotonic interval are inconsistent",
+      {
+        details: {
+          wallAgeMs,
+          monotonicAgeMs,
+          clockDeltaMs,
+        },
+      },
+    );
   }
 }
 
@@ -129,7 +199,10 @@ export function assertWithinCheckInArea(
   accuracyMeters: number,
   area: CheckInArea,
 ): void {
-  if (accuracyMeters > 50 || !isWithinCheckInArea(origin, point, area)) {
+  if (
+    accuracyMeters > MAX_CHECK_IN_ACCURACY_METERS ||
+    !isWithinCheckInArea(origin, point, area)
+  ) {
     throw new ApiError("OUT_OF_RANGE", "Current location is outside the check-in area", {
       details: {
         distanceMeters: distanceMeters(origin, point),
