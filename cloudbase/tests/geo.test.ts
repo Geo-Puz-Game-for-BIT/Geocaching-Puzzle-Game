@@ -29,7 +29,11 @@ describe("isWithinRadius", () => {
   });
 
   it("givenInaccurateSample_whenCheckRadius_thenReturnsFalse", () => {
-    expect(isWithinRadius(40, 100, 51)).toBe(false);
+    expect(isWithinRadius(40, 100, 31)).toBe(false);
+  });
+
+  it("givenThirtyMeterAccuracy_whenCheckRadius_thenReturnsTrue", () => {
+    expect(isWithinRadius(40, 100, 30)).toBe(true);
   });
 });
 

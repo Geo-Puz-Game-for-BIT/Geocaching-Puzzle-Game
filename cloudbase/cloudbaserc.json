@@ -26,6 +26,27 @@
         "STORAGE_BUCKET": "{{env.STORAGE_BUCKET}}",
         "CLOUDBASE_API_KEY": "{{env.CLOUDBASE_API_KEY}}"
       }
+    },
+    {
+      "name": "photo-cleanup",
+      "runtime": "Nodejs20.19",
+      "dir": "deploy/photo-cleanup",
+      "handler": "index.main",
+      "memorySize": 256,
+      "timeout": 30,
+      "installDependency": false,
+      "triggers": [
+        {
+          "name": "photo-cleanup-every-10-minutes",
+          "type": "timer",
+          "config": "0 */10 * * * * *"
+        }
+      ],
+      "envVariables": {
+        "STORAGE_API_BASE": "{{env.STORAGE_API_BASE}}",
+        "STORAGE_BUCKET": "{{env.STORAGE_BUCKET}}",
+        "CLOUDBASE_API_KEY": "{{env.CLOUDBASE_API_KEY}}"
+      }
     }
   ]
 }
