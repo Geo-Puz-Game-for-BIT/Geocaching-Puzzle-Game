@@ -125,6 +125,7 @@ async function createFixture(): Promise<Fixture> {
       `pho_itest_${suffix}_b`,
     ],
   };
+  Object.assign(fixture, value);
 
   await insertRow("users", {
     id: value.userId,
@@ -153,8 +154,8 @@ async function createFixture(): Promise<Fixture> {
     coordinate_system: "GCJ02",
     check_in_radius_meters: 55,
     status: "active",
-    campus_zone: "NORTH",
-    piece_index: 0,
+    campus_zone: null,
+    piece_index: null,
     coordinate_verified: false,
     check_in_area: { type: "circle", radiusMeters: 55 },
     difficulty: 1,
@@ -197,8 +198,6 @@ async function createFixture(): Promise<Fixture> {
     mime_type: "image/jpeg",
     size_bytes: 3,
   });
-
-  Object.assign(fixture, value);
   return value;
 }
 
