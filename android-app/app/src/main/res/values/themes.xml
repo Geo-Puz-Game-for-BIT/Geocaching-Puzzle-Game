@@ -1,8 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.GeoTreasure" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:fontFamily">sans</item>
+    <!-- Compose 负责全部界面；这里只定窗口底色与状态栏，避免启动瞬间白/黑闪 -->
+    <style name="Theme.GeoTreasure" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/brand_background</item>
+        <item name="android:statusBarColor">@color/brand_surface</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">#F7F8F3</item>
-        <item name="android:statusBarColor">#F7F8F3</item>
+        <item name="android:navigationBarColor">@color/brand_surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
