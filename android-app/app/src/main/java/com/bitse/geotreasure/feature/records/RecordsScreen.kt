@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.records
+package com.bitse.geotreasure.feature.records
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -49,29 +49,29 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.domain.model.CheckInPhoto
-import com.bitse.geotreasure.ui.theme.RewardBox
-import com.bitse.geotreasure.ui.components.EmptyState
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.AppTab
-import com.bitse.geotreasure.ui.components.AppTabBar
-import com.bitse.geotreasure.ui.components.FactCell
-import com.bitse.geotreasure.ui.components.PageHeader
-import com.bitse.geotreasure.ui.components.PhotoTile
-import com.bitse.geotreasure.ui.pages.puzzle.ProgressTrack
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.GoldText
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.ErrorRed
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.OutlineVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.RewardBox
+import com.bitse.geotreasure.core.ui.components.EmptyState
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.AppTab
+import com.bitse.geotreasure.core.ui.components.AppTabBar
+import com.bitse.geotreasure.core.ui.components.FactCell
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.components.PhotoTile
+import com.bitse.geotreasure.core.ui.pages.puzzle.ProgressTrack
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.GoldText
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.ErrorRed
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.OutlineVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
 
 /**
  * P06 · 我的记录。
