@@ -1,98 +1,169 @@
-package com.bitse.geotreasure.ui.pages.landmark
+package com.bitse.geotreasure.feature.landmark
 
-import androidx.lifecycle.SavedStateHandle
+
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.bitse.geotreasure.core.NetworkMonitor
-import com.bitse.geotreasure.domain.model.CampusModule
-import com.bitse.geotreasure.domain.model.Landmark
-import com.bitse.geotreasure.domain.repository.GeoTreasureRepository
-import com.bitse.geotreasure.ui.navigation.Routes
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.bitse.geotreasure.core.checkin.BlockReason
+import com.bitse.geotreasure.core.checkin.CheckInGate
+import com.bitse.geotreasure.core.checkin.CheckInGateResult
+import com.bitse.geotreasure.core.common.AppResult
+import com.bitse.geotreasure.core.location.LocationProvider
+import com.bitse.geotreasure.core.model.Landmark
+import com.bitse.geotreasure.data.repository.LandmarkRepository
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-/**
- * P02 地标详情。
- *
- * landmarkId 只从导航参数来 —— 页面自己不带任何「当前是第几个地标」的推断，
- * 所以「点理教却显示疏桐」这类错位在结构上不会发生。
- */
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+
+
+
+
+
+
+
 data class LandmarkDetailUiState(
-    val landmarkId: String,
-    val landmark: Landmark?,
-    val module: CampusModule?,
-    val owned: Boolean,
-    /** 该片区已收块数，用于「第 N/4 块」文案 */
-    val moduleOwnedCount: Int,
-    val online: Boolean,
-    /** 首次进入时的短骨架屏，避免白屏闪一下 */
-    val loading: Boolean
+    val isLoading: Boolean = true,
+    val landmark: Landmark? = null,
+    val gate: CheckInGateResult? = null,
+    val errorMessage: String? = null,
+
+
+
+
+
 ) {
-    val taskNo: String get() = landmark?.taskId ?: ""
-    val rewardIndex: Int get() = (moduleOwnedCount + 1).coerceAtMost(4)
-    val notFound: Boolean get() = !loading && landmark == null
+    val canStartTask: Boolean get() = gate is CheckInGateResult.Ready
+
+    val gateMessage: String? get() = (gate as? CheckInGateResult.Blocked)?.reason?.message
+
+    val distanceMeters: Double?
+        get() = when (gate) {
+            is CheckInGateResult.Ready -> gate.distanceMeters
+            is CheckInGateResult.Blocked -> gate.distanceMeters
+            null -> null
+        }
 }
 
-@HiltViewModel
-class LandmarkDetailViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
-    private val repository: GeoTreasureRepository,
-    networkMonitor: NetworkMonitor
-) : ViewModel() {
+sealed interface LandmarkDetailAction {
+    data object Retry : LandmarkDetailAction
+    data object StartTask : LandmarkDetailAction
+    data object RefreshLocation : LandmarkDetailAction
+}
 
-    private val landmarkId: String = savedStateHandle[Routes.ARG_LANDMARK_ID] ?: ""
-    private val loading = MutableStateFlow(true)
+sealed interface LandmarkDetailEffect {
+    data class NavigateToCamera(val landmarkId: String, val draftId: String) : LandmarkDetailEffect
+}
+
+class LandmarkDetailViewModel(
+    private val landmarkId: String,
+    private val repository: LandmarkRepository,
+    private val locationProvider: LocationProvider,
+
+) : ViewModel() {
+    private val mutableUiState = MutableStateFlow(LandmarkDetailUiState())
+    val uiState: StateFlow<LandmarkDetailUiState> = mutableUiState.asStateFlow()
+
+    private val effectChannel = Channel<LandmarkDetailEffect>(Channel.BUFFERED)
+    val effects = effectChannel.receiveAsFlow()
 
     init {
-        // 演示数据是内存的，这里只是让骨架屏有个可感知的过渡；
-        // 接 CloudBase 后换成真实的详情请求（含失败回退到 error 态）。
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(260)
-            loading.value = false
+        loadLandmark()
+    }
+
+    fun onAction(action: LandmarkDetailAction) {
+        when (action) {
+            LandmarkDetailAction.Retry -> {
+                loadLandmark()
+                refreshGate()
+            }
+
+            LandmarkDetailAction.RefreshLocation -> refreshGate()
+
+            LandmarkDetailAction.StartTask -> {
+                if (!mutableUiState.value.canStartTask) return
+                effectChannel.trySend(
+                    LandmarkDetailEffect.NavigateToCamera(
+                        landmarkId = landmarkId,
+                        draftId = "dft_demo_${landmarkId.removePrefix("lmk_")}",
+                    ),
+                )
+            }
         }
     }
 
-    val uiState: StateFlow<LandmarkDetailUiState> = combine(
-        repository.progress,
-        networkMonitor.isOnline,
-        loading
-    ) { progress, online, isLoading ->
-        val landmark = repository.landmark(landmarkId)
-        val module = landmark?.let { repository.moduleOfLandmark(it.id) }
-        LandmarkDetailUiState(
-            landmarkId = landmarkId,
-            landmark = landmark,
-            module = module,
-            owned = landmark != null && progress.owns(landmark.moduleId, landmark.slot),
-            moduleOwnedCount = module?.let { progress.ownedCount(it.id) } ?: 0,
-            online = online,
-            loading = isLoading
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = LandmarkDetailUiState(
-            landmarkId = landmarkId,
-            landmark = repository.landmark(landmarkId),
-            module = repository.landmark(landmarkId)?.let { repository.moduleOfLandmark(it.id) },
-            owned = false,
-            moduleOwnedCount = 0,
-            online = true,
-            loading = true
-        )
-    )
-
-    fun retryLoad() {
-        loading.value = true
+    private fun loadLandmark() {
         viewModelScope.launch {
-            kotlinx.coroutines.delay(400)
-            loading.value = false
+            mutableUiState.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = repository.getLandmark(landmarkId)) {
+                is AppResult.Success -> {
+                    mutableUiState.value = LandmarkDetailUiState(isLoading = false, landmark = result.data)
+                    refreshGate()
+                }
+
+                is AppResult.Failure -> mutableUiState.value = LandmarkDetailUiState(
+                    isLoading = false,
+                    errorMessage = result.error.message,
+                )
+            }
+        }
+    }
+
+    /** 单次取位判断门控；失败归为「等待定位」，由用户手动重新定位。 */
+    private fun refreshGate() {
+        val landmark = mutableUiState.value.landmark ?: return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        viewModelScope.launch {
+            val gate = when (val result = locationProvider.getCurrentLocation()) {
+                is AppResult.Success -> CheckInGate.evaluate(result.data, landmark.point, landmark.checkInArea)
+                is AppResult.Failure -> CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
+            }
+            mutableUiState.update { it.copy(gate = gate) }
+        }
+    }
+
+    companion object {
+        fun factory(
+            landmarkId: String,
+            repository: LandmarkRepository,
+            locationProvider: LocationProvider,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                LandmarkDetailViewModel(landmarkId, repository, locationProvider) as T
         }
     }
 }
