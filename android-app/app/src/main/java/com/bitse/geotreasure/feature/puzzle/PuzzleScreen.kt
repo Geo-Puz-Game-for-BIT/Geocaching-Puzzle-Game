@@ -1,373 +1,478 @@
-package com.bitse.geotreasure.ui.pages.puzzle
+package com.bitse.geotreasure.feature.puzzle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+@@ -7,317 +7,367 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
+
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+
+
+
+
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.MilitaryTech
-import androidx.compose.material.icons.outlined.Extension
-import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.TopAppBar
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bitse.geotreasure.domain.model.Landmark
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.AppTab
-import com.bitse.geotreasure.ui.components.AppTabBar
-import com.bitse.geotreasure.ui.components.FragmentTile
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.components.PageHeader
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.RewardGold
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.app.ExplorationProgressStore
+import com.bitse.geotreasure.core.model.CampusZone
+import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
+import com.bitse.geotreasure.core.model.PuzzleFragmentDefinition
+import com.bitse.geotreasure.core.model.PuzzleRevealMode
+import com.bitse.geotreasure.core.model.PuzzleSectionDefinition
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-/**
- * P05 · 拼图收集。
- *
- * 明暗必须按 ownedSlots（哪几格）来判定，不能写「前 N 格」——
- * 原型里就是这一处写错过，导致总览亮的是疏桐、片区页暗的是工业生态楼，两边正好相反。
- */
-@Composable
-fun PuzzleRoute(
-    onBack: () -> Unit,
-    onOpenModule: (moduleId: String) -> Unit,
-    onOpenLandmark: (landmarkId: String) -> Unit,
-    onExplore: () -> Unit,
-    onOpenRecords: () -> Unit,
-    viewModel: PuzzleViewModel = hiltViewModel()
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    PuzzleOverviewScreen(
-        state = state,
-        onBack = onBack,
-        onOpenModule = onOpenModule,
-        onExplore = onExplore,
-        onOpenRecords = onOpenRecords
-    )
+
+
+
+
+
+
+
+data class PuzzleUiState(
+    val puzzleId: String,
+    val revealMode: PuzzleRevealMode = LiangxiangTreasureCatalog.puzzle.defaultRevealMode,
+    val ownedFragmentIds: Set<String> = DEMO_OWNED_FRAGMENT_IDS,
+)
+
+private val DEMO_OWNED_FRAGMENT_IDS = setOf(
+    "fragment_north_lake",
+    "fragment_north_library",
+    "fragment_east_wencui",
+)
+
+internal fun ownedFragmentIdsFor(completedLandmarkIds: Set<String>): Set<String> =
+    DEMO_OWNED_FRAGMENT_IDS + LiangxiangTreasureCatalog.landmarks
+        .filter { it.id in completedLandmarkIds }
+        .map { it.fragmentId }
+
+sealed interface PuzzleAction {
+    data class ChangeRevealMode(val revealMode: PuzzleRevealMode) : PuzzleAction
+    data class SelectFragment(val fragmentId: String) : PuzzleAction
+
+
+
+
 }
 
-@Composable
-fun PuzzleOverviewScreen(
-    state: PuzzleOverviewUiState,
-    onBack: () -> Unit,
-    onOpenModule: (String) -> Unit,
-    onExplore: () -> Unit,
-    onOpenRecords: () -> Unit
-) {
-    val context = LocalContext.current
-    val allDone = state.completedModules >= state.modules.size
+sealed interface PuzzleEffect
 
-    Column(modifier = Modifier.fillMaxSize().background(com.bitse.geotreasure.ui.theme.Background).statusBarsPadding()) {
-        PageHeader(
-            title = "拼图收集",
-            subtitle = "已收 ${state.shards}/${state.totalShards} 块 · 完成 ${state.completedModules}/${state.modules.size} 个片区",
-            onBack = onBack,
-            // 原型 hdr(act:'toast:3 个片区 × 4 块 = 12 块碎片（原型示意）', actIc:'info')
-            actionIcon = Icons.Outlined.Info,
-            actionDescription = "拼图规则",
-            onAction = {
-                Toast.makeText(context, "3 个片区 × 4 块 = 12 块碎片（原型示意）", Toast.LENGTH_SHORT).show()
+class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore) : ViewModel() {
+    private val mutableUiState = MutableStateFlow(PuzzleUiState(puzzleId))
+    val uiState: StateFlow<PuzzleUiState> = mutableUiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            progressStore.completedLandmarkIds.collect { completedIds ->
+                mutableUiState.update { it.copy(ownedFragmentIds = ownedFragmentIdsFor(completedIds)) }
             }
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("我的校园地图", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                Spacer(Modifier.weight(1f))
-                Text(
-                    "${state.completedModules} / ${state.modules.size} 个片区",
-                    style = AppText.small,
-                    color = OnSurfaceVariant
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = if (allDone) "三个片区都集齐了，完整校园地图已点亮"
-                else "每个片区 2×2 四块碎片，各对应一个地标；集齐后自动归位",
-                style = AppText.small,
-                color = OnSurfaceVariant,
-                lineHeight = 19.sp
-            )
-
-            Spacer(Modifier.height(8.dp))
-            ProgressTrack(
-                fraction = state.completedModules.toFloat() / state.modules.size,
-                gold = allDone
-            )
-
-            Spacer(Modifier.height(12.dp))
-            // 原型 .mapgrid：三个片区并排在一张灰绿底卡片里，不是三张竖排大卡
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFDDE5E1), RoundedCornerShape(16.dp))
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                state.modules.forEach { snapshot ->
-                    ModuleBlock(
-                        snapshot = snapshot,
-                        onClick = { onOpenModule(snapshot.module.id) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Extension, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "已收 ${state.shards} / ${state.totalShards} 块碎片 · 点片区看它的 2×2",
-                    style = AppText.caption,
-                    color = OnSurfaceVariant
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PrimaryContainer, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                Icon(Icons.Outlined.Info, contentDescription = null, tint = OnPrimaryContainer, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "服务端确认打卡成功后，这块碎片自动点亮并归位，不需要手动拖动或拼合。集齐一个片区后可手动回顾拼合过程。",
-                    style = AppText.small,
-                    color = OnPrimaryContainer,
-                    lineHeight = 19.sp
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-            if (allDone) {
-                AchievementCard(title = "成就 · 校园地图完成", body = "12 块碎片全部归位，三个片区连成一张图")
-            } else {
-                NextUpCard(next = state.nextModule, onExplore = onExplore)
-            }
-
-            Spacer(Modifier.height(14.dp))
-            // 原型这颗按钮只有文字、没有前置图标
-            AppButton(
-                text = if (allDone) "再逛逛地图" else "去地图继续打卡",
-                onClick = onExplore,
-                style = if (allDone) AppButtonStyle.Tonal else AppButtonStyle.Outline
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = if (allDone) "已解锁成就 · 全部 ${state.modules.size} / ${state.modules.size} 片区"
-                else "碎片只对它所属的地标生效，不会过期",
-                style = AppText.caption,
-                color = OnSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
         }
+    }
 
-        AppTabBar(
-            current = AppTab.Puzzle,
-            shards = state.shards,
-            totalShards = state.totalShards,
-            onSelect = { tab ->
-                when (tab) {
-                    AppTab.Explore -> onExplore()
-                    AppTab.Puzzle -> Unit
-                    AppTab.Records -> onOpenRecords()
-                }
+    fun onAction(action: PuzzleAction) {
+        when (action) {
+            is PuzzleAction.ChangeRevealMode -> mutableUiState.update {
+                it.copy(revealMode = action.revealMode)
             }
-        )
+
+            is PuzzleAction.SelectFragment -> {
+                if (action.fragmentId !in mutableUiState.value.ownedFragmentIds) return
+
+
+
+
+
+
+
+
+            }
+        }
+    }
+
+    companion object {
+        fun factory(puzzleId: String, progressStore: ExplorationProgressStore): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                PuzzleViewModel(puzzleId, progressStore) as T
+        }
     }
 }
 
-/* ---------------- 片区页 ---------------- */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PuzzleScreen(viewModel: PuzzleViewModel, onBack: () -> Unit) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val puzzle = LiangxiangTreasureCatalog.puzzle
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(puzzle.title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.padding(padding).fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                PuzzleProgressCard(
+                    ownedCount = state.ownedFragmentIds.size,
+                    totalCount = puzzle.fragmentCount,
+
+
+
+                )
+            }
+            item {
+                RevealModeSelector(
+                    selected = state.revealMode,
+                    onSelected = { viewModel.onAction(PuzzleAction.ChangeRevealMode(it)) },
+                )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            }
+            items(puzzle.sections, key = { it.id }) { section ->
+                CampusSection(
+                    section = section,
+                    revealMode = state.revealMode,
+                    ownedFragmentIds = state.ownedFragmentIds,
+                    onFragmentSelected = { viewModel.onAction(PuzzleAction.SelectFragment(it)) },
+
+
+
+                )
+            }
+            item {
+
+
+
+
+
+
+
+
+
+                Text(
+                    text = "当前 12 个坐标用于开发演示。正式开放打卡前，需要逐点完成实地测量、拍照许可和安全检查。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+                )
+            }
+        }
+    }
+}
 
 @Composable
-fun ModulePuzzleRoute(
-    onBack: () -> Unit,
-    onOpenLandmark: (landmarkId: String) -> Unit,
-    onExplore: () -> Unit,
-    onOpenRecords: () -> Unit,
-    viewModel: ModulePuzzleViewModel = hiltViewModel()
+private fun PuzzleProgressCard(ownedCount: Int, totalCount: Int) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("校园探索进度", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("到达地标后自动点亮对应区域", style = MaterialTheme.typography.bodyMedium)
+            }
+
+
+
+
+
+
+
+
+
+            Text(
+                text = "$ownedCount / $totalCount",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+
+
+
+            )
+
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RevealModeSelector(
+    selected: PuzzleRevealMode,
+    onSelected: (PuzzleRevealMode) -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snapshot = state.snapshot ?: return
+    val modes = listOf(PuzzleRevealMode.FOG_OF_WAR, PuzzleRevealMode.GRID)
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        modes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = selected == mode,
+                onClick = { onSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                icon = {
+                    Icon(
+                        imageVector = if (mode == PuzzleRevealMode.FOG_OF_WAR) Icons.Rounded.VisibilityOff else Icons.Rounded.GridView,
+                        contentDescription = null,
+                    )
+                },
+                label = { Text(if (mode == PuzzleRevealMode.FOG_OF_WAR) "探索迷雾" else "规则分块") },
+            )
+        }
+    }
+}
 
-    val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxSize().background(com.bitse.geotreasure.ui.theme.Background).statusBarsPadding()) {
-        PageHeader(
-            title = "片区拼图",
-            subtitle = "${snapshot.module.name} · 已到 ${snapshot.ownedCount}/${snapshot.total} 块",
-            onBack = onBack
-        )
+
+@Composable
+private fun CampusSection(
+    section: PuzzleSectionDefinition,
+    revealMode: PuzzleRevealMode,
+    ownedFragmentIds: Set<String>,
+    onFragmentSelected: (String) -> Unit,
+
+) {
+    val ownedCount = section.fragments.count { it.id in ownedFragmentIds }
+    Card {
+
+
+
+
+
+
+
+
+
 
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+
+
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(snapshot.module.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
-                Spacer(Modifier.weight(1f))
-                Text("${snapshot.ownedCount} / ${snapshot.total}", style = AppText.small, color = OnSurfaceVariant)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Map, contentDescription = null, tint = zoneColor(section.campusZone))
+                    Text(section.campusZone.displayName(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                }
+                Text("$ownedCount / ${section.fragments.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = if (snapshot.complete) "4 块都到位了，这个片区已经拼合"
-                else "还差 ${snapshot.total - snapshot.ownedCount} 块：${snapshot.missingNames.joinToString("、")}",
-                style = AppText.small,
-                color = OnSurfaceVariant,
-                lineHeight = 19.sp
-            )
+            section.fragments.chunked(section.columns).forEach { rowFragments ->
 
-            Spacer(Modifier.height(8.dp))
-            ProgressTrack(
-                fraction = snapshot.ownedCount.toFloat() / snapshot.total,
-                gold = snapshot.complete
-            )
 
-            Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                snapshot.module.landmarks.chunked(2).forEach { rowItems ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowItems.forEach { landmark ->
-                            val owned = landmark.slot in snapshot.ownedSlots
-                            FragmentTile(
-                                landmarkId = landmark.id,
-                                label = landmark.name,
-                                owned = owned,
-                                onClick = if (owned) {
-                                    { onOpenLandmark(landmark.id) }
-                                } else null,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+
+
+                ) {
+                    rowFragments.forEach { fragment ->
+                        FragmentTile(
+                            fragment = fragment,
+                            owned = fragment.id in ownedFragmentIds,
+                            revealMode = revealMode,
+                            zone = section.campusZone,
+                            modifier = Modifier.weight(1f),
+                            onSelected = { onFragmentSelected(fragment.id) },
+                        )
                     }
                 }
-            }
 
-            Spacer(Modifier.height(12.dp))
-            if (snapshot.complete) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(PrimaryContainer, Radius.card)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                ) {
-                    Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = OnPrimaryContainer, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "${snapshot.module.landmarks.size} 个地标全部打卡\n" +
-                            snapshot.module.landmarks.joinToString(" · ") { it.name },
-                        style = AppText.small,
-                        color = OnPrimaryContainer,
-                        lineHeight = 19.sp
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                AchievementCard(
-                    title = "成就 · 拼合${snapshot.module.name}",
-                    body = "第一个片区已点亮，地图进度 ${state.completedModules} / ${state.totalModules}"
-                )
-            } else {
-                LandmarkCheckList(module = snapshot)
-            }
 
-            Spacer(Modifier.height(if (snapshot.complete) 10.dp else 14.dp))
-            AppButton(
-                text = if (snapshot.complete) "回地图总览看进度" else "去地图继续找碎片",
-                onClick = onBack,
-                style = if (snapshot.complete) AppButtonStyle.Tonal else AppButtonStyle.Outline,
-                icon = Icons.Outlined.Map
-            )
-            // 原型 p05:complete 的次级入口：手动回顾只作回顾，不占主按钮
-            if (snapshot.complete) {
-                Spacer(Modifier.height(4.dp))
-                AppButton(
-                    text = "回顾拼合过程",
-                    onClick = { Toast.makeText(context, "回顾拼合过程（演示，未接后端）", Toast.LENGTH_SHORT).show() },
-                    style = AppButtonStyle.Text,
-                    icon = Icons.Outlined.Extension
-                )
+
+
+
+
+
             }
-            Spacer(Modifier.height(if (snapshot.complete) 6.dp else 10.dp))
-            Text(
-                text = if (snapshot.complete) "北校区、东校区与南校区同构，可直接在地图切换查看"
-                else "点已点亮的格子，可以查看它的地标和打卡记录",
-                style = AppText.caption,
-                color = OnSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
         }
-
-        AppTabBar(
-            current = AppTab.Puzzle,
-            shards = state.shards,
-            totalShards = state.totalShards,
-            onSelect = { tab ->
-                when (tab) {
-                    AppTab.Explore -> onExplore()
-                    AppTab.Puzzle -> Unit
-                    AppTab.Records -> onOpenRecords()
-                }
-            }
-        )
     }
+}
+
+@Composable
+private fun FragmentTile(
+    fragment: PuzzleFragmentDefinition,
+    owned: Boolean,
+    revealMode: PuzzleRevealMode,
+    zone: CampusZone,
+    modifier: Modifier,
+    onSelected: () -> Unit,
+) {
+    val fogged = revealMode == PuzzleRevealMode.FOG_OF_WAR && !owned
+    val backgroundColor = when {
+        fogged -> MaterialTheme.colorScheme.inverseSurface
+        owned -> zoneColor(zone).copy(alpha = 0.18f)
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (fogged) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onSurface
+    Box(
+        modifier = modifier
+            .aspectRatio(1.45f)
+            .background(backgroundColor, MaterialTheme.shapes.small)
+            .border(1.dp, zoneColor(zone).copy(alpha = if (owned) 0.8f else 0.25f), MaterialTheme.shapes.small)
+            .clickable(enabled = owned, onClick = onSelected),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = when {
+                    owned -> Icons.Rounded.CheckCircle
+                    fogged -> Icons.Rounded.VisibilityOff
+                    else -> Icons.Rounded.Lock
+                },
+                contentDescription = null,
+                tint = if (owned) zoneColor(zone) else contentColor,
+            )
+
+
+
+
+
+
+
+
+
+
+
+            Text(
+                text = if (fogged) "未探索" else fragment.title,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
+
+                textAlign = TextAlign.Center,
+                fontWeight = if (owned) FontWeight.Bold else FontWeight.Normal,
+            )
+
+        }
+    }
+}
+
+private fun CampusZone.displayName(): String = when (this) {
+    CampusZone.NORTH -> "北校区"
+    CampusZone.EAST -> "东校区"
+    CampusZone.SOUTH -> "南校区"
+}
+
+@Composable
+private fun zoneColor(zone: CampusZone): Color = when (zone) {
+    CampusZone.NORTH -> MaterialTheme.colorScheme.primary
+    CampusZone.EAST -> MaterialTheme.colorScheme.tertiary
+    CampusZone.SOUTH -> MaterialTheme.colorScheme.secondary
+
+
 }
