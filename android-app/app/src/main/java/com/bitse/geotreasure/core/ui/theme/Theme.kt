@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.theme
+package com.bitse.geotreasure.core.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
