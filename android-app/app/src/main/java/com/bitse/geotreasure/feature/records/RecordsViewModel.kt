@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.records
+package com.bitse.geotreasure.feature.records
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
