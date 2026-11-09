@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.explore
+package com.bitse.geotreasure.feature.explore
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -65,27 +65,27 @@ import com.bitse.geotreasure.domain.model.CampusModule
 import com.bitse.geotreasure.domain.model.Landmark
 import com.bitse.geotreasure.domain.model.LocationState
 import com.bitse.geotreasure.domain.model.ModuleIds
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.AppTab
-import com.bitse.geotreasure.ui.components.AppTabBar
-import com.bitse.geotreasure.ui.components.BannerBar
-import com.bitse.geotreasure.ui.components.BannerTone
-import com.bitse.geotreasure.ui.components.BrandHeader
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.components.LandmarkPin
-import com.bitse.geotreasure.ui.components.SkeletonBox
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.HairLineStrong
-import com.bitse.geotreasure.ui.theme.MapCanvas
-import com.bitse.geotreasure.ui.theme.MapRoad
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.AppTab
+import com.bitse.geotreasure.core.ui.components.AppTabBar
+import com.bitse.geotreasure.core.ui.components.BannerBar
+import com.bitse.geotreasure.core.ui.components.BannerTone
+import com.bitse.geotreasure.core.ui.components.BrandHeader
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.LandmarkPin
+import com.bitse.geotreasure.core.ui.components.SkeletonBox
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.HairLineStrong
+import com.bitse.geotreasure.core.ui.theme.MapCanvas
+import com.bitse.geotreasure.core.ui.theme.MapRoad
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
