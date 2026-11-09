@@ -117,7 +117,7 @@ fun LandmarkDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.draftId)
+                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.attemptId)
             }
         }
     }

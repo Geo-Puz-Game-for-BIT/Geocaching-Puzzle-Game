@@ -166,11 +166,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [landmarkId]
+              required: [landmarkId, attemptId]
               properties:
                 landmarkId:
                   type: string
                   example: lmk_north_lake
+                attemptId:
+                  type: string
+                  description: 本次尝试幂等键，challenge 拍前即与其绑定，提交时须用同一 attemptId
+                  example: att_8f3c2a1d
       responses:
         "200":
           description: Challenge created
@@ -905,6 +909,7 @@ components:
           type: string
         attemptId:
           type: string
+          description: 回显本 challenge 绑定的 attemptId（与请求一致）
         expiresAt:
           type: string
           format: date-time

@@ -153,6 +153,7 @@ fun MapScreen(
 
         MapHeader(
             usingDemoMap = uiState.usingDemoMap,
+            usingDemoLandmarks = uiState.usingDemoLandmarks,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -408,6 +409,7 @@ private fun DeveloperMapDebugPanel(
 @Composable
 private fun MapHeader(
     usingDemoMap: Boolean,
+    usingDemoLandmarks: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -426,7 +428,11 @@ private fun MapHeader(
             Column(Modifier.weight(1f)) {
                 Text("地标寻宝", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    if (usingDemoMap) "离线演示地图" else "高德地图 · GCJ-02",
+                    buildString {
+                        append(if (usingDemoMap) "离线演示地图" else "高德地图 · GCJ-02")
+                        append(" · ")
+                        append(if (usingDemoLandmarks) "演示地标" else "CloudBase 地标")
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

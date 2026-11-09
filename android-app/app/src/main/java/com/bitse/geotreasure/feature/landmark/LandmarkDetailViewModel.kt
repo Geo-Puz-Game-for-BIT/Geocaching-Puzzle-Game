@@ -11,6 +11,7 @@ import com.bitse.geotreasure.core.common.AppResult
 import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.data.repository.LandmarkRepository
+import java.util.UUID
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -57,7 +58,7 @@ sealed interface LandmarkDetailAction {
 }
 
 sealed interface LandmarkDetailEffect {
-    data class NavigateToCamera(val landmarkId: String, val draftId: String) : LandmarkDetailEffect
+    data class NavigateToCamera(val landmarkId: String, val attemptId: String) : LandmarkDetailEffect
 }
 
 class LandmarkDetailViewModel(
@@ -85,13 +86,25 @@ class LandmarkDetailViewModel(
 
             LandmarkDetailAction.RefreshLocation -> refreshGate()
 
-            LandmarkDetailAction.StartTask -> {
-                if (!mutableUiState.value.canStartTask) return
+            // C-N03：StartTask 不读旧 gate，而是点按时重新取位 + 重新门控
+            LandmarkDetailAction.StartTask -> startTask()
+        }
+    }
+
+    private fun startTask() {
+        val landmark = mutableUiState.value.landmark ?: return
+        viewModelScope.launch {
+            val locationResult = locationProvider.getCurrentLocation()
+            val gate = when (locationResult) {
+                is AppResult.Success -> CheckInGate.evaluate(locationResult.data, landmark.point, landmark.checkInArea)
+                is AppResult.Failure -> CheckInGateResult.Blocked(BlockReason.NO_LOCATION)
+            }
+            mutableUiState.update { it.copy(gate = gate) }
+            if (gate is CheckInGateResult.Ready) {
+                // 每次新尝试独立 ID（作幂等键），不沿用固定草稿 id
+                val attemptId = "att_${UUID.randomUUID()}"
                 effectChannel.trySend(
-                    LandmarkDetailEffect.NavigateToCamera(
-                        landmarkId = landmarkId,
-                        draftId = "dft_demo_${landmarkId.removePrefix("lmk_")}",
-                    ),
+                    LandmarkDetailEffect.NavigateToCamera(landmarkId = landmarkId, attemptId = attemptId),
                 )
             }
         }

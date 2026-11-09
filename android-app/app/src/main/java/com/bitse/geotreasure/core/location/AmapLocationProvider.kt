@@ -1,6 +1,7 @@
 package com.bitse.geotreasure.core.location
 
 import android.content.Context
+import android.os.SystemClock
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
@@ -38,6 +39,7 @@ class AmapLocationProvider(
                         accuracyMeters = location.accuracy,
                         capturedAt = Instant.fromEpochMilliseconds(location.time),
                         source = location.toSourceKind(),
+                        elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos(),
                     ),
                 )
             }

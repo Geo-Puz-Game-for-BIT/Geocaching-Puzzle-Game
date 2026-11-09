@@ -20,15 +20,24 @@ class CameraXManager(private val context: Context) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
+    private var boundOwner: LifecycleOwner? = null
+    private var boundPreviewView: PreviewView? = null
 
     val isBound: Boolean get() = cameraProvider != null
 
     fun bind(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView,
+        onBound: () -> Unit = {},
         onError: (Throwable) -> Unit = {},
     ) {
-        if (cameraProvider != null) return
+        // 目标（LifecycleOwner / PreviewView）未变化且已绑定 → 直接复用，不重复绑定
+        if (cameraProvider != null && boundOwner === lifecycleOwner && boundPreviewView === previewView) {
+            onBound()
+            return
+        }
+        // 目标变化：释放旧绑定，按新 surface / owner 重新绑定
+        unbind()
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener(
             {
@@ -49,7 +58,12 @@ class CameraXManager(private val context: Context) {
                         p,
                         ic,
                     )
+                    boundOwner = lifecycleOwner
+                    boundPreviewView = previewView
+                    onBound()
                 } catch (e: Exception) {
+                    // 绑定失败：复位，允许后续重试（不残留半绑定状态）
+                    unbind()
                     onError(e)
                 }
             },
@@ -91,6 +105,8 @@ class CameraXManager(private val context: Context) {
         cameraProvider = null
         preview = null
         imageCapture = null
+        boundOwner = null
+        boundPreviewView = null
     }
 
     private fun createPhotoFile(): File {

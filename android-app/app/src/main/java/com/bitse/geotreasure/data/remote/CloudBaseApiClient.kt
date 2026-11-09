@@ -28,7 +28,7 @@ class CloudBaseApiClient(
         it.openConnection() as HttpURLConnection
     },
 ) {
-    private val baseUrl = baseUrl.trimEnd('/')
+    private val baseUrl = normalizedApiBaseUrl(baseUrl)
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun listLandmarks(

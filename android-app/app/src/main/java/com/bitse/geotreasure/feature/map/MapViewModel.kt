@@ -32,12 +32,14 @@ class MapViewModel(
     private val privacyManager: LocationPrivacyManager,
     private val explorationProgressStore: ExplorationProgressStore,
     hasAmapKey: Boolean,
+    hasCloudApi: Boolean,
     debugEnabled: Boolean,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         MapUiState(
             privacyAccepted = privacyManager.isAccepted.value,
             usingDemoMap = !hasAmapKey,
+            usingDemoLandmarks = !hasCloudApi,
             debugEnabled = debugEnabled,
         ),
     )
@@ -277,6 +279,7 @@ class MapViewModel(
             privacyManager: LocationPrivacyManager,
             explorationProgressStore: ExplorationProgressStore,
             hasAmapKey: Boolean,
+            hasCloudApi: Boolean,
             debugEnabled: Boolean,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -286,6 +289,7 @@ class MapViewModel(
                 privacyManager = privacyManager,
                 explorationProgressStore = explorationProgressStore,
                 hasAmapKey = hasAmapKey,
+                hasCloudApi = hasCloudApi,
                 debugEnabled = debugEnabled,
             ) as T
         }
