@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.puzzle
+package com.bitse.geotreasure.feature.puzzle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,24 +46,24 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.domain.model.Landmark
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.AppTab
-import com.bitse.geotreasure.ui.components.AppTabBar
-import com.bitse.geotreasure.ui.components.FragmentTile
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.components.PageHeader
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.RewardGold
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.AppTab
+import com.bitse.geotreasure.core.ui.components.AppTabBar
+import com.bitse.geotreasure.core.ui.components.FragmentTile
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.RewardGold
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
 
 /**
  * P05 · 拼图收集。
