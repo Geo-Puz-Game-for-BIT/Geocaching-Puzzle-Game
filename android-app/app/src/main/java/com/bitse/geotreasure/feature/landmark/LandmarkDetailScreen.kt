@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.pages.landmark
+package com.bitse.geotreasure.feature.landmark
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -44,31 +44,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bitse.geotreasure.ui.components.AppButton
-import com.bitse.geotreasure.ui.components.AppButtonStyle
-import com.bitse.geotreasure.ui.components.BannerBar
-import com.bitse.geotreasure.ui.components.BannerTone
-import com.bitse.geotreasure.ui.components.BottomCta
-import com.bitse.geotreasure.ui.components.FactCell
-import com.bitse.geotreasure.ui.components.LandmarkImage
-import com.bitse.geotreasure.ui.components.PageHeader
-import com.bitse.geotreasure.ui.components.SectionTitle
-import com.bitse.geotreasure.ui.components.SkeletonBox
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.Dimen
-import com.bitse.geotreasure.ui.theme.ErrorContainer
-import com.bitse.geotreasure.ui.theme.ErrorRed
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.OnRewardBox
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.OutlineVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.RewardBox
-import com.bitse.geotreasure.ui.theme.RewardGold
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.BannerBar
+import com.bitse.geotreasure.core.ui.components.BannerTone
+import com.bitse.geotreasure.core.ui.components.BottomCta
+import com.bitse.geotreasure.core.ui.components.FactCell
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.components.SectionTitle
+import com.bitse.geotreasure.core.ui.components.SkeletonBox
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.Dimen
+import com.bitse.geotreasure.core.ui.theme.ErrorContainer
+import com.bitse.geotreasure.core.ui.theme.ErrorRed
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.OnRewardBox
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.OutlineVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.RewardBox
+import com.bitse.geotreasure.core.ui.theme.RewardGold
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
 
 /**
  * P02 · 地标详情。
