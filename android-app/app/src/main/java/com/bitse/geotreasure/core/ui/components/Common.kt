@@ -1,4 +1,4 @@
-package com.bitse.geotreasure.ui.components
+package com.bitse.geotreasure.core.ui.components
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -35,25 +35,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.bitse.geotreasure.ui.theme.AppText
-import com.bitse.geotreasure.ui.theme.Dimen
-import com.bitse.geotreasure.ui.theme.DisabledText
-import com.bitse.geotreasure.ui.theme.ErrorContainer
-import com.bitse.geotreasure.ui.theme.ErrorRed
-import com.bitse.geotreasure.ui.theme.HairLine
-import com.bitse.geotreasure.ui.theme.OnErrorContainer
-import com.bitse.geotreasure.ui.theme.OnPrimary
-import com.bitse.geotreasure.ui.theme.OnPrimaryContainer
-import com.bitse.geotreasure.ui.theme.OnSurface
-import com.bitse.geotreasure.ui.theme.OnSurfaceVariant
-import com.bitse.geotreasure.ui.theme.OnWarningContainer
-import com.bitse.geotreasure.ui.theme.OutlineVariant
-import com.bitse.geotreasure.ui.theme.Primary
-import com.bitse.geotreasure.ui.theme.PrimaryContainer
-import com.bitse.geotreasure.ui.theme.Radius
-import com.bitse.geotreasure.ui.theme.Surface as BrandSurface
-import com.bitse.geotreasure.ui.theme.SurfaceVariant
-import com.bitse.geotreasure.ui.theme.WarningContainer
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.Dimen
+import com.bitse.geotreasure.core.ui.theme.DisabledText
+import com.bitse.geotreasure.core.ui.theme.ErrorContainer
+import com.bitse.geotreasure.core.ui.theme.ErrorRed
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.OnErrorContainer
+import com.bitse.geotreasure.core.ui.theme.OnPrimary
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.OnWarningContainer
+import com.bitse.geotreasure.core.ui.theme.OutlineVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.WarningContainer
 
 /** 按钮四型，与原型 .btn.primary / .tonal / .text / .outline 对应 */
 enum class AppButtonStyle { Primary, Tonal, Text, Outline }
