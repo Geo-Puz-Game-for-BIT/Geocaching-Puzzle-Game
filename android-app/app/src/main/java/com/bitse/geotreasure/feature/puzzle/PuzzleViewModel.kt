@@ -1,11 +1,11 @@
-package com.bitse.geotreasure.ui.pages.puzzle
+package com.bitse.geotreasure.feature.puzzle
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bitse.geotreasure.domain.model.CampusModule
+import com.bitse.geotreasure.model.CampusModule
 import com.bitse.geotreasure.domain.repository.GeoTreasureRepository
-import com.bitse.geotreasure.ui.navigation.Routes
+import com.bitse.geotreasure.navigation.Routes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
