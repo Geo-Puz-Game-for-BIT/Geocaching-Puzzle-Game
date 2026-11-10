@@ -22,7 +22,7 @@ tests {
   test("Stable health payload", function () {
     const body = res.getBody();
     expect(body).to.have.all.keys("requestId", "data");
-    expect(body.data).to.have.all.keys("status", "service", "version", "timestamp");
+    expect(body.data).to.have.all.keys("status", "service", "version", "environment", "timestamp");
     expect(body.data.status).to.equal("ok");
     expect(body.data.service).to.equal("geotreasure-api");
     expect(body.data.version).to.match(/^\d+\.\d+\.\d+$/);

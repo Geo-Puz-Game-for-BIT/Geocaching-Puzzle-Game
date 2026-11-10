@@ -1,5 +1,7 @@
 package com.bitse.geotreasure.feature.landmark
 
+
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +10,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+
 import androidx.compose.foundation.layout.padding
+
+
+
+
+
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CameraAlt
@@ -17,9 +26,13 @@ import androidx.compose.material.icons.rounded.Landscape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+
+
+
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,10 +42,64 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+
+
+
 import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.dp
+
+
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitse.geotreasure.core.checkin.CheckInGateResult
 import com.bitse.geotreasure.core.ui.compactDescription
+import kotlin.math.roundToInt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,16 +107,23 @@ fun LandmarkDetailScreen(
     viewModel: LandmarkDetailViewModel,
     onBack: () -> Unit,
     onOpenCamera: (String, String) -> Unit,
+
+
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.draftId)
+                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.attemptId)
             }
         }
     }
+
+
+
 
     Scaffold(
         topBar = {
@@ -78,6 +152,13 @@ fun LandmarkDetailScreen(
                 onRetry = { viewModel.onAction(LandmarkDetailAction.Retry) },
                 modifier = Modifier.padding(padding),
             )
+
+
+
+
+
+
+
 
             uiState.landmark != null -> {
                 val landmark = requireNotNull(uiState.landmark)
@@ -112,31 +193,242 @@ fun LandmarkDetailScreen(
                         Text(landmark.hint ?: "到达地标后查看现场提示。")
                     }
                     Spacer(Modifier.weight(1f))
+
+                    when (val gate = uiState.gate) {
+                        is CheckInGateResult.Ready -> {
+                            gate.distanceMeters?.let {
+                                Text(
+                                    "已进入打卡范围（距离约 ${it.roundToInt()} 米）",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+
+                        is CheckInGateResult.Blocked -> {
+
+
+                            Text(
+                                gate.reason.message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+
+
+
+
+
+
+
+
+
+                            )
+                            gate.distanceMeters?.let {
+                                Text(
+                                    "距离约 ${it.roundToInt()} 米",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.onAction(LandmarkDetailAction.RefreshLocation) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("重新定位")
+                            }
+                        }
+
+                        null -> {}
+
+
+
+
+
+
+
+
+
+
+
+                    }
+
+
                     Button(
                         onClick = { viewModel.onAction(LandmarkDetailAction.StartTask) },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = uiState.canStartTask,
                     ) {
                         Icon(Icons.Rounded.CameraAlt, contentDescription = null)
                         Text("  开始拍照任务")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     }
                 }
             }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @Composable
 private fun InfoBlock(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+
 ) {
     Surface(modifier = modifier, shape = MaterialTheme.shapes.small, tonalElevation = 2.dp) {
         Column(Modifier.padding(14.dp)) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             Spacer(Modifier.height(8.dp))
             Text(label, style = MaterialTheme.typography.labelMedium)
             Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+
+
+
+
+
+
         }
     }
 }
@@ -151,9 +443,38 @@ private fun ErrorContent(
         modifier = modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
+
     ) {
         Text(message)
+
+
+
+
+
+
+
         Spacer(Modifier.height(12.dp))
         Button(onClick = onRetry) { Text("重试") }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }

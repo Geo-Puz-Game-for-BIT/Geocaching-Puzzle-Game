@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val localProperties = Properties().apply {
@@ -16,6 +17,22 @@ val localProperties = Properties().apply {
 val amapApiKey = localProperties.getProperty("AMAP_API_KEY")
     ?: System.getenv("AMAP_API_KEY")
     ?: ""
+val apiBaseUrl = localProperties.getProperty("API_BASE_URL")
+    ?: System.getenv("API_BASE_URL")
+    ?: ""
+val normalizedApiBaseUrl = apiBaseUrl.trimEnd('/').let { value ->
+    when {
+        value.isBlank() -> ""
+        value.endsWith("/api/v1") -> value
+        else -> "$value/api/v1"
+    }
+}
+val demoAuthToken = localProperties.getProperty("DEMO_AUTH_TOKEN")
+    ?: System.getenv("DEMO_AUTH_TOKEN")
+    ?: ""
+val demoUserId = localProperties.getProperty("DEMO_USER_ID")
+    ?: System.getenv("DEMO_USER_ID")
+    ?: "usr_demo01"
 
 android {
     namespace = "com.bitse.geotreasure"
@@ -31,6 +48,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("boolean", "HAS_AMAP_KEY", amapApiKey.isNotBlank().toString())
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${normalizedApiBaseUrl.replace("\"", "\\\"")}\"",
+        )
+        buildConfigField("String", "DEMO_AUTH_TOKEN", "\"${demoAuthToken.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "DEMO_USER_ID", "\"${demoUserId.replace("\"", "\\\"")}\"")
+        buildConfigField(
+            "boolean",
+            "HAS_CLOUD_API",
+            (normalizedApiBaseUrl.isNotBlank() && demoAuthToken.isNotBlank()).toString(),
+        )
     }
 
     buildTypes {
@@ -83,9 +112,20 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.gson)
+    implementation(libs.okhttp)
     implementation(libs.amap.map.location.search)
 
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)

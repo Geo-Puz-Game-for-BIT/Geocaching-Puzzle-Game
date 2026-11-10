@@ -9,6 +9,7 @@ import com.bitse.geotreasure.core.location.LocationPrivacyManager
 import com.bitse.geotreasure.core.location.LocationProvider
 import com.bitse.geotreasure.core.location.distanceMeters
 import com.bitse.geotreasure.core.model.CheckInArea
+import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.LocalOffsetMeters
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
@@ -31,12 +32,14 @@ class MapViewModel(
     private val privacyManager: LocationPrivacyManager,
     private val explorationProgressStore: ExplorationProgressStore,
     hasAmapKey: Boolean,
+    hasCloudApi: Boolean,
     debugEnabled: Boolean,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         MapUiState(
             privacyAccepted = privacyManager.isAccepted.value,
             usingDemoMap = !hasAmapKey,
+            usingDemoLandmarks = !hasCloudApi,
             debugEnabled = debugEnabled,
         ),
     )
@@ -112,10 +115,24 @@ class MapViewModel(
             }
 
             is MapAction.SelectLandmark -> selectLandmark(action.landmarkId)
+            MapAction.ClearSelection -> mutableUiState.update {
+                it.copy(selectedLandmarkId = null, debugMoveSelected = false).withUpdatedDistance()
+            }
+            is MapAction.MoveDebugLandmark -> mutableUiState.update { state ->
+                if (!state.debugEnabled || !state.debugMoveSelected || state.selectedLandmarkId != action.landmarkId) {
+                    state
+                } else {
+                    state.copy(debugPointOverrides = state.debugPointOverrides + (action.landmarkId to action.point))
+                        .withUpdatedDistance()
+                }
+            }
             is MapAction.OpenLandmark -> effectChannel.trySend(MapEffect.NavigateToLandmark(action.landmarkId))
             MapAction.ToggleDebugPanel -> mutableUiState.update { it.copy(debugPanelExpanded = !it.debugPanelExpanded) }
             MapAction.ToggleDebugRevealAll -> mutableUiState.update { it.copy(debugRevealAll = !it.debugRevealAll) }
             MapAction.ToggleDebugScoutRange -> mutableUiState.update { it.copy(debugShowScoutRange = !it.debugShowScoutRange) }
+            MapAction.ToggleDebugMoveSelected -> mutableUiState.update {
+                if (it.selectedLandmarkId == null) it else it.copy(debugMoveSelected = !it.debugMoveSelected)
+            }
             is MapAction.AdjustDebugRadius -> adjustDebugRadius(action.deltaMeters)
             is MapAction.SetDebugRangeShape -> setDebugRangeShape(action.shape)
             MapAction.DebugCompleteSelectedLandmark -> mutableUiState.value.selectedLandmarkId?.let {
@@ -129,12 +146,10 @@ class MapViewModel(
             mutableUiState.update { it.copy(isLoading = true, message = null) }
             when (val result = landmarkRepository.listLandmarks(center = null, radiusMeters = null)) {
                 is AppResult.Success -> mutableUiState.update { state ->
-                    val selectedId = state.selectedLandmarkId ?: result.data.firstOrNull()?.id
                     state.copy(
                         isLoading = false,
                         landmarks = result.data,
-                        selectedLandmarkId = selectedId,
-                    ).withUpdatedDistance()
+                    ).withDiscoveredLandmarks().withUpdatedDistance()
                 }
 
                 is AppResult.Failure -> mutableUiState.update {
@@ -146,7 +161,13 @@ class MapViewModel(
 
     private fun selectLandmark(landmarkId: String) {
         mutableUiState.update {
-            it.copy(selectedLandmarkId = landmarkId).withUpdatedDistance()
+            if (landmarkId !in it.visibleLandmarkIds && (!it.debugEnabled || it.landmarks.none { landmark -> landmark.id == landmarkId })) {
+                return@update it
+            }
+            it.copy(
+                selectedLandmarkId = if (it.selectedLandmarkId == landmarkId) null else landmarkId,
+                debugMoveSelected = false,
+            ).withUpdatedDistance()
         }
     }
 
@@ -198,8 +219,8 @@ class MapViewModel(
                             userLocation = location,
                             locationSignalActive = true,
                             message = null,
-                            exploredCenters = updatedExploredCenters(it.exploredCenters, location),
-                        ).withUpdatedDistance()
+                            exploredCenters = updatedExploredCenters(it.exploredCenters, location, it.userLocation),
+                        ).withDiscoveredLandmarks().withUpdatedDistance()
                     }
                 }
         }
@@ -239,6 +260,16 @@ class MapViewModel(
         return copy(distanceToSelectedMeters = distanceMeters(location.point, landmark.point))
     }
 
+    private fun MapUiState.withDiscoveredLandmarks(): MapUiState {
+        val location = userLocation ?: return this
+        val newlyFound = discoverLandmarks(landmarksWithDebugOverrides, revealedLandmarkIds, location)
+        if (newlyFound.isEmpty()) return this
+        return copy(
+            revealedLandmarkIds = revealedLandmarkIds + newlyFound.map { it.id },
+            selectedLandmarkId = newlyFound.first().id,
+        )
+    }
+
     companion object {
         private const val LOCATION_SIGNAL_TIMEOUT_MILLIS = 12_000L
 
@@ -248,6 +279,7 @@ class MapViewModel(
             privacyManager: LocationPrivacyManager,
             explorationProgressStore: ExplorationProgressStore,
             hasAmapKey: Boolean,
+            hasCloudApi: Boolean,
             debugEnabled: Boolean,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -257,6 +289,7 @@ class MapViewModel(
                 privacyManager = privacyManager,
                 explorationProgressStore = explorationProgressStore,
                 hasAmapKey = hasAmapKey,
+                hasCloudApi = hasCloudApi,
                 debugEnabled = debugEnabled,
             ) as T
         }
