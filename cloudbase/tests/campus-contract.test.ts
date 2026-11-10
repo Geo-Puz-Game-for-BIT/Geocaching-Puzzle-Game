@@ -20,6 +20,13 @@ const androidCatalog = readFileSync(
   ),
   "utf8",
 );
+const coordinateMigration = readFileSync(
+  new URL(
+    "../migrations/20261110180000_update_liangxiang_landmark_coordinates.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 function mutatedFixture(): CampusCatalogFixture {
   return structuredClone(fixture);
@@ -28,6 +35,21 @@ function mutatedFixture(): CampusCatalogFixture {
 describe("canonical campus contract", () => {
   it("accepts the confirmed 12-piece fixture", () => {
     expect(() => validateCampusContract(mutatedFixture(), androidCatalog)).not.toThrow();
+  });
+
+  it("keeps the database coordinate migration aligned with the canonical fixture", () => {
+    const entries = [...coordinateMigration.matchAll(/\('(?<id>lmk_[a-z_]+)',\s*(?<latitude>[0-9.]+),\s*(?<longitude>[0-9.]+)\)/g)]
+      .map((match) => ({
+        id: match.groups!.id,
+        latitude: Number(match.groups!.latitude),
+        longitude: Number(match.groups!.longitude),
+      }));
+    const expected = fixture.landmarks.map(({ id, latitude, longitude }) => ({ id, latitude, longitude }));
+
+    expect(entries).toHaveLength(12);
+    expect(entries.sort((a, b) => a.id.localeCompare(b.id))).toEqual(
+      expected.sort((a, b) => a.id.localeCompare(b.id)),
+    );
   });
 
   it("rejects swapped piece indexes", () => {
