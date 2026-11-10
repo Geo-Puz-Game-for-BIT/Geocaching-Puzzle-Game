@@ -90,6 +90,16 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
 import java.util.UUID
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.BannerBar
+import com.bitse.geotreasure.core.ui.components.BannerTone
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.HourglassTop
 
 data class CameraUiState(
     val landmarkId: String,
@@ -806,26 +816,30 @@ fun CameraScreen(
         )
     }
 
+    // 顶部副标题随阶段变化（纯展示，不参与任何业务判定）
+    val subtitle = when {
+        state.isOutcomeUnknown -> "结果确认中"
+        state.isProcessing -> "正在提交打卡"
+        state.retaking -> "重新取景中"
+        state.photoPath != null -> "拍后预览"
+        !state.hasCameraPermission -> "需要相机权限"
+        else -> "对准地标主体后按快门"
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("拍照打卡") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
-            )
+            PageHeader(title = "拍照打卡", subtitle = subtitle, onBack = onBack)
         },
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             val photoPath = state.photoPath
             Surface(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                shape = MaterialTheme.shapes.small,
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
                 when {
@@ -838,16 +852,25 @@ fun CameraScreen(
                 }
             }
 
-            state.faceCheckMessage?.let { msg ->
-                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            // 状态横幅：全部消费 state 既有字段原文，判定不新增
+            if (state.isOutcomeUnknown && state.errorMessage == null) {
+                BannerBar(
+                    text = "结果确认中：正在查询上次提交的结果，请勿重复提交",
+                    tone = BannerTone.Info,
+                    icon = Icons.Rounded.HourglassTop,
+                )
             }
-
-            state.errorMessage?.let { msg ->
-                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (state.restoredDraft) {
+                BannerBar(text = "已恢复上次未完成的拍摄，可直接继续", tone = BannerTone.Info)
             }
-
             state.gateMessage?.takeIf { state.photoPath == null || state.retaking }?.let { msg ->
-                Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                BannerBar(text = msg, tone = BannerTone.Warn, icon = Icons.Rounded.LocationOn)
+            }
+            state.faceCheckMessage?.let { msg ->
+                BannerBar(text = msg, tone = BannerTone.Error, icon = Icons.Rounded.Face)
+            }
+            state.errorMessage?.let { msg ->
+                BannerBar(text = msg, tone = BannerTone.Error, icon = Icons.Rounded.ErrorOutline)
             }
 
             ActionButtons(state = state, onAction = viewModel::onAction)
@@ -926,11 +949,14 @@ private fun PhotoPreview(photoPath: String) {
 private fun PermissionHint(onRequestPermission: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Rounded.NoPhotography, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-            Text("需要相机权限才能拍照", fontWeight = FontWeight.SemiBold)
-            Button(onClick = onRequestPermission) {
-                Text("授予权限")
-            }
+            Icon(
+                Icons.Rounded.NoPhotography,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(44.dp),
+            )
+            Text("需要相机权限才能拍照", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+            AppButton(text = "授予权限", onClick = onRequestPermission)
         }
     }
 }
@@ -941,80 +967,66 @@ private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit
         when {
             // F1：结果未知（可能缺照片）只提供「重试恢复」，不显示拍照/重拍入口
             state.isOutcomeUnknown -> {
-                Button(
+                AppButton(
+                    text = if (state.isProcessing) "正在恢复…" else "重试恢复",
                     onClick = { onAction(CameraAction.Confirm) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isProcessing,
-                ) {
-                    Text(if (state.isProcessing) "正在恢复…" else "重试恢复")
-                }
+                )
             }
 
             state.photoPath != null && !state.retaking -> {
-                OutlinedButton(
+                AppButton(
+                    text = "重拍",
                     onClick = { onAction(CameraAction.Retake) },
                     modifier = Modifier.fillMaxWidth(),
+                    style = AppButtonStyle.Outline,
                     enabled = !state.isCapturing && !state.isProcessing && !state.isOutcomeUnknown,
-                ) {
-                    Text("重拍")
-                }
-                Button(
+                )
+                AppButton(
+                    text = when {
+                        state.isProcessing -> "正在提交打卡…"
+                        state.uploadState == UploadState.UNKNOWN -> "重试恢复"
+                        state.uploadState == UploadState.FAILED -> "重试"
+                        else -> "确认并提交打卡"
+                    },
                     onClick = { onAction(CameraAction.Confirm) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isCapturing && !state.isProcessing,
-                ) {
-                    Text(
-                        when {
-                            state.isProcessing -> "正在提交打卡…"
-                            state.uploadState == UploadState.UNKNOWN -> "重试恢复"
-                            state.uploadState == UploadState.FAILED -> "重试"
-                            else -> "确认并提交打卡"
-                        },
-                    )
-                }
+                )
             }
 
             state.retaking -> {
-                OutlinedButton(
+                AppButton(
+                    text = "取消重拍",
                     onClick = { onAction(CameraAction.CancelRetake) },
                     modifier = Modifier.fillMaxWidth(),
+                    style = AppButtonStyle.Outline,
                     enabled = !state.isCapturing,
-                ) {
-                    Text("取消重拍")
-                }
-                Button(
+                )
+                AppButton(
+                    text = if (state.isCapturing) "正在拍照…" else "拍照",
                     onClick = { onAction(CameraAction.Capture) },
                     modifier = Modifier.fillMaxWidth(),
+                    icon = Icons.Rounded.CameraAlt,
                     enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
-                ) {
-                    if (state.isCapturing) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                    } else {
-                        Icon(Icons.Rounded.CameraAlt, contentDescription = null)
-                    }
-                    Text(if (state.isCapturing) "  正在拍照…" else "  拍照")
-                }
+                )
             }
 
             else -> {
-                Button(
+                AppButton(
+                    text = if (state.isCapturing) "正在拍照…" else "拍照",
                     onClick = { onAction(CameraAction.Capture) },
                     modifier = Modifier.fillMaxWidth(),
+                    icon = Icons.Rounded.CameraAlt,
                     enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
-                ) {
-                    if (state.isCapturing) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                    } else {
-                        Icon(Icons.Rounded.CameraAlt, contentDescription = null)
-                    }
-                    Text(if (state.isCapturing) "  正在拍照…" else "  拍照")
-                }
-                OutlinedButton(
+                )
+                AppButton(
+                    text = "重新定位",
                     onClick = { onAction(CameraAction.RefreshLocation) },
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("重新定位")
-                }
+                    style = AppButtonStyle.Outline,
+                )
             }
         }
     }

@@ -29,6 +29,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import com.bitse.geotreasure.core.ui.components.AppButton
 
 data class CheckInResultUiState(val checkInId: String, val grantedFragmentTitle: String?)
 sealed interface CheckInResultAction { data object OpenPuzzle : CheckInResultAction }
@@ -70,7 +79,6 @@ class CheckInResultViewModel(
         }
     }
 }
-
 @Composable
 fun CheckInResultScreen(
     viewModel: CheckInResultViewModel,
@@ -84,21 +92,53 @@ fun CheckInResultScreen(
     }
     Scaffold { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().padding(28.dp),
+            modifier = Modifier.padding(padding).fillMaxSize().padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(Icons.Rounded.Celebration, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.Celebration,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+            Spacer(Modifier.height(20.dp))
             Text("打卡成功", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(state.grantedFragmentTitle?.let { "点亮「$it」拼图碎片" } ?: "已记录地标进度")
-            Text(state.checkInId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-            Button(
+            Spacer(Modifier.height(12.dp))
+            // 碎片到账卡：仅服务端确认（非空）才显示碎片；未确认态不写成成功
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = state.grantedFragmentTitle?.let { "点亮「$it」拼图碎片" } ?: "已记录地标进度",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                state.checkInId,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+            AppButton(
+                text = "查看拼图",
+                icon = Icons.Rounded.Extension,
                 onClick = { viewModel.onAction(CheckInResultAction.OpenPuzzle) },
                 modifier = Modifier.padding(top = 24.dp).fillMaxWidth(),
-            ) {
-                Icon(Icons.Rounded.Extension, contentDescription = null)
-                Text("  查看拼图")
-            }
+            )
         }
     }
 }
