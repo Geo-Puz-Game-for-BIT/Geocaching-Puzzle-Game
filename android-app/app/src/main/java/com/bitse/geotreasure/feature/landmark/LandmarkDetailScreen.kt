@@ -87,7 +87,10 @@ fun LandmarkDetailScreen(
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
-            onOpenCamera(effect.landmarkId, effect.attemptId)
+            when (effect) {
+                is LandmarkDetailEffect.NavigateToCamera ->
+                    onOpenCamera(effect.landmarkId, effect.attemptId)
+            }
         }
     }
 
@@ -135,10 +138,10 @@ fun LandmarkDetailScreen(
 @Composable
 private fun SkeletonBody(modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SkeletonBox(Modifier.fillMaxWidth().height(252.dp), corner = Radius.cardLarge.topStart)
+        SkeletonBox(Modifier.fillMaxWidth().height(252.dp), corner = 18.dp)
         SkeletonBox(Modifier.fillMaxWidth().height(28.dp), corner = 6.dp)
         SkeletonBox(Modifier.fillMaxWidth(0.7f).height(20.dp), corner = 6.dp)
-        SkeletonBox(Modifier.fillMaxWidth().height(96.dp), corner = Radius.card.topStart)
+        SkeletonBox(Modifier.fillMaxWidth().height(96.dp), corner = 14.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SkeletonBox(Modifier.weight(1f).height(64.dp), corner = 8.dp)
             SkeletonBox(Modifier.weight(1f).height(64.dp), corner = 8.dp)
