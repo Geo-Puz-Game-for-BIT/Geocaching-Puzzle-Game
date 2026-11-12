@@ -69,6 +69,38 @@ internal fun discoverLandmarks(
     }
     return landmarks.filter { landmark ->
         landmark.id !in alreadyRevealed &&
-            isWithinCheckInArea(location.point, landmark.point, landmark.checkInArea, location.accuracyMeters)
+            landmark.revealPointsOrCenter().any { revealPoint ->
+                isWithinCheckInArea(
+                    location.point,
+                    revealPoint,
+                    revealArea(landmark.checkInArea),
+                    location.accuracyMeters,
+                )
+            }
     }
 }
+
+internal const val REVEAL_MARGIN_METERS = 25.0
+
+private fun Landmark.revealPointsOrCenter(): List<GeoPoint> =
+    if (revealPoints.isEmpty()) listOf(point) else revealPoints
+
+private fun revealArea(area: com.bitse.geotreasure.core.model.CheckInArea): com.bitse.geotreasure.core.model.CheckInArea =
+    when (area) {
+        is com.bitse.geotreasure.core.model.CircularCheckInArea ->
+            com.bitse.geotreasure.core.model.CircularCheckInArea(area.radiusMeters + REVEAL_MARGIN_METERS)
+        is com.bitse.geotreasure.core.model.PolygonCheckInArea -> {
+            val minEast = area.vertices.minOf { it.eastMeters }
+            val maxEast = area.vertices.maxOf { it.eastMeters }
+            val minNorth = area.vertices.minOf { it.northMeters }
+            val maxNorth = area.vertices.maxOf { it.northMeters }
+            com.bitse.geotreasure.core.model.PolygonCheckInArea(
+                listOf(
+                    com.bitse.geotreasure.core.model.LocalOffsetMeters(minEast - REVEAL_MARGIN_METERS, minNorth - REVEAL_MARGIN_METERS),
+                    com.bitse.geotreasure.core.model.LocalOffsetMeters(maxEast + REVEAL_MARGIN_METERS, minNorth - REVEAL_MARGIN_METERS),
+                    com.bitse.geotreasure.core.model.LocalOffsetMeters(maxEast + REVEAL_MARGIN_METERS, maxNorth + REVEAL_MARGIN_METERS),
+                    com.bitse.geotreasure.core.model.LocalOffsetMeters(minEast - REVEAL_MARGIN_METERS, maxNorth + REVEAL_MARGIN_METERS),
+                ),
+            )
+        }
+    }

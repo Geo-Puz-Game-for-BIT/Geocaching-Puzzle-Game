@@ -4,7 +4,8 @@
     "androidBranch": "feat/map-fog-of-war",
     "androidCommit": "1320ce3e45dec8ea3c811761d7e27c435b3f0e90",
     "confirmedAt": "2026-10-26",
-    "coordinateReview": "docs/testing/2026-11-10-良乡地标坐标整合记录.md"
+    "coordinateReview": "docs/testing/2026-11-12-手动坐标与地标揭示设计.md",
+    "revealMarginMeters": 25
   },
   "puzzleId": "puzzle_liangxiang_campus",
   "title": "良乡校区探索图",
@@ -137,31 +138,41 @@
       "name": "北湖",
       "sectionId": "section_north",
       "pieceIndex": 0,
-      "latitude": 39.734016,
-      "longitude": 116.168918,
+      "latitude": 39.734934,
+      "longitude": 116.170196,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "circle",
-        "radiusMeters": 55
-      }
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -195, "northMeters": -101 },
+          { "eastMeters": 195, "northMeters": -101 },
+          { "eastMeters": 195, "northMeters": 101 },
+          { "eastMeters": -195, "northMeters": 101 }
+        ]
+      },
+      "revealPoints": [
+        { "latitude": 39.735705, "longitude": 116.170333 },
+        { "latitude": 39.734873, "longitude": 116.168265 },
+        { "latitude": 39.734074, "longitude": 116.170034 }
+      ]
     },
     {
       "id": "lmk_north_zongjiao",
       "name": "综教",
       "sectionId": "section_north",
       "pieceIndex": 1,
-      "latitude": 39.732482,
-      "longitude": 116.170086,
+      "latitude": 39.733317,
+      "longitude": 116.171304,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -32.727, "northMeters": -25.806 },
-          { "eastMeters": 38.572, "northMeters": -15.785 },
-          { "eastMeters": 32.727, "northMeters": 25.806 },
-          { "eastMeters": -38.572, "northMeters": 15.785 }
+          { "eastMeters": -88.5, "northMeters": -44.5 },
+          { "eastMeters": 88.5, "northMeters": -44.5 },
+          { "eastMeters": 88.5, "northMeters": 44.5 },
+          { "eastMeters": -88.5, "northMeters": 44.5 }
         ]
       }
     },
@@ -170,18 +181,13 @@
       "name": "学服",
       "sectionId": "section_north",
       "pieceIndex": 2,
-      "latitude": 39.731746,
-      "longitude": 116.166618,
+      "latitude": 39.732696,
+      "longitude": 116.167787,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "polygon",
-        "vertices": [
-          { "eastMeters": -25.646, "northMeters": -14.398 },
-          { "eastMeters": 22.092, "northMeters": -19.416 },
-          { "eastMeters": 25.646, "northMeters": 14.398 },
-          { "eastMeters": -22.092, "northMeters": 19.416 }
-        ]
+        "type": "circle",
+        "radiusMeters": 56
       }
     },
     {
@@ -189,17 +195,17 @@
       "name": "图书馆",
       "sectionId": "section_north",
       "pieceIndex": 3,
-      "latitude": 39.730967,
-      "longitude": 116.170264,
+      "latitude": 39.731851,
+      "longitude": 116.171335,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -41.221, "northMeters": -26.941 },
-          { "eastMeters": 44.569, "northMeters": -20.942 },
-          { "eastMeters": 41.221, "northMeters": 26.941 },
-          { "eastMeters": -44.569, "northMeters": 20.942 }
+          { "eastMeters": -74.5, "northMeters": -48.5 },
+          { "eastMeters": 74.5, "northMeters": -48.5 },
+          { "eastMeters": 74.5, "northMeters": 48.5 },
+          { "eastMeters": -74.5, "northMeters": 48.5 }
         ]
       }
     },
@@ -213,8 +219,13 @@
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "circle",
-        "radiusMeters": 42
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -92, "northMeters": -40.5 },
+          { "eastMeters": 92, "northMeters": -40.5 },
+          { "eastMeters": 92, "northMeters": 40.5 },
+          { "eastMeters": -92, "northMeters": 40.5 }
+        ]
       }
     },
     {
@@ -222,13 +233,18 @@
       "name": "勤园",
       "sectionId": "section_east",
       "pieceIndex": 1,
-      "latitude": 39.7348,
-      "longitude": 116.176863,
+      "latitude": 39.734705,
+      "longitude": 116.176207,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "circle",
-        "radiusMeters": 42
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -102, "northMeters": -66.5 },
+          { "eastMeters": 102, "northMeters": -66.5 },
+          { "eastMeters": 102, "northMeters": 66.5 },
+          { "eastMeters": -102, "northMeters": 66.5 }
+        ]
       }
     },
     {
@@ -236,17 +252,17 @@
       "name": "文萃",
       "sectionId": "section_east",
       "pieceIndex": 2,
-      "latitude": 39.73173,
-      "longitude": 116.172769,
+      "latitude": 39.732692,
+      "longitude": 116.17383,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -39, "northMeters": -25 },
-          { "eastMeters": 39, "northMeters": -25 },
-          { "eastMeters": 39, "northMeters": 25 },
-          { "eastMeters": -39, "northMeters": 25 }
+          { "eastMeters": -199, "northMeters": -58 },
+          { "eastMeters": 199, "northMeters": -58 },
+          { "eastMeters": 199, "northMeters": 58 },
+          { "eastMeters": -199, "northMeters": 58 }
         ]
       }
     },
@@ -255,17 +271,17 @@
       "name": "文博中心",
       "sectionId": "section_east",
       "pieceIndex": 3,
-      "latitude": 39.732405,
-      "longitude": 116.175579,
+      "latitude": 39.733296,
+      "longitude": 116.17662,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -35, "northMeters": -27.5 },
-          { "eastMeters": 35, "northMeters": -27.5 },
-          { "eastMeters": 35, "northMeters": 27.5 },
-          { "eastMeters": -35, "northMeters": 27.5 }
+          { "eastMeters": -95, "northMeters": -62 },
+          { "eastMeters": 95, "northMeters": -62 },
+          { "eastMeters": 95, "northMeters": 62 },
+          { "eastMeters": -95, "northMeters": 62 }
         ]
       }
     },
@@ -274,13 +290,18 @@
       "name": "疏桐",
       "sectionId": "section_south",
       "pieceIndex": 0,
-      "latitude": 39.729631,
-      "longitude": 116.167842,
+      "latitude": 39.729654,
+      "longitude": 116.167735,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "circle",
-        "radiusMeters": 45
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -165, "northMeters": -36 },
+          { "eastMeters": 165, "northMeters": -36 },
+          { "eastMeters": 165, "northMeters": 36 },
+          { "eastMeters": -165, "northMeters": 36 }
+        ]
       }
     },
     {
@@ -293,8 +314,13 @@
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
-        "type": "circle",
-        "radiusMeters": 45
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -55, "northMeters": -36 },
+          { "eastMeters": 55, "northMeters": -36 },
+          { "eastMeters": 55, "northMeters": 36 },
+          { "eastMeters": -55, "northMeters": 36 }
+        ]
       }
     },
     {
@@ -302,17 +328,17 @@
       "name": "理教",
       "sectionId": "section_south",
       "pieceIndex": 2,
-      "latitude": 39.729262,
-      "longitude": 116.170382,
+      "latitude": 39.730289,
+      "longitude": 116.171439,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -35.798, "northMeters": -23.906 },
-          { "eastMeters": 38.101, "northMeters": -20.033 },
-          { "eastMeters": 35.798, "northMeters": 23.906 },
-          { "eastMeters": -38.101, "northMeters": 20.033 }
+          { "eastMeters": -68, "northMeters": -44.5 },
+          { "eastMeters": 68, "northMeters": -44.5 },
+          { "eastMeters": 68, "northMeters": 44.5 },
+          { "eastMeters": -68, "northMeters": 44.5 }
         ]
       }
     },
@@ -321,17 +347,17 @@
       "name": "工业生态楼",
       "sectionId": "section_south",
       "pieceIndex": 3,
-      "latitude": 39.725183,
-      "longitude": 116.169984,
+      "latitude": 39.726058,
+      "longitude": 116.17101,
       "coordinateSystem": "GCJ02",
       "coordinateVerified": false,
       "checkInArea": {
         "type": "polygon",
         "vertices": [
-          { "eastMeters": -35.875, "northMeters": -19.949 },
-          { "eastMeters": 31.866, "northMeters": -25.876 },
-          { "eastMeters": 35.875, "northMeters": 19.949 },
-          { "eastMeters": -31.866, "northMeters": 25.876 }
+          { "eastMeters": -66, "northMeters": -23.5 },
+          { "eastMeters": 66, "northMeters": -23.5 },
+          { "eastMeters": 66, "northMeters": 23.5 },
+          { "eastMeters": -66, "northMeters": 23.5 }
         ]
       }
     }

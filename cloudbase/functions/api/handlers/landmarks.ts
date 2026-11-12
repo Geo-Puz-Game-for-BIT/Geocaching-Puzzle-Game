@@ -14,6 +14,7 @@ interface LandmarkRow {
   fragment_id: string | null;
   coordinate_verified: boolean;
   check_in_area: CheckInArea | null;
+  reveal_points: Array<{ latitude: number; longitude: number }> | null;
   difficulty: number;
   terrain: number;
   hint: string | null;
@@ -56,7 +57,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
   const [landmarks, tasks] = await Promise.all([
     selectRows<LandmarkRow>("landmarks", {
       select:
-        "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,difficulty,terrain,hint,status",
+        "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,reveal_points,difficulty,terrain,hint,status",
       status: "eq.active",
       order: "id.asc",
     }),
@@ -89,6 +90,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
             type: "circle" as const,
             radiusMeters: landmark.check_in_radius_meters,
           },
+        revealPoints: landmark.reveal_points ?? [],
         difficulty: landmark.difficulty,
         terrain: landmark.terrain,
         hint: landmark.hint,
@@ -116,7 +118,7 @@ export async function listNearbyLandmarks(input: LandmarkListQuery) {
 export async function requireActiveLandmark(landmarkId: string): Promise<LandmarkRow> {
   const rows = await selectRows<LandmarkRow>("landmarks", {
     select:
-      "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,difficulty,terrain,hint,status",
+      "id,name,latitude,longitude,coordinate_system,check_in_radius_meters,campus_zone,piece_index,fragment_id,coordinate_verified,check_in_area,reveal_points,difficulty,terrain,hint,status",
     id: `eq.${landmarkId}`,
     status: "eq.active",
     limit: "1",

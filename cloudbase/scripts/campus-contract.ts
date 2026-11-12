@@ -25,6 +25,7 @@ export interface CampusLandmarkFixture {
   coordinateSystem: string;
   coordinateVerified: boolean;
   checkInArea: { type: string };
+  revealPoints?: { latitude: number; longitude: number }[];
 }
 
 export interface CampusCatalogFixture {
@@ -163,5 +164,10 @@ export function validateCampusContract(
 
   if (fixtureIds.size !== androidBySuffix.size) {
     throw new Error("Fixture and Android landmark sets differ");
+  }
+
+  const lake = fixture.landmarks.find((landmark) => landmark.id === "lmk_north_lake");
+  if (!lake?.revealPoints || lake.revealPoints.length !== 3) {
+    throw new Error("North Lake must have exactly three reveal points");
   }
 }

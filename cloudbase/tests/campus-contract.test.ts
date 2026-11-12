@@ -38,7 +38,7 @@ describe("canonical campus contract", () => {
   });
 
   it("keeps the database coordinate migration aligned with the canonical fixture", () => {
-    const entries = [...coordinateMigration.matchAll(/\('(?<id>lmk_[a-z_]+)',\s*(?<latitude>[0-9.]+),\s*(?<longitude>[0-9.]+)\)/g)]
+    const entries = [...coordinateMigration.matchAll(/\('(?<id>lmk_[a-z_]+)',\s*(?<latitude>[0-9.]+),\s*(?<longitude>[0-9.]+),/g)]
       .map((match) => ({
         id: match.groups!.id,
         latitude: Number(match.groups!.latitude),

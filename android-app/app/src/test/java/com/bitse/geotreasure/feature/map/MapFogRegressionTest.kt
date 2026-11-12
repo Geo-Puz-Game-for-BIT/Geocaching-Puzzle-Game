@@ -142,8 +142,8 @@ class MapFogRegressionTest {
 
     @Test
     fun `landmark appears only after accurate entry into its check in area`() {
-        val landmark = LiangxiangTreasureCatalog.landmarks.first()
-        val outside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(70.0, 0.0))
+        val landmark = LiangxiangTreasureCatalog.landmarks.first { it.id == "lmk_north_student_service" }
+        val outside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(90.0, 0.0))
         val inside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(20.0, 0.0))
 
         assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(outside, 2f)).isEmpty())
@@ -155,6 +155,30 @@ class MapFogRegressionTest {
         assertTrue(hidden.visibleLandmarkIds.isEmpty())
         assertEquals(setOf(landmark.id), hidden.copy(revealedLandmarkIds = setOf(landmark.id)).visibleLandmarkIds)
         assertEquals(setOf(landmark.id), hidden.copy(debugRevealAll = true).visibleLandmarkIds)
+    }
+
+    @Test
+    fun `landmark reveals before entering its check in area`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first { it.id == "lmk_north_student_service" }
+        val revealOnly = com.bitse.geotreasure.core.location.offsetPoint(
+            landmark.point,
+            LocalOffsetMeters(70.0, 0.0),
+        )
+        val outsideReveal = com.bitse.geotreasure.core.location.offsetPoint(
+            landmark.point,
+            LocalOffsetMeters(85.0, 0.0),
+        )
+
+        assertEquals(listOf(landmark), discoverLandmarks(listOf(landmark), emptySet(), sample(revealOnly, 2f)))
+        assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(outsideReveal, 2f)).isEmpty())
+    }
+
+    @Test
+    fun `north lake reveals from any measured anchor`() {
+        val lake = LiangxiangTreasureCatalog.landmarks.first { it.id == "lmk_north_lake" }
+        val anchor = lake.revealPoints[1]
+
+        assertEquals(listOf(lake), discoverLandmarks(listOf(lake), emptySet(), sample(anchor, 2f)))
     }
 
     @Test

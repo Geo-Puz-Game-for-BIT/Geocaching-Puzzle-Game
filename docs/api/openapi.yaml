@@ -124,16 +124,31 @@ paths:
                   - id: lmk_north_lake
                     name: 北湖
                     point:
-                      latitude: 39.7366
-                      longitude: 116.1666
+                      latitude: 39.734934
+                      longitude: 116.170196
                     coordinateSystem: GCJ02
                     campusZone: NORTH
                     fragmentId: fragment_north_lake
                     pieceIndex: 0
                     coordinateVerified: false
                     checkInArea:
-                      type: circle
-                      radiusMeters: 55
+                      type: polygon
+                      vertices:
+                        - eastMeters: -195
+                          northMeters: -101
+                        - eastMeters: 195
+                          northMeters: -101
+                        - eastMeters: 195
+                          northMeters: 101
+                        - eastMeters: -195
+                          northMeters: 101
+                    revealPoints:
+                      - latitude: 39.735705
+                        longitude: 116.170333
+                      - latitude: 39.734873
+                        longitude: 116.168265
+                      - latitude: 39.734074
+                        longitude: 116.170034
                     difficulty: 1
                     terrain: 1
                     hint: 沿湖岸寻找具有校园辨识度的取景点。当前坐标仅用于开发演示，正式打卡前需要实地核验。
@@ -444,8 +459,8 @@ paths:
               photoId: pho_01JTEST
               location:
                 point:
-                  latitude: 39.7366
-                  longitude: 116.1666
+                  latitude: 39.734934
+                  longitude: 116.170196
                 accuracyMeters: 10
                 capturedAt: "2026-10-20T08:17:21.000Z"
       responses:
@@ -856,6 +871,7 @@ components:
           pieceIndex,
           coordinateVerified,
           checkInArea,
+          revealPoints,
           difficulty,
           terrain,
           hint,
@@ -883,6 +899,11 @@ components:
           type: boolean
         checkInArea:
           $ref: "#/components/schemas/CheckInArea"
+        revealPoints:
+          type: array
+          description: Optional measured anchors used only to reveal a large landmark; check-in still uses point/checkInArea.
+          items:
+            $ref: "#/components/schemas/GeoPoint"
         difficulty:
           type: integer
           minimum: 1

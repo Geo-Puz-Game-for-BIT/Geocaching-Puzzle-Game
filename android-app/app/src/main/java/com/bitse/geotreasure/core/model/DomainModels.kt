@@ -58,6 +58,7 @@ data class Landmark(
     val pieceIndex: Int,
     val coordinateVerified: Boolean,
     val checkInArea: CheckInArea,
+    val revealPoints: List<GeoPoint> = emptyList(),
     val difficulty: Int,
     val terrain: Int,
     val hint: String?,
