@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -82,6 +82,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppTab
+import com.bitse.geotreasure.core.ui.components.AppTabBar
 import com.bitse.geotreasure.core.ui.components.BannerBar
 import com.bitse.geotreasure.core.ui.components.BannerTone
 import com.bitse.geotreasure.core.ui.components.LandmarkImage
@@ -91,6 +93,7 @@ import com.bitse.geotreasure.core.ui.components.LandmarkImage
 fun MapScreen(
     viewModel: MapViewModel,
     onOpenLandmark: (String) -> Unit,
+    onOpenPuzzle: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -137,7 +140,9 @@ fun MapScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // P01 原型结构：地图内容区 + 底部三 Tab（探索/拼图/我的），Tab 常驻不随地图滚动
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxWidth().weight(1f)) {
         val shouldUseAmap = !uiState.usingDemoMap && uiState.privacyAccepted
         if (shouldUseAmap) {
             AmapMapContent(
@@ -231,7 +236,6 @@ fun MapScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .padding(16.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -289,6 +293,23 @@ fun MapScreen(
                 )
             }
         }
+    }
+
+    AppTabBar(
+        current = AppTab.Explore,
+        shards = uiState.completedLandmarkIds.size,
+        onSelect = { tab ->
+            when (tab) {
+                AppTab.Explore -> Unit
+                AppTab.Puzzle -> onOpenPuzzle()
+                AppTab.Records -> Toast.makeText(
+                    context,
+                    "「我的」页（P06 我的记录）尚未实装",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        },
+    )
     }
 }
 

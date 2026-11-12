@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.feature.puzzle
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,8 @@ import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import com.bitse.geotreasure.core.model.PuzzleFragmentDefinition
 import com.bitse.geotreasure.core.model.PuzzleRevealMode
 import com.bitse.geotreasure.core.model.PuzzleSectionDefinition
+import com.bitse.geotreasure.core.ui.components.AppTab
+import com.bitse.geotreasure.core.ui.components.AppTabBar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -116,9 +120,14 @@ class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PuzzleScreen(viewModel: PuzzleViewModel, onBack: () -> Unit) {
+fun PuzzleScreen(
+    viewModel: PuzzleViewModel,
+    onBack: () -> Unit,
+    onOpenMap: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val puzzle = LiangxiangTreasureCatalog.puzzle
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,6 +135,24 @@ fun PuzzleScreen(viewModel: PuzzleViewModel, onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            // P05 原型：拼图页底部三 Tab 常驻，「拼图」为选中态
+            AppTabBar(
+                current = AppTab.Puzzle,
+                shards = state.ownedFragmentIds.size,
+                onSelect = { tab ->
+                    when (tab) {
+                        AppTab.Explore -> onOpenMap()
+                        AppTab.Puzzle -> Unit
+                        AppTab.Records -> Toast.makeText(
+                            context,
+                            "「我的」页（P06 我的记录）尚未实装",
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 },
             )

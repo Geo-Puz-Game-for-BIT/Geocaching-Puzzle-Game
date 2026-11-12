@@ -20,6 +20,7 @@ import com.bitse.geotreasure.feature.map.MapScreen
 import com.bitse.geotreasure.feature.map.MapViewModel
 import com.bitse.geotreasure.feature.puzzle.PuzzleScreen
 import com.bitse.geotreasure.feature.puzzle.PuzzleViewModel
+import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 
 @Composable
 fun GeoTreasureNavHost() {
@@ -43,6 +44,7 @@ fun GeoTreasureNavHost() {
             MapScreen(
                 viewModel = mapViewModel,
                 onOpenLandmark = { navController.navigate(AppRoutes.landmarkDetail(it)) },
+                onOpenPuzzle = { navController.navigate(AppRoutes.puzzle(LiangxiangTreasureCatalog.PUZZLE_ID)) },
             )
         }
         composable(
@@ -128,7 +130,16 @@ fun GeoTreasureNavHost() {
             val puzzleViewModel: PuzzleViewModel = viewModel(
                 factory = PuzzleViewModel.factory(puzzleId, container.explorationProgressStore),
             )
-            PuzzleScreen(viewModel = puzzleViewModel, onBack = navController::popBackStack)
+            PuzzleScreen(
+                viewModel = puzzleViewModel,
+                onBack = navController::popBackStack,
+                onOpenMap = {
+                    navController.navigate(AppRoutes.MAP) {
+                        popUpTo(AppRoutes.MAP) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }
