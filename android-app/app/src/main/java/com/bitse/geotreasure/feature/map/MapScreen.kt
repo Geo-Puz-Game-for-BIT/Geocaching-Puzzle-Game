@@ -11,7 +11,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +38,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -94,6 +95,8 @@ fun MapScreen(
     viewModel: MapViewModel,
     onOpenLandmark: (String) -> Unit,
     onOpenPuzzle: () -> Unit,
+    onOpenRecords: () -> Unit,
+    onOpenOverview3D: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -165,6 +168,8 @@ fun MapScreen(
 
         MapHeader(
             usingDemoMap = uiState.usingDemoMap,
+            onOpenOverview3D = onOpenOverview3D,
+            onOpenRecords = onOpenRecords,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -302,11 +307,7 @@ fun MapScreen(
             when (tab) {
                 AppTab.Explore -> Unit
                 AppTab.Puzzle -> onOpenPuzzle()
-                AppTab.Records -> Toast.makeText(
-                    context,
-                    "「我的」页（P06 我的记录）尚未实装",
-                    Toast.LENGTH_SHORT,
-                ).show()
+                AppTab.Records -> onOpenRecords()
             }
         },
     )
@@ -487,6 +488,8 @@ private fun ProgressCard(
 @Composable
 private fun MapHeader(
     usingDemoMap: Boolean,
+    onOpenOverview3D: () -> Unit,
+    onOpenRecords: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -525,6 +528,13 @@ private fun MapHeader(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            // 原型 P01 入口：右上 2D/3D 切换 + 头像进「我的记录」
+            IconButton(onClick = onOpenOverview3D) {
+                Icon(Icons.Outlined.Layers, contentDescription = "3D 校园地图")
+            }
+            IconButton(onClick = onOpenRecords) {
+                Icon(Icons.Outlined.Person, contentDescription = "我的记录")
             }
         }
     }

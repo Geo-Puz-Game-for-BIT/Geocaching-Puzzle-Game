@@ -1,6 +1,5 @@
 package com.bitse.geotreasure.feature.puzzle
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -124,10 +122,10 @@ fun PuzzleScreen(
     viewModel: PuzzleViewModel,
     onBack: () -> Unit,
     onOpenMap: () -> Unit,
+    onOpenRecords: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val puzzle = LiangxiangTreasureCatalog.puzzle
-    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -148,11 +146,7 @@ fun PuzzleScreen(
                     when (tab) {
                         AppTab.Explore -> onOpenMap()
                         AppTab.Puzzle -> Unit
-                        AppTab.Records -> Toast.makeText(
-                            context,
-                            "「我的」页（P06 我的记录）尚未实装",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        AppTab.Records -> onOpenRecords()
                     }
                 },
             )

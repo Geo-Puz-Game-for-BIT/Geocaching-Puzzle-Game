@@ -18,8 +18,12 @@ import com.bitse.geotreasure.feature.landmark.LandmarkDetailScreen
 import com.bitse.geotreasure.feature.landmark.LandmarkDetailViewModel
 import com.bitse.geotreasure.feature.map.MapScreen
 import com.bitse.geotreasure.feature.map.MapViewModel
+import com.bitse.geotreasure.feature.overview.Overview3DScreen
+import com.bitse.geotreasure.feature.overview.Overview3DViewModel
 import com.bitse.geotreasure.feature.puzzle.PuzzleScreen
 import com.bitse.geotreasure.feature.puzzle.PuzzleViewModel
+import com.bitse.geotreasure.feature.records.RecordsScreen
+import com.bitse.geotreasure.feature.records.RecordsViewModel
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 
 @Composable
@@ -45,6 +49,8 @@ fun GeoTreasureNavHost() {
                 viewModel = mapViewModel,
                 onOpenLandmark = { navController.navigate(AppRoutes.landmarkDetail(it)) },
                 onOpenPuzzle = { navController.navigate(AppRoutes.puzzle(LiangxiangTreasureCatalog.PUZZLE_ID)) },
+                onOpenRecords = { navController.navigate(AppRoutes.RECORDS) },
+                onOpenOverview3D = { navController.navigate(AppRoutes.OVERVIEW_3D) },
             )
         }
         composable(
@@ -139,6 +145,41 @@ fun GeoTreasureNavHost() {
                         launchSingleTop = true
                     }
                 },
+                onOpenRecords = { navController.navigate(AppRoutes.RECORDS) },
+            )
+        }
+        composable(AppRoutes.RECORDS) {
+            val recordsViewModel: RecordsViewModel = viewModel(
+                factory = RecordsViewModel.factory(container.explorationProgressStore),
+            )
+            RecordsScreen(
+                viewModel = recordsViewModel,
+                onBack = navController::popBackStack,
+                onOpenMap = {
+                    navController.navigate(AppRoutes.MAP) {
+                        popUpTo(AppRoutes.MAP) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onOpenPuzzle = { navController.navigate(AppRoutes.puzzle(LiangxiangTreasureCatalog.PUZZLE_ID)) },
+            )
+        }
+        composable(AppRoutes.OVERVIEW_3D) {
+            val overviewViewModel: Overview3DViewModel = viewModel(
+                factory = Overview3DViewModel.factory(container.explorationProgressStore),
+            )
+            Overview3DScreen(
+                viewModel = overviewViewModel,
+                onBack = navController::popBackStack,
+                onOpenMap = {
+                    navController.navigate(AppRoutes.MAP) {
+                        popUpTo(AppRoutes.MAP) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onOpenPuzzle = { navController.navigate(AppRoutes.puzzle(LiangxiangTreasureCatalog.PUZZLE_ID)) },
+                onOpenRecords = { navController.navigate(AppRoutes.RECORDS) },
+                onOpenLandmark = { navController.navigate(AppRoutes.landmarkDetail(it)) },
             )
         }
     }
