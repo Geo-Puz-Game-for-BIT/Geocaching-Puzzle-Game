@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
 import com.bitse.geotreasure.core.ui.assets.LandmarkImages
 import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.ErrorRed
 import com.bitse.geotreasure.core.ui.theme.Primary
 import com.bitse.geotreasure.core.ui.theme.Radius
 import com.bitse.geotreasure.core.ui.theme.RewardGold
@@ -299,7 +300,7 @@ fun PhotoTile(
             Icon(
                 Icons.Outlined.Delete,
                 contentDescription = "删除这张照片",
-                tint = com.bitse.geotreasure.ui.theme.ErrorRed,
+                tint = ErrorRed,
                 modifier = Modifier.size(16.dp)
             )
         }
