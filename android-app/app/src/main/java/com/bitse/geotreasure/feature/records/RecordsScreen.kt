@@ -99,11 +99,11 @@ sealed interface RecordsAction {
     data object CancelDelete : RecordsAction
 }
 
-/** 片区标签：与原型 CN 映射一致（MP-A 南 / MP-B 北 / MP-C 东），顺序 南→北→东 */
+/** 片区标签：与原型 CN 映射一致（MP-A 南 / MP-B 北 / MP-C 东），顺序 南→北→东；P06 用全称 */
 internal val ZONE_LABELS: List<Pair<CampusZone, String>> = listOf(
-    CampusZone.SOUTH to "南",
-    CampusZone.NORTH to "北",
-    CampusZone.EAST to "东",
+    CampusZone.SOUTH to "南校区",
+    CampusZone.NORTH to "北校区",
+    CampusZone.EAST to "东校区",
 )
 
 internal fun zoneProgressOf(completedIds: Set<String>): List<ZoneProgress> =
@@ -176,30 +176,13 @@ fun RecordsScreen(
     val context = LocalContext.current
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color(0xFFF8F7F2),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("我的记录", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            "向川 · 已收 ${state.shards}/12 块碎片 · 照片 ${state.photos.size} 张",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceVariant,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        Toast.makeText(context, "打卡照片仅自己可见", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Outlined.Shield, contentDescription = "隐私说明")
-                    }
-                },
+            // P06 原型头栏：我的记录 18 Bold + 「向川 · 已收 X/12 块碎片 · 照片 N 张」11.5
+            com.bitse.geotreasure.core.ui.components.PageHeader(
+                title = "我的记录",
+                subtitle = "向川 · 已收 ${state.shards}/12 块碎片 · 照片 ${state.photos.size} 张",
+                onBack = onBack,
             )
         },
         bottomBar = {
@@ -232,14 +215,12 @@ fun RecordsScreen(
             }
             item { ZoneProgressCard(state.zoneProgress) }
             item {
-                Column {
-                    Text("我的打卡照片", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        "仅自己可见 · 共 ${state.photos.size} 张",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OnSurfaceVariant,
-                    )
-                }
+                // P06 原型：照片区只有说明行「仅自己可见 · 共 N 张」，无大标题
+                Text(
+                    "仅自己可见 · 共 ${state.photos.size} 张",
+                    style = AppText.body,
+                    color = OnSurfaceVariant,
+                )
             }
             if (state.photos.isEmpty()) {
                 item { EmptyPhotos(onExplore = onOpenMap) }
@@ -303,14 +284,15 @@ private fun AccountCard() {
 @Composable
 private fun StatRow(shards: Int, doneMods: Int, photoCount: Int) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatFact(Modifier.weight(1f), Icons.Outlined.Extension, "$shards / 12", "已收集碎片")
-        StatFact(Modifier.weight(1f), Icons.Outlined.Map, "$doneMods / 3", "片区完成")
-        StatFact(Modifier.weight(1f), Icons.Outlined.PhotoCamera, "$photoCount", "打卡照片")
+        StatFact(Modifier.weight(1f), "$shards / 12", "已收集碎片")
+        StatFact(Modifier.weight(1f), "$doneMods / 3", "片区完成")
+        StatFact(Modifier.weight(1f), "$photoCount", "打卡照片")
     }
 }
 
 @Composable
-private fun StatFact(modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String) {
+private fun StatFact(modifier: Modifier, value: String, label: String) {
+    // P06 原型：#FFFEFA 白卡，数值 13 Bold + 标签 10.5 #5D6962（无图标）
     Surface(
         modifier = modifier,
         shape = Radius.card,
@@ -319,9 +301,7 @@ private fun StatFact(modifier: Modifier, icon: androidx.compose.ui.graphics.vect
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE7E9DE)),
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Text(label, style = AppText.caption, color = OnSurfaceVariant)
         }
     }

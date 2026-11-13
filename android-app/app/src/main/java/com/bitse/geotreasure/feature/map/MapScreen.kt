@@ -65,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -82,12 +83,31 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.clickable
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
 import com.bitse.geotreasure.core.ui.components.AppButton
 import com.bitse.geotreasure.core.ui.components.AppTab
 import com.bitse.geotreasure.core.ui.components.AppTabBar
 import com.bitse.geotreasure.core.ui.components.BannerBar
 import com.bitse.geotreasure.core.ui.components.BannerTone
+import com.bitse.geotreasure.core.ui.components.BrandHeader
+import com.bitse.geotreasure.core.ui.components.CampusSegmentedControl
 import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.MAP_DISCLAIMER
+import com.bitse.geotreasure.core.ui.components.ProtoMetaRow
+import com.bitse.geotreasure.core.ui.components.REVEAL_HINT_TEXT
+import com.bitse.geotreasure.core.ui.components.terrainOf
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.MapCanvas
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
+import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +163,8 @@ fun MapScreen(
         }
     }
 
-    // P01 原型结构：地图内容区 + 底部三 Tab（探索/拼图/我的），Tab 常驻不随地图滚动
+    // P01 原型结构：品牌头图 + 地图内容区 + 原型底卡 + 底部三 Tab（探索/拼图/我的）
+    var selectedCampus by remember { mutableStateOf(com.bitse.geotreasure.core.model.CampusZone.SOUTH) }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxWidth().weight(1f)) {
         val shouldUseAmap = !uiState.usingDemoMap && uiState.privacyAccepted
@@ -166,24 +187,57 @@ fun MapScreen(
             )
         }
 
-        MapHeader(
-            usingDemoMap = uiState.usingDemoMap,
-            onOpenOverview3D = onOpenOverview3D,
-            onOpenRecords = onOpenRecords,
+        // P01 原型顶部：品牌头图（右上是「我的记录」热区）+ 校区分段 + 探索进度卡
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        )
+                .fillMaxWidth(),
+        ) {
+            BrandHeader(
+                onProfileClick = onOpenRecords,
+                modifier = Modifier.statusBarsPadding(),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MapCanvas)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CampusSegmentedControl(
+                    selected = selectedCampus,
+                    onSelect = { zone ->
+                        selectedCampus = zone
+                        // 分段切换：把地图视野聚焦到所选校区（地标均值点，纯展示行为）
+                        val zoneLandmarks = LiangxiangTreasureCatalog.landmarks.filter { it.campusZone == zone }
+                        if (zoneLandmarks.isNotEmpty()) {
+                            val lat = zoneLandmarks.map { it.point.latitude }.average()
+                            val lng = zoneLandmarks.map { it.point.longitude }.average()
+                            focusRequest = MapFocusRequest(
+                                sequence = (focusRequest?.sequence ?: 0) + 1,
+                                point = com.bitse.geotreasure.core.model.GeoPoint(latitude = lat, longitude = lng),
+                            )
+                        }
+                    },
+                )
+                CampusProgressCard(
+                    zone = selectedCampus,
+                    completedLandmarkIds = uiState.completedLandmarkIds,
+                    recommended = uiState.landmarks.firstOrNull {
+                        it.campusZone == selectedCampus && it.id !in uiState.completedLandmarkIds
+                    }?.name,
+                )
+            }
+        }
 
+        // 定位/隐私等状态横幅（功能性内容，原型无对应态时仍需保留）
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(top = 78.dp, start = 16.dp, end = 16.dp),
+                .padding(top = 246.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ProgressCard(states = uiState.landmarks.map { it.id in uiState.completedLandmarkIds })
             if (!uiState.privacyAccepted) {
                 BannerBar(
                     text = "启用地图与定位：同意高德地图与定位服务后才会初始化 SDK。演示地图不会上传位置。",
@@ -245,6 +299,32 @@ fun MapScreen(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // P01 原型 2D/3D 切换：白底胶囊，2D 为主色块，3D 文字进 3D 总览页
+            Surface(shape = RoundedCornerShape(10.dp), color = Color.White) {
+                Row(
+                    Modifier.padding(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "2D",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnPrimaryContainer,
+                        modifier = Modifier
+                            .background(Primary, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 9.dp, vertical = 7.dp),
+                    )
+                    Text(
+                        "3D",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF63736C),
+                        modifier = Modifier
+                            .clickable { onOpenOverview3D() }
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                    )
+                }
+            }
             if (shouldUseAmap) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     uiState.selectedLandmark?.let { landmark ->
@@ -283,16 +363,26 @@ fun MapScreen(
                     }
                 }
             }
+            // 原型免责声明小条（#FFFFFF 胶囊，10.5sp #5D6962）
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+            ) {
+                Text(
+                    MAP_DISCLAIMER,
+                    style = AppText.caption,
+                    color = OnSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
             uiState.selectedLandmark?.let { landmark ->
                 LandmarkPanel(
                     landmarkId = landmark.id,
                     name = landmark.name,
-                    hint = landmark.hint,
-                    checkInAreaDescription = landmark.checkInArea.compactDescription(),
-                    distanceMeters = uiState.distanceToSelectedMeters,
-                    userLocation = uiState.userLocation,
-                    coordinateVerified = landmark.coordinateVerified,
+                    difficulty = landmark.difficulty,
+                    terrain = landmark.terrain,
                     completed = landmark.id in uiState.completedLandmarkIds,
+                    distanceMeters = uiState.distanceToSelectedMeters,
                     onOpen = { viewModel.onAction(MapAction.OpenLandmark(landmark.id)) },
                     onClose = { viewModel.onAction(MapAction.ClearSelection) },
                 )
@@ -432,109 +522,75 @@ private fun DeveloperMapDebugPanel(
     }
 }
 
+/** P01 原型「南校区探索」进度卡：标题 + 「N/4」+ 四段小进度条 + 推荐位 chip */
 @Composable
-private fun ProgressCard(
-    states: List<Boolean>,
+private fun CampusProgressCard(
+    zone: com.bitse.geotreasure.core.model.CampusZone,
+    completedLandmarkIds: Set<String>,
+    recommended: String?,
     modifier: Modifier = Modifier,
 ) {
-    if (states.isEmpty()) return
-    val completed = states.count { it }
-    val total = states.size
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 2.dp,
-    ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "校园地标探索",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = "$completed",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "/$total",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(7.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                states.forEach { done ->
-                    Box(
-                        Modifier
-                            .size(9.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (done) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                            ),
-                    )
-                }
-            }
-        }
+    val zoneLandmarks = LiangxiangTreasureCatalog.landmarks.filter { it.campusZone == zone }
+    val done = zoneLandmarks.count { it.id in completedLandmarkIds }
+    val zoneName = when (zone) {
+        com.bitse.geotreasure.core.model.CampusZone.SOUTH -> "南校区"
+        com.bitse.geotreasure.core.model.CampusZone.NORTH -> "北校区"
+        com.bitse.geotreasure.core.model.CampusZone.EAST -> "东校区"
     }
-}
-
-@Composable
-private fun MapHeader(
-    usingDemoMap: Boolean,
-    onOpenOverview3D: () -> Unit,
-    onOpenRecords: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 3.dp,
+        shape = RoundedCornerShape(10.dp),
+        color = BrandSurface,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Explore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    "拼迹 · 校园地标寻宝",
-                    style = MaterialTheme.typography.titleMedium,
+                    "${zoneName}探索",
+                    style = AppText.small.copy(fontWeight = FontWeight.Bold),
+                    color = OnSurface,
+                )
+                Spacer(Modifier.height(7.dp))
+                // 四段小进度条（原型 83×6 ×4）
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    zoneLandmarks.forEach { lm ->
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(if (lm.id in completedLandmarkIds) Primary else Color(0xFFDDE3D6)),
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    "$done",
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
+                    color = Primary,
                 )
                 Text(
-                    if (usingDemoMap) "离线演示地图" else "高德地图 · GCJ-02",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "/${zoneLandmarks.size}",
+                    style = AppText.tiny.copy(fontWeight = FontWeight.Bold),
+                    color = Color(0xFF8A958D),
                 )
             }
-            // 原型 P01 入口：右上 2D/3D 切换 + 头像进「我的记录」
-            IconButton(onClick = onOpenOverview3D) {
-                Icon(Icons.Outlined.Layers, contentDescription = "3D 校园地图")
-            }
-            IconButton(onClick = onOpenRecords) {
-                Icon(Icons.Outlined.Person, contentDescription = "我的记录")
+            recommended?.let { name ->
+                Spacer(Modifier.width(8.dp))
+                Surface(shape = RoundedCornerShape(10.dp), color = BrandSurface) {
+                    Text(
+                        name,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
             }
         }
     }
@@ -582,100 +638,81 @@ private fun PermissionBanner(
 private fun LandmarkPanel(
     landmarkId: String,
     name: String,
-    hint: String?,
-    checkInAreaDescription: String,
+    difficulty: Int,
+    terrain: Int,
     distanceMeters: Double?,
-    userLocation: LocationSample?,
-    coordinateVerified: Boolean,
     completed: Boolean,
     onOpen: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // P01 原型底卡：拖拽柄 + 64dp 缩略图 + 标题行 + 「约 X m · ★★☆ · 地形」+ 整宽「查看任务」
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 6.dp,
+        shape = RoundedCornerShape(14.dp),
+        color = BrandSurface,
+        contentColor = OnSurface,
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 14.dp)) {
+            // 拖拽柄（原型 36×4 #CFD8CF）
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(36.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0xFFCFD8CF)),
+            )
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LandmarkImage(
                     landmarkId = landmarkId,
                     modifier = Modifier
                         .size(64.dp)
-                        .clip(RoundedCornerShape(14.dp)),
+                        .clip(RoundedCornerShape(10.dp)),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        if (completed) {
-                            Spacer(Modifier.width(6.dp))
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                            ) {
-                                Text(
-                                    "已打卡",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                )
-                            }
-                        }
-                    }
+                    Text(
+                        name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface,
+                    )
                     Spacer(Modifier.height(3.dp))
                     Text(
-                        text = distanceMeters?.let { "距离约 ${it.roundToInt()} 米 · $checkInAreaDescription" }
-                            ?: "等待定位 · $checkInAreaDescription",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        REVEAL_HINT_TEXT,
+                        fontSize = 12.5.sp,
+                        color = OnSurfaceVariant,
                     )
-                    userLocation?.let { location ->
-                        Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(5.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${location.source.displayName()}定位 · SDK 估计精度 ±${location.accuracyMeters.roundToInt()} 米",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (location.isReliableForCheckIn()) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.error
-                            },
+                            distanceMeters?.let { "约 ${it.roundToInt()} m" } ?: "走近后揭晓",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OnSurfaceVariant,
+                        )
+                        ProtoMetaRow(
+                            difficulty = difficulty,
+                            terrain = terrain,
+                            modifier = Modifier.padding(start = 8.dp),
                         )
                     }
-                    if (!coordinateVerified) {
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = "演示坐标 · 待实地核验",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                    if (completed) {
+                        Spacer(Modifier.height(3.dp))
+                        Text("已打卡", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Primary)
                     }
                 }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Rounded.Close, contentDescription = "取消选中地标")
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             AppButton(
-                text = if (completed) "查看详情" else "查看任务",
+                text = "查看任务",
                 onClick = onOpen,
-                icon = Icons.AutoMirrored.Rounded.ArrowForward,
             )
-            hint?.let {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }

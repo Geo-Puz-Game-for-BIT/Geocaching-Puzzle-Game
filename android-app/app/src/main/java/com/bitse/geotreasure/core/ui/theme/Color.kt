@@ -72,3 +72,9 @@ val HairLineStrong = Color(0xFFCFD8CF)
 
 /** 禁用态文字 */
 val DisabledText = Color(0xFF8C9893)
+
+/** 原型 P02 任务卡内提示盒底（.fig 实测 #F3F4EC） */
+val HintBox = Color(0xFFF3F4EC)
+
+/** 原型 P04 成功页 2×2 碎片格底（.fig 实测 #DCE5E1） */
+val FragmentCell = Color(0xFFDCE5E1)

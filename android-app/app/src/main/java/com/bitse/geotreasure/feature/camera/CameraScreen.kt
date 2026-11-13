@@ -8,6 +8,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -101,6 +107,22 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.rounded.HourglassTop
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+
 data class CameraUiState(
     val landmarkId: String,
     val attemptId: String,
@@ -119,6 +141,8 @@ data class CameraUiState(
     val pendingDraftAttemptId: String? = null,
     val errorMessage: String? = null,
     val faceCheckMessage: String? = null,
+    /** P03 头栏副标题用：地标名（仅展示，不参与业务判定） */
+    val landmarkName: String? = null,
 ) {
     val canShoot: Boolean get() = gate is CheckInGateResult.Ready
     val gateMessage: String? get() = (gate as? CheckInGateResult.Blocked)?.reason?.message
@@ -186,6 +210,7 @@ class CameraViewModel(
                 is AppResult.Success -> result.data
                 is AppResult.Failure -> null
             }
+            mutableUiState.update { it.copy(landmarkName = landmark?.name) }
             val saved = draftStore.load()
             when {
                 saved == null -> Unit
@@ -774,7 +799,15 @@ internal fun checkInFailureMessage(throwable: Throwable): String = when (throwab
     else -> throwable.message ?: "打卡失败，请重试"
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
+/**
+ * P03 拍照打卡 —— 视觉层严格按交付原型 .fig（P03 拍照打卡 · 取景 / 拍后预览）实现：
+ * 深色全幅取景（#0B0F0E）+ 顶栏（拍照打卡 / X · 同框打卡 #9FB5AC）
+ * → 状态 chips「距目标约 Xm」「定位正常」（#0A1210）→ 三分构图线 +「地标完整入镜」标
+ * → 底部渐变 + 引导语「把地标放在上半部分，人站在它前面」+ 72dp 快门圆 +「轻点拍摄」
+ * 拍后预览态：「已拍摄 · 还没有提交」+ 确认文案 + 重拍 / 确认提交。
+ * 业务（门控/幂等/草稿恢复）全部沿用 CameraViewModel，本文件不新增判定。
+ */
 @Composable
 fun CameraScreen(
     viewModel: CameraViewModel,
@@ -816,67 +849,275 @@ fun CameraScreen(
         )
     }
 
-    // 顶部副标题随阶段变化（纯展示，不参与任何业务判定）
-    val subtitle = when {
-        state.isOutcomeUnknown -> "结果确认中"
-        state.isProcessing -> "正在提交打卡"
-        state.retaking -> "重新取景中"
-        state.photoPath != null -> "拍后预览"
-        !state.hasCameraPermission -> "需要相机权限"
-        else -> "对准地标主体后按快门"
-    }
+    val inPreview = state.photoPath != null && !state.retaking
+    val landmarkName = state.landmarkName ?: ""
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            PageHeader(title = "拍照打卡", subtitle = subtitle, onBack = onBack)
-        },
-    ) { padding ->
+    Scaffold(containerColor = Color(0xFF0B0F0E)) { padding ->
         Column(
-            modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(Color(0xFF0B0F0E)),
         ) {
-            val photoPath = state.photoPath
-            Surface(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+            // 顶栏（原型 60dp #10201B：拍照打卡 18 Bold #EAF3EE / 副题 11.5 #9FB5AC）
+            PageHeader(
+                title = "拍照打卡",
+                subtitle = when {
+                    state.isOutcomeUnknown -> "$landmarkName · 结果确认中"
+                    state.isProcessing -> "$landmarkName · 服务端正在确认"
+                    state.retaking -> "$landmarkName · 重新取景"
+                    inPreview -> "$landmarkName · 确认人物与地标同框"
+                    !state.hasCameraPermission -> "需要相机权限"
+                    else -> "$landmarkName · 同框打卡"
+                },
+                onBack = onBack,
+                dark = true,
+            )
+
+            // 全幅取景/预览区
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Color(0xFF0B0F0E)),
             ) {
                 when {
                     !state.hasCameraPermission -> PermissionHint(
                         onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                     )
 
-                    state.retaking || photoPath == null -> LivePreview(viewModel, lifecycleOwner)
-                    else -> PhotoPreview(photoPath)
+                    state.retaking || state.photoPath == null -> LivePreview(viewModel, lifecycleOwner)
+                    else -> {
+                        val captured = state.photoPath
+                        if (captured != null) PhotoPreview(captured)
+                    }
+                }
+
+                // 取景态叠加层
+                if (!inPreview && state.hasCameraPermission) {
+                    Row(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 58.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val distance = when (val g = state.gate) {
+                            is CheckInGateResult.Ready -> g.distanceMeters
+                            is CheckInGateResult.Blocked -> g.distanceMeters
+                            else -> null
+                        }
+                        SurfaceChip(text = distance?.let { "距目标约 ${it.toInt()} m" } ?: "定位中…")
+                        SurfaceChip(
+                            text = when (state.gate) {
+                                is CheckInGateResult.Ready -> "定位正常"
+                                else -> "定位未就绪"
+                            },
+                        )
+                    }
+
+                    FramingGuides(
+                        modifier = Modifier.fillMaxSize(),
+                        labelAlpha = if (state.canShoot) 1f else 0.4f,
+                    )
+
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(170.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    1f to Color(0xB3000000),
+                                ),
+                            ),
+                    )
+                    Text(
+                        "把地标放在上半部分，人站在它前面",
+                        fontSize = 12.5.sp,
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 150.dp),
+                    )
+                }
+
+                // 错误/提示横幅（暗色半透明底）
+                Column(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (state.isOutcomeUnknown && state.errorMessage == null) {
+                        DarkNote("结果确认中：正在查询上次提交的结果，请勿重复提交")
+                    }
+                    if (state.restoredDraft) {
+                        DarkNote("已恢复上次未完成的拍摄，可直接继续")
+                    }
+                    state.gateMessage?.takeIf { state.photoPath == null || state.retaking }?.let { DarkNote(it) }
+                    state.faceCheckMessage?.let { DarkNote(it) }
+                    state.errorMessage?.let { DarkNote(it) }
                 }
             }
 
-            // 状态横幅：全部消费 state 既有字段原文，判定不新增
-            if (state.isOutcomeUnknown && state.errorMessage == null) {
-                BannerBar(
-                    text = "结果确认中：正在查询上次提交的结果，请勿重复提交",
-                    tone = BannerTone.Info,
-                    icon = Icons.Rounded.HourglassTop,
-                )
-            }
-            if (state.restoredDraft) {
-                BannerBar(text = "已恢复上次未完成的拍摄，可直接继续", tone = BannerTone.Info)
-            }
-            state.gateMessage?.takeIf { state.photoPath == null || state.retaking }?.let { msg ->
-                BannerBar(text = msg, tone = BannerTone.Warn, icon = Icons.Rounded.LocationOn)
-            }
-            state.faceCheckMessage?.let { msg ->
-                BannerBar(text = msg, tone = BannerTone.Error, icon = Icons.Rounded.Face)
-            }
-            state.errorMessage?.let { msg ->
-                BannerBar(text = msg, tone = BannerTone.Error, icon = Icons.Rounded.ErrorOutline)
-            }
+            // 底部操作区
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF10201B))
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                when {
+                    // F1：结果未知只提供「重试恢复」，不显示拍照/重拍入口
+                    state.isOutcomeUnknown -> {
+                        AppButton(
+                            text = if (state.isProcessing) "正在恢复…" else "重试恢复",
+                            onClick = { viewModel.onAction(CameraAction.Confirm) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !state.isProcessing,
+                        )
+                    }
 
-            ActionButtons(state = state, onAction = viewModel::onAction)
+                    inPreview -> {
+                        // 原型拍后预览：说明行 + 重拍（描边）/ 确认提交（主色）
+                        Text(
+                            "已拍摄 · 还没有提交",
+                            fontSize = 12.sp,
+                            color = Color.White,
+                        )
+                        Text(
+                            "确认人物与${landmarkName.ifEmpty { "地标" }}同框后再提交。现在还没有发出去，重拍不会留下记录。",
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            color = Color(0xFFC9D6D1),
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        AppButton(
+                            text = "重拍",
+                            onClick = { viewModel.onAction(CameraAction.Retake) },
+                            modifier = Modifier.fillMaxWidth(),
+                            style = AppButtonStyle.Outline,
+                            enabled = !state.isCapturing && !state.isProcessing && !state.isOutcomeUnknown,
+                        )
+                        AppButton(
+                            text = when {
+                                state.isProcessing -> "正在提交打卡…"
+                                state.uploadState == UploadState.UNKNOWN -> "重试恢复"
+                                state.uploadState == UploadState.FAILED -> "重试"
+                                else -> "确认提交"
+                            },
+                            onClick = { viewModel.onAction(CameraAction.Confirm) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !state.isCapturing && !state.isProcessing,
+                        )
+                    }
+
+                    else -> {
+                        // 取景态：72dp 白色快门圆（原型 hot:// shoot）+「轻点拍摄」
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .background(
+                                    if (state.canShoot && !state.isCapturing) Color.White else Color(0x61FFFFFF),
+                                    CircleShape,
+                                )
+                                .border(3.dp, Color(0x3300634D), CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { viewModel.onAction(CameraAction.Capture) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (state.isCapturing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(26.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color(0xFF00634D),
+                                )
+                            }
+                        }
+                        Text("轻点拍摄", fontSize = 11.sp, color = Color(0xFF9FB5AC))
+                        AppButton(
+                            text = "重新定位",
+                            onClick = { viewModel.onAction(CameraAction.RefreshLocation) },
+                            modifier = Modifier.fillMaxWidth(),
+                            style = AppButtonStyle.Outline,
+                        )
+                    }
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun SurfaceChip(text: String) {
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        color = Color.White,
+        modifier = Modifier
+            .background(Color(0xF00A1210), RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
+}
+
+/** 三分构图线 + 中心「地标完整入镜」标签（原型白 1px 线 + #2E5145 字白底标） */
+@Composable
+private fun FramingGuides(modifier: Modifier = Modifier, labelAlpha: Float) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val lineColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.55f)
+        val w = size.width
+        val h = size.height
+        listOf(0.351f, 0.640f).forEach { fx ->
+            drawLine(
+                lineColor,
+                androidx.compose.ui.geometry.Offset(w * fx, h * 0.18f),
+                androidx.compose.ui.geometry.Offset(w * fx, h * 0.86f),
+                1.dp.toPx(),
+            )
+        }
+        listOf(0.335f, 0.547f).forEach { fy ->
+            drawLine(
+                lineColor,
+                androidx.compose.ui.geometry.Offset(w * 0.06f, h * fy),
+                androidx.compose.ui.geometry.Offset(w * 0.94f, h * fy),
+                1.dp.toPx(),
+            )
+        }
+    }
+    Box(modifier = modifier) {
+        Text(
+            "地标完整入镜",
+            fontSize = 10.5.sp,
+            color = Color(0xFF2E5145),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .alpha(labelAlpha)
+                .background(Color.White, RoundedCornerShape(9.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun DarkNote(text: String) {
+    Text(
+        text = text,
+        fontSize = 12.sp,
+        color = Color(0xFFC9D6D1),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xE60A1210), RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
+}
+
 
 @Composable
 private fun PendingDraftDialog(canDiscard: Boolean, onDiscard: () -> Unit, onKeep: () -> Unit) {
@@ -957,77 +1198,6 @@ private fun PermissionHint(onRequestPermission: () -> Unit) {
             )
             Text("需要相机权限才能拍照", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
             AppButton(text = "授予权限", onClick = onRequestPermission)
-        }
-    }
-}
-
-@Composable
-private fun ActionButtons(state: CameraUiState, onAction: (CameraAction) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        when {
-            // F1：结果未知（可能缺照片）只提供「重试恢复」，不显示拍照/重拍入口
-            state.isOutcomeUnknown -> {
-                AppButton(
-                    text = if (state.isProcessing) "正在恢复…" else "重试恢复",
-                    onClick = { onAction(CameraAction.Confirm) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isProcessing,
-                )
-            }
-
-            state.photoPath != null && !state.retaking -> {
-                AppButton(
-                    text = "重拍",
-                    onClick = { onAction(CameraAction.Retake) },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = AppButtonStyle.Outline,
-                    enabled = !state.isCapturing && !state.isProcessing && !state.isOutcomeUnknown,
-                )
-                AppButton(
-                    text = when {
-                        state.isProcessing -> "正在提交打卡…"
-                        state.uploadState == UploadState.UNKNOWN -> "重试恢复"
-                        state.uploadState == UploadState.FAILED -> "重试"
-                        else -> "确认并提交打卡"
-                    },
-                    onClick = { onAction(CameraAction.Confirm) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !state.isCapturing && !state.isProcessing,
-                )
-            }
-
-            state.retaking -> {
-                AppButton(
-                    text = "取消重拍",
-                    onClick = { onAction(CameraAction.CancelRetake) },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = AppButtonStyle.Outline,
-                    enabled = !state.isCapturing,
-                )
-                AppButton(
-                    text = if (state.isCapturing) "正在拍照…" else "拍照",
-                    onClick = { onAction(CameraAction.Capture) },
-                    modifier = Modifier.fillMaxWidth(),
-                    icon = Icons.Rounded.CameraAlt,
-                    enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
-                )
-            }
-
-            else -> {
-                AppButton(
-                    text = if (state.isCapturing) "正在拍照…" else "拍照",
-                    onClick = { onAction(CameraAction.Capture) },
-                    modifier = Modifier.fillMaxWidth(),
-                    icon = Icons.Rounded.CameraAlt,
-                    enabled = state.hasCameraPermission && state.canShoot && !state.isCapturing,
-                )
-                AppButton(
-                    text = "重新定位",
-                    onClick = { onAction(CameraAction.RefreshLocation) },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = AppButtonStyle.Outline,
-                )
-            }
         }
     }
 }

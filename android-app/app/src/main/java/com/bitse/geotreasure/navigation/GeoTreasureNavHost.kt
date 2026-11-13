@@ -126,6 +126,13 @@ fun GeoTreasureNavHost() {
             CheckInResultScreen(
                 viewModel = resultViewModel,
                 onOpenPuzzle = { navController.navigate(AppRoutes.puzzle(it)) },
+                onOpenMap = {
+                    navController.navigate(AppRoutes.MAP) {
+                        popUpTo(AppRoutes.MAP) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onOpenOverview3D = { navController.navigate(AppRoutes.OVERVIEW_3D) },
             )
         }
         composable(

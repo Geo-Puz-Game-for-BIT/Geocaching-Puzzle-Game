@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,29 +15,31 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.LocationSearching
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Stars
+import androidx.compose.material.icons.rounded.Terrain
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.core.checkin.BlockReason
 import com.bitse.geotreasure.core.checkin.CheckInGateResult
@@ -48,33 +51,38 @@ import com.bitse.geotreasure.core.ui.components.AppButtonStyle
 import com.bitse.geotreasure.core.ui.components.BannerBar
 import com.bitse.geotreasure.core.ui.components.BannerTone
 import com.bitse.geotreasure.core.ui.components.BottomCta
-import com.bitse.geotreasure.core.ui.components.InfoNote
-import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.PageHeader
 import com.bitse.geotreasure.core.ui.components.SkeletonBox
+import com.bitse.geotreasure.core.ui.components.aboutOf
+import com.bitse.geotreasure.core.ui.components.bottomNoteOf
+import com.bitse.geotreasure.core.ui.components.taskDescOf
+import com.bitse.geotreasure.core.ui.components.taskNoOf
+import com.bitse.geotreasure.core.ui.components.taskTitleOf
+import com.bitse.geotreasure.core.ui.components.terrainOf
+import com.bitse.geotreasure.core.ui.components.zoneFullName
+import com.bitse.geotreasure.core.ui.components.CHECK_IN_RULE_TEXT
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
 import com.bitse.geotreasure.core.ui.theme.AppText
-import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.HintBox
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.OnRewardBox
 import com.bitse.geotreasure.core.ui.theme.OnSurface
 import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
 import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
 import com.bitse.geotreasure.core.ui.theme.Radius
+import com.bitse.geotreasure.core.ui.theme.RewardBox
 import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
 import kotlin.math.roundToInt
 
 /**
- * P02 地标详情 —— 仅渲染层。
+ * P02 地标详情 —— 视觉层严格按交付原型 .fig（P02 地标详情 · 默认）实现：
+ * 头栏（地标详情 / 任务 T-00X · 和X合个影）→ 252dp 实拍 Hero（名字 22sp 白 + 「良乡校区 · 南校区 · 地标 No.00X」）
+ * → 三格事实卡（距离/难度/地形）→ 关于这个地标 → 任务卡（编号 pill + 标题 + 描述 + 奖励盒 + 提示盒）
+ * → 打卡规则 → 底部「距离约 X m · 提交后由服务端判定」+「去打卡」。
  *
  * 业务全部沿用基线 LandmarkDetailViewModel（定位门控 / attemptId / RefreshLocation / Retry /
  * StartTask / effects 通道一律不改，本文件不声明任何业务类型）。
- * 状态→视觉映射（与 C 对齐的六态）：
- *  1. isLoading                 → 骨架屏
- *  2. landmark==null && 错误    → 错误条 + 重试（Retry）
- *  3. gate==null / NO_LOCATION  → 「正在定位…」，CTA 禁用
- *  4. LOCATION_STALE            → 警示条 + 重新定位（RefreshLocation）
- *  5. ACCURACY_TOO_LOW          → 警示条（≤30m 提示）+ 重新定位
- *  6. OUT_OF_RANGE              → 警示条 + 实时距离 + 重新定位
- *  7. Ready                     → 绿色确认 + 「开始打卡」（StartTask → effect → onOpenCamera）
- * 注：基线 UiState 无「已完成」字段，完成态由列表/拼图页 DoneBadge 承担（与 C 确认项，
- *     不得为画稿在 VM 加字段）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,25 +102,24 @@ fun LandmarkDetailScreen(
         }
     }
 
+    val landmark = uiState.landmark
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color(0xFFF8F7F2),
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.landmark?.name ?: "地标详情", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
+            PageHeader(
+                title = "地标详情",
+                subtitle = landmark?.let { "${taskNoOf(it.pieceIndex)} · ${taskTitleOf(it.name)}" } ?: "加载中",
+                onBack = onBack,
+                actionIcon = Icons.Rounded.PhotoCamera,
+                actionDescription = "任务拍照示意",
             )
         },
         bottomBar = {
-            if (!uiState.isLoading && uiState.landmark != null) {
+            if (!uiState.isLoading && landmark != null) {
                 DetailBottomCta(uiState = uiState, viewModel = viewModel)
             }
         },
     ) { padding ->
-        val landmark = uiState.landmark
         when {
             uiState.isLoading -> SkeletonBody(Modifier.padding(padding))
 
@@ -137,14 +144,11 @@ fun LandmarkDetailScreen(
 
 @Composable
 private fun SkeletonBody(modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SkeletonBox(Modifier.fillMaxWidth().height(252.dp), corner = 18.dp)
-        SkeletonBox(Modifier.fillMaxWidth().height(28.dp), corner = 6.dp)
-        SkeletonBox(Modifier.fillMaxWidth(0.7f).height(20.dp), corner = 6.dp)
-        SkeletonBox(Modifier.fillMaxWidth().height(96.dp), corner = 14.dp)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SkeletonBox(Modifier.weight(1f).height(64.dp), corner = 8.dp)
-            SkeletonBox(Modifier.weight(1f).height(64.dp), corner = 8.dp)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonBox(Modifier.fillMaxWidth().height(252.dp), corner = 0.dp)
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SkeletonBox(Modifier.fillMaxWidth().height(87.dp), corner = 10.dp)
+            SkeletonBox(Modifier.fillMaxWidth().height(120.dp), corner = 10.dp)
         }
     }
 }
@@ -164,7 +168,7 @@ private fun ErrorBody(message: String, onRetry: () -> Unit, modifier: Modifier =
     }
 }
 
-/* ---------------- 正常内容 ---------------- */
+/* ---------------- 正常内容（P02 原型结构） ---------------- */
 
 @Composable
 private fun LoadedBody(
@@ -172,55 +176,188 @@ private fun LoadedBody(
     gate: CheckInGateResult?,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Hero：412×252 宽幅，唯一允许 cover 的位置
-        LandmarkImage(
-            landmarkId = landmark.id,
-            modifier = Modifier
+    Column(modifier.fillMaxWidth()) {
+        // Hero：412×252 宽幅实拍（全页唯一 cover 位置），底部渐变上叠名字与归属行
+        Box(
+            Modifier
                 .fillMaxWidth()
-                .height(252.dp)
-                .clip(RoundedCornerShape(Radius.cardLarge.topStart)),
-            big = true,
-            crop = true,
-        )
-
-        Text(landmark.name, style = MaterialTheme.typography.headlineSmall, color = OnSurface, fontWeight = FontWeight.SemiBold)
-        Text(
-            "${zoneLabel(landmark.campusZone)} · 拼图碎片 №${landmark.pieceIndex + 1}",
-            style = AppText.small,
-            color = OnSurfaceVariant,
-        )
-
-        // 硬性事实：难度 / 地形 / 打卡范围
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlineFact("难度 ${landmark.difficulty}")
-            OutlineFact("地形 ${landmark.terrain}")
-            OutlineFact(areaLabel(landmark))
+                .height(252.dp),
+        ) {
+            LandmarkImage(
+                landmarkId = landmark.id,
+                modifier = Modifier.fillMaxSize(),
+                big = true,
+                crop = true,
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            1f to Color(0x66000000),
+                        ),
+                    ),
+            )
+            Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+                Text(
+                    landmark.name,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "良乡校区 · ${zoneFullName(landmark.campusZone)} · 地标 No.00${landmark.pieceIndex + 1}",
+                    fontSize = 12.sp,
+                    color = Color.White,
+                )
+            }
         }
 
-        landmark.hint?.takeIf { it.isNotBlank() }?.let { hint ->
-            InfoNote(text = "提示：$hint", icon = Icons.Rounded.Info)
-        }
+        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Spacer(Modifier.height(14.dp))
 
-        GateCard(gate = gate)
-        Text(
-            "提交后由服务端判定是否打卡成功，手机端不做最终判定",
-            style = AppText.caption,
-            color = OnSurfaceVariant,
-        )
+            // 三格事实卡：距离 / 难度 / 地形（原型 121×87 #FFFEFA）
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FactCellP02(
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp)) },
+                    value = gateDistanceText(gate),
+                    label = "距离",
+                )
+                FactCellP02(
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Rounded.Stars, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp)) },
+                    value = if (landmark.difficulty >= 2) "★★☆" else "★☆☆",
+                    label = "难度",
+                )
+                FactCellP02(
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Rounded.Terrain, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp)) },
+                    value = terrainOf(landmark.terrain),
+                    label = "地形",
+                )
+            }
+
+            // 关于这个地标
+            Column {
+                Text("关于这个地标", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Spacer(Modifier.height(8.dp))
+                Text(aboutOf(landmark.campusZone, landmark.name), fontSize = 13.sp, lineHeight = 21.sp, color = OnSurfaceVariant)
+            }
+
+            // 任务卡（原型 #FFFEFA 圆角卡）
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(BrandSurface, RoundedCornerShape(10.dp))
+                    .padding(13.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        taskNoOf(landmark.pieceIndex),
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnPrimaryContainer,
+                        modifier = Modifier
+                            .background(PrimaryContainer, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        taskTitleOf(landmark.name),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(9.dp))
+                Text(taskDescOf(landmark.name), fontSize = 12.5.sp, lineHeight = 19.sp, color = OnSurfaceVariant)
+
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(RewardBox, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Rounded.Stars,
+                        contentDescription = null,
+                        tint = OnRewardBox,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        "奖励：${landmark.name}碎片 ×1（${zoneFullName(landmark.campusZone)}第 ${landmark.pieceIndex + 1}/4 块）",
+                        fontSize = 12.sp,
+                        color = OnRewardBox,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(HintBox, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Rounded.Info,
+                        contentDescription = null,
+                        tint = OnSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        "提示：把地标放在画面上半部分，人站在它前面，两者都完整入镜。",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = OnSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            // 打卡规则
+            Column {
+                Text("打卡规则", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Spacer(Modifier.height(8.dp))
+                Text(CHECK_IN_RULE_TEXT, fontSize = 13.sp, lineHeight = 21.sp, color = OnSurfaceVariant)
+            }
+
+            // 门控状态（六态：与 C 对齐，仅展示不判定）
+            GateCard(gate = gate)
+            Spacer(Modifier.height(8.dp))
+        }
     }
 }
 
 @Composable
-private fun OutlineFact(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier
-            .background(BrandSurface, RoundedCornerShape(Radius.chip.topStart))
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        style = AppText.small,
-        color = OnSurfaceVariant,
-    )
+private fun FactCellP02(
+    icon: @Composable () -> Unit,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .background(BrandSurface, RoundedCornerShape(10.dp))
+            .padding(vertical = 13.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        icon()
+        Spacer(Modifier.height(5.dp))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+        Text(label, fontSize = 10.5.sp, color = OnSurfaceVariant)
+    }
 }
 
 /* ---------------- 门控状态卡（六态核心） ---------------- */
@@ -271,34 +408,29 @@ private fun GateCard(gate: CheckInGateResult?) {
     }
 }
 
-/* ---------------- 底部 CTA ---------------- */
+/* ---------------- 底部 CTA（原型：说明行 + 整宽「去打卡」） ---------------- */
 
 @Composable
 private fun DetailBottomCta(uiState: LandmarkDetailUiState, viewModel: LandmarkDetailViewModel) {
     val ready = uiState.canStartTask
+    val distance = (uiState.gate as? CheckInGateResult.Ready)?.distanceMeters
+        ?: (uiState.gate as? CheckInGateResult.Blocked)?.distanceMeters
     BottomCta {
-        when {
-            ready -> BannerBar(
-                text = "定位满足打卡条件，可以开始拍摄",
-                tone = BannerTone.Info,
-                icon = Icons.Rounded.LocationOn,
-            )
-
-            else -> Text(
-                text = uiState.gateMessage ?: "等待定位满足打卡条件…",
-                style = AppText.caption,
-                color = OnSurfaceVariant,
-            )
-        }
+        Text(
+            text = bottomNoteOf(distance),
+            style = AppText.tiny,
+            color = OnSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
         AppButton(
-            text = if (ready) "开始打卡" else "开始打卡（未就绪）",
+            text = "去打卡",
             onClick = { viewModel.onAction(LandmarkDetailAction.StartTask) },
             enabled = ready,
-            icon = Icons.Rounded.CameraAlt,
             modifier = Modifier.fillMaxWidth(),
         )
-        // C 拍板（协作清单 Q2）：Blocked 态（定位过期/精度不足/范围外）提供手动「重新定位」
+        // C 拍板（协作清单 Q2）：Blocked 态提供手动「重新定位」
         if (!ready && uiState.gate is CheckInGateResult.Blocked) {
+            Spacer(Modifier.height(8.dp))
             AppButton(
                 text = "重新定位",
                 onClick = { viewModel.onAction(LandmarkDetailAction.RefreshLocation) },
@@ -314,13 +446,9 @@ private fun DetailBottomCta(uiState: LandmarkDetailUiState, viewModel: LandmarkD
 private fun formatMeters(meters: Double): String =
     if (meters >= 1000) "%.1f km".format(meters / 1000.0) else "${meters.roundToInt()} m"
 
-private fun zoneLabel(zone: CampusZone): String = when (zone) {
-    CampusZone.SOUTH -> "南区"
-    CampusZone.NORTH -> "北区"
-    CampusZone.EAST -> "东区"
-}
 
-private fun areaLabel(landmark: Landmark): String = when (val area = landmark.checkInArea) {
-    is CircularCheckInArea -> "范围 ${area.radiusMeters.roundToInt()} m"
-    else -> "范围：多边形区域"
+private fun gateDistanceText(gate: CheckInGateResult?): String = when (gate) {
+    is CheckInGateResult.Ready -> "${gate.distanceMeters.roundToInt()} m"
+    is CheckInGateResult.Blocked -> gate.distanceMeters?.let { "${it.roundToInt()} m" } ?: "—"
+    else -> "—"
 }

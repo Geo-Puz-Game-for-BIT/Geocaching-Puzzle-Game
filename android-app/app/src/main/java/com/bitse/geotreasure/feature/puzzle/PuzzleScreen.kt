@@ -1,57 +1,56 @@
 package com.bitse.geotreasure.feature.puzzle
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Map
-import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.CampusZone
+import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
-import com.bitse.geotreasure.core.model.PuzzleFragmentDefinition
 import com.bitse.geotreasure.core.model.PuzzleRevealMode
-import com.bitse.geotreasure.core.model.PuzzleSectionDefinition
 import com.bitse.geotreasure.core.ui.components.AppTab
 import com.bitse.geotreasure.core.ui.components.AppTabBar
+import com.bitse.geotreasure.core.ui.components.AppButton
+import com.bitse.geotreasure.core.ui.components.AppButtonStyle
+import com.bitse.geotreasure.core.ui.components.LandmarkImage
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.components.zoneFullName
+import com.bitse.geotreasure.core.ui.theme.AppText
+import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.OnSurface
+import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Primary
+import com.bitse.geotreasure.core.ui.theme.PrimaryContainer
+import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -116,6 +115,12 @@ class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore)
     }
 }
 
+/**
+ * P05 拼图收集 —— 视觉层严格按交付原型 .fig（P05 拼图收集 · 总览·打卡前 / 片区）实现：
+ * 头栏（拼图收集 / 已收 X/12 块 · 完成 Y/3 个片区）→ 「我的校园地图」+「N / 3 个片区」
+ * → 总进度条 → 三张校区卡（2×2 碎片格 + 「南校区 3 / 4」）→ 归位说明
+ * → 「下一块碎片」卡（+去看看）→ 「去地图继续打卡」→ 页脚说明。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PuzzleScreen(
@@ -126,22 +131,21 @@ fun PuzzleScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val puzzle = LiangxiangTreasureCatalog.puzzle
+    val owned = state.ownedFragmentIds
+    val doneMods = puzzle.sections.count { sec -> sec.fragments.all { it.id in owned } }
     Scaffold(
+        containerColor = Color(0xFFF8F7F2),
         topBar = {
-            TopAppBar(
-                title = { Text(puzzle.title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
+            PageHeader(
+                title = "拼图收集",
+                subtitle = "已收 ${owned.size}/${puzzle.fragmentCount} 块 · 完成 $doneMods/3 个片区",
             )
         },
         bottomBar = {
-            // P05 原型：拼图页底部三 Tab 常驻，「拼图」为选中态
+            // P05 原型：底部三 Tab 常驻，「拼图」为选中态
             AppTabBar(
                 current = AppTab.Puzzle,
-                shards = state.ownedFragmentIds.size,
+                shards = owned.size,
                 onSelect = { tab ->
                     when (tab) {
                         AppTab.Explore -> onOpenMap()
@@ -154,191 +158,212 @@ fun PuzzleScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                PuzzleProgressCard(
-                    ownedCount = state.ownedFragmentIds.size,
-                    totalCount = puzzle.fragmentCount,
-                )
-            }
-            item {
-                RevealModeSelector(
-                    selected = state.revealMode,
-                    onSelected = { viewModel.onAction(PuzzleAction.ChangeRevealMode(it)) },
-                )
-            }
-            items(puzzle.sections, key = { it.id }) { section ->
-                CampusSection(
-                    section = section,
-                    revealMode = state.revealMode,
-                    ownedFragmentIds = state.ownedFragmentIds,
-                    onFragmentSelected = { viewModel.onAction(PuzzleAction.SelectFragment(it)) },
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "我的校园地图",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("$doneMods / 3 个片区", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Primary)
+                }
             }
             item {
                 Text(
-                    text = "当前 12 个坐标用于开发演示。正式开放打卡前，需要逐点完成实地测量、拍照许可和安全检查。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "每个片区 2×2 四块碎片，各对应一个地标；集齐后自动归位",
+                    fontSize = 12.5.sp,
+                    color = OnSurfaceVariant,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun PuzzleProgressCard(ownedCount: Int, totalCount: Int) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("校园探索进度", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("到达地标后自动点亮对应区域", style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(
-                text = "$ownedCount / $totalCount",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RevealModeSelector(
-    selected: PuzzleRevealMode,
-    onSelected: (PuzzleRevealMode) -> Unit,
-) {
-    val modes = listOf(PuzzleRevealMode.FOG_OF_WAR, PuzzleRevealMode.GRID)
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        modes.forEachIndexed { index, mode ->
-            SegmentedButton(
-                selected = selected == mode,
-                onClick = { onSelected(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                icon = {
-                    Icon(
-                        imageVector = if (mode == PuzzleRevealMode.FOG_OF_WAR) Icons.Rounded.VisibilityOff else Icons.Rounded.GridView,
-                        contentDescription = null,
-                    )
-                },
-                label = { Text(if (mode == PuzzleRevealMode.FOG_OF_WAR) "探索迷雾" else "规则分块") },
-            )
-        }
-    }
-}
-
-@Composable
-private fun CampusSection(
-    section: PuzzleSectionDefinition,
-    revealMode: PuzzleRevealMode,
-    ownedFragmentIds: Set<String>,
-    onFragmentSelected: (String) -> Unit,
-) {
-    val ownedCount = section.fragments.count { it.id in ownedFragmentIds }
-    Card {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Map, contentDescription = null, tint = zoneColor(section.campusZone))
-                    Text(section.campusZone.displayName(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                Text("$ownedCount / ${section.fragments.size}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            section.fragments.chunked(section.columns).forEach { rowFragments ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+            item {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(PrimaryContainer),
                 ) {
-                    rowFragments.forEach { fragment ->
-                        FragmentTile(
-                            fragment = fragment,
-                            owned = fragment.id in ownedFragmentIds,
-                            revealMode = revealMode,
-                            zone = section.campusZone,
+                    Box(
+                        Modifier
+                            .fillMaxWidth(owned.size.toFloat() / puzzle.fragmentCount.coerceAtLeast(1))
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Primary),
+                    )
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    puzzle.sections.forEach { section ->
+                        CampusCard(
+                            sectionName = sectionDisplayName(section.campusZone),
+                            landmarks = section.fragments.mapNotNull { f ->
+                                LiangxiangTreasureCatalog.landmarks.firstOrNull { it.fragmentId == f.id }
+                            },
+                            owned = owned,
                             modifier = Modifier.weight(1f),
-                            onSelected = { onFragmentSelected(fragment.id) },
                         )
                     }
                 }
             }
+            item {
+                Text(
+                    "已收 ${owned.size} / ${puzzle.fragmentCount} 块碎片 · 点片区看它的 2×2",
+                    style = AppText.tiny,
+                    color = OnSurfaceVariant,
+                )
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(PrimaryContainer, RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        "服务端确认打卡成功后，这块碎片自动点亮并归位，不需要手动拖动或拼合。集齐一个片区后可手动回顾拼合过程。",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = OnPrimaryContainer,
+                    )
+                }
+            }
+            item {
+                NextShardCard(
+                    nextLandmark = nextPendingLandmark(owned),
+                    ownedCountIds = owned,
+                    onGoMap = onOpenMap,
+                )
+            }
+            item {
+                AppButton(
+                    text = "去地图继续打卡",
+                    onClick = onOpenMap,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = AppButtonStyle.Tonal,
+                )
+            }
+            item {
+                Text(
+                    "碎片只对它所属的地标生效，不会过期",
+                    style = AppText.tiny,
+                    color = OnSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
         }
     }
 }
 
+private fun sectionDisplayName(zone: CampusZone): String = zoneFullName(zone)
+
+private fun nextPendingLandmark(owned: Set<String>): Landmark? =
+    LiangxiangTreasureCatalog.landmarks.firstOrNull { it.fragmentId !in owned }
+
+/** 校区卡：2×2 碎片格（#CBD8D2 待收 / 实拍图已收）+ 底部「南校区 3 / 4」 */
 @Composable
-private fun FragmentTile(
-    fragment: PuzzleFragmentDefinition,
-    owned: Boolean,
-    revealMode: PuzzleRevealMode,
-    zone: CampusZone,
-    modifier: Modifier,
-    onSelected: () -> Unit,
+private fun CampusCard(
+    sectionName: String,
+    landmarks: List<Landmark>,
+    owned: Set<String>,
+    modifier: Modifier = Modifier,
 ) {
-    val fogged = revealMode == PuzzleRevealMode.FOG_OF_WAR && !owned
-    val backgroundColor = when {
-        fogged -> MaterialTheme.colorScheme.inverseSurface
-        owned -> zoneColor(zone).copy(alpha = 0.18f)
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    val contentColor = if (fogged) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onSurface
-    Box(
-        modifier = modifier
-            .aspectRatio(1.45f)
-            .background(backgroundColor, MaterialTheme.shapes.small)
-            .border(1.dp, zoneColor(zone).copy(alpha = if (owned) 0.8f else 0.25f), MaterialTheme.shapes.small)
-            .clickable(enabled = owned, onClick = onSelected),
-        contentAlignment = Alignment.Center,
+    val doneCount = landmarks.count { it.fragmentId in owned }
+    Column(
+        modifier
+            .background(Color(0xFFDDE5E1), RoundedCornerShape(10.dp))
+            .padding(4.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        landmarks.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                row.forEach { lm ->
+                    val has = lm.fragmentId in owned
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFC3D0CA)),
+                    ) {
+                        if (has) {
+                            LandmarkImage(landmarkId = lm.id, modifier = Modifier.fillMaxSize())
+                        } else {
+                            Box(
+                                Modifier.align(Alignment.Center).size(18.dp),
+                            ) {
+                                Text("?", color = Color(0xFF8FA184), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFE6EDE5), RoundedCornerShape(6.dp))
+                .padding(horizontal = 7.dp, vertical = 5.dp),
         ) {
-            Icon(
-                imageVector = when {
-                    owned -> Icons.Rounded.CheckCircle
-                    fogged -> Icons.Rounded.VisibilityOff
-                    else -> Icons.Rounded.Lock
-                },
-                contentDescription = null,
-                tint = if (owned) zoneColor(zone) else contentColor,
-            )
-            Text(
-                text = if (fogged) "未探索" else fragment.title,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor,
-                textAlign = TextAlign.Center,
-                fontWeight = if (owned) FontWeight.Bold else FontWeight.Normal,
-            )
+            Column {
+                Text(sectionName, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Text("$doneCount / 4", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant)
+            }
         }
     }
 }
 
-private fun CampusZone.displayName(): String = when (this) {
-    CampusZone.NORTH -> "北校区"
-    CampusZone.EAST -> "东校区"
-    CampusZone.SOUTH -> "南校区"
-}
-
+/** 「下一块碎片」卡（原型 #FFFEFA 380×93） */
 @Composable
-private fun zoneColor(zone: CampusZone): Color = when (zone) {
-    CampusZone.NORTH -> MaterialTheme.colorScheme.primary
-    CampusZone.EAST -> MaterialTheme.colorScheme.tertiary
-    CampusZone.SOUTH -> MaterialTheme.colorScheme.secondary
+private fun NextShardCard(
+    nextLandmark: Landmark?,
+    ownedCountIds: Set<String>,
+    onGoMap: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(BrandSurface, RoundedCornerShape(10.dp))
+            .padding(13.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(PrimaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("?", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Primary)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("下一块碎片：？", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    nextLandmark?.let {
+                        val zonePending = LiangxiangTreasureCatalog.landmarks
+                            .count { z -> z.campusZone == it.campusZone && z.fragmentId !in ownedCountIds }
+                        "${zoneFullName(it.campusZone)} · 还有 $zonePending 块未收集，靠近后在地图上点亮"
+                    } ?: "12 块碎片已全部收集，去 3D 地图回看点亮情况",
+                    style = AppText.tiny,
+                    color = OnSurfaceVariant,
+                )
+            }
+            Box(
+                Modifier
+                    .background(PrimaryContainer, RoundedCornerShape(8.dp))
+                    .clickable { onGoMap() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text("去看看", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnPrimaryContainer)
+            }
+        }
+    }
 }
