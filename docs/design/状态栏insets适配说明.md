@@ -69,8 +69,7 @@ WindowCompat.setDecorFitsSystemWindows(window, false)
 - `:app:testDebugUnitTest`：**137/137 通过**
 - `:app:lintDebug`：0 errors / 7 warnings（与基线一致）
 - APK：`ui-v2-dd1ae20-状态栏适配-debug.apk`（SHA256 `18996add…52c04`）
-- 推送：本轮 GitHub 443 连续不可达，两个提交暂存本地；同时导出补丁
-  `拼迹-交付-v1.3/文档/0001-*.patch`、`0002-*.patch`，网络恢复后执行
-  `git am 0001-*.patch 0002-*.patch && git push origin feat/android-ui-refresh-v2` 即可。
+- 推送：`b63b4d8..1520696` 已推送至 `feat/android-ui-refresh-v2`（中途 GitHub 443 多次不可达，
+  期间导出的 `0001–0003` 补丁保留在 `拼迹-交付-v1.3/文档/` 作离线备份）。
 - 待真机复验：P01 头图上移后无地图空隙、P05/P06 标题与状态栏不重叠、P03 深底页图标可见。
 
