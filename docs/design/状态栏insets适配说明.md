@@ -50,6 +50,9 @@ WindowCompat.setDecorFitsSystemWindows(window, false)
 4. **底部安全区**：`BottomCta`（P02 CTA）与 P04 结果页补 `navigationBarsPadding()`，
    手势条 / 三键导航机型都不会遮住按钮。
 
+5. **字体缩放**：`PageHeader` 由固定 `height(60dp)` 改为 `heightIn(min = 60.dp)`，
+   系统字体放大到 1.3×/1.5× 时标题与副标题不会被裁切（默认字号下仍是 60dp，视觉不变）。
+
 ## 3. 为什么能覆盖不同机型
 
 - 全部使用**系统上报的 inset**（`statusBarsPadding` / `navigationBarsPadding`），没有写死 24/30dp 之类常量，
@@ -57,10 +60,17 @@ WindowCompat.setDecorFitsSystemWindows(window, false)
 - 状态栏图标明暗随页面切换（浅色页深色图标、深底页浅色图标），进入记录「进入前取值」、离开还原，
   任意导航顺序都不会残留错误状态。
 - 头图顶部同色底取自素材实测像素，不同宽度下都是纯色带，不会出现色块接缝。
+- 顶栏高度随系统字体缩放自适应，不裁字、不压内容。
 
-## 4. 验证
+## 4. 提交与验证
 
+- 提交：**`0af0b4e`**（insets 修复）+ **`dd1ae20`**（顶栏高度随字体缩放），基于已推送的 `8102fff` / `b63b4d8`
 - `:app:compileDebugKotlin` / `:app:assembleDebug`：BUILD SUCCESSFUL
 - `:app:testDebugUnitTest`：**137/137 通过**
 - `:app:lintDebug`：0 errors / 7 warnings（与基线一致）
+- APK：`ui-v2-dd1ae20-状态栏适配-debug.apk`（SHA256 `18996add…52c04`）
+- 推送：本轮 GitHub 443 连续不可达，两个提交暂存本地；同时导出补丁
+  `拼迹-交付-v1.3/文档/0001-*.patch`、`0002-*.patch`，网络恢复后执行
+  `git am 0001-*.patch 0002-*.patch && git push origin feat/android-ui-refresh-v2` 即可。
 - 待真机复验：P01 头图上移后无地图空隙、P05/P06 标题与状态栏不重叠、P03 深底页图标可见。
+
