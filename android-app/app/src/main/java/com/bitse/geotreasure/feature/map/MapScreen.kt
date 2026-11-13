@@ -193,10 +193,8 @@ fun MapScreen(
                 .align(Alignment.TopCenter)
                 .fillMaxWidth(),
         ) {
-            BrandHeader(
-                onProfileClick = onOpenRecords,
-                modifier = Modifier.statusBarsPadding(),
-            )
+            // 状态栏 inset 已在 BrandHeader 内部处理：同色底铺到状态栏下，头图/头像热区整体下移
+            BrandHeader(onProfileClick = onOpenRecords)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

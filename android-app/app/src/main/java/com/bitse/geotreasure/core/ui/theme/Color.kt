@@ -78,3 +78,9 @@ val HintBox = Color(0xFFF3F4EC)
 
 /** 原型 P04 成功页 2×2 碎片格底（.fig 实测 #DCE5E1） */
 val FragmentCell = Color(0xFFDCE5E1)
+
+/**
+ * P01 品牌头图顶部同色底（取 brand_header.png 第 0–40 行实测 #FBFAF5）。
+ * 用途：edge-to-edge 下让状态栏那条带子与头图同色，避免露出地图形成「空隙」。
+ */
+val HeaderPaper = Color(0xFFFBFAF5)

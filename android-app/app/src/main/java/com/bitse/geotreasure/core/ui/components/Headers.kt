@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +45,7 @@ import com.bitse.geotreasure.core.ui.theme.AppText
 import com.bitse.geotreasure.core.ui.theme.CameraSurface
 import com.bitse.geotreasure.core.ui.theme.Dimen
 import com.bitse.geotreasure.core.ui.theme.HairLine
+import com.bitse.geotreasure.core.ui.theme.HeaderPaper
 import com.bitse.geotreasure.core.ui.theme.OnSurface
 import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
 import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
@@ -60,27 +62,36 @@ import com.bitse.geotreasure.core.ui.theme.Surface as BrandSurface
  */
 @Composable
 fun BrandHeader(onProfileClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth()) {
-        Image(
-            painter = painterResource(R.drawable.brand_header),
-            contentDescription = "拼迹 · 发现校园的另一面",
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(575f / 128f),
-            contentScale = ContentScale.FillBounds
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 12.dp, top = 10.dp)
-                .size(44.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onProfileClick
-                )
-        )
+    // edge-to-edge：容器先铺头图顶部同色底，再做 statusBarsPadding
+    // → 状态栏那条带子与头图同色（不再漏出地图），头图与头像热区整体位于状态栏下方
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(HeaderPaper)
+            .statusBarsPadding()
+    ) {
+        Box(Modifier.fillMaxWidth()) {
+            Image(
+                painter = painterResource(R.drawable.brand_header),
+                contentDescription = "拼迹 · 发现校园的另一面",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(575f / 128f),
+                contentScale = ContentScale.FillBounds
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 12.dp, top = 10.dp)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onProfileClick
+                    )
+            )
+        }
     }
 }
 
@@ -104,10 +115,13 @@ fun PageHeader(
     val subColor = if (dark) Color(0xFF9FB5AC) else OnSurfaceVariant
 
     Row(
+        // edge-to-edge：背景先铺满（含状态栏那条带子），再用 statusBarsPadding 把标题行推到状态栏下方。
+        // 这样任意机型（刘海/打孔/手势条）标题都不会与系统时间、电量重叠，也不会露出下层内容。
         modifier = modifier
             .fillMaxWidth()
-            .height(Dimen.pageHeaderHeight)
             .background(background)
+            .statusBarsPadding()
+            .height(Dimen.pageHeaderHeight)
             .padding(end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

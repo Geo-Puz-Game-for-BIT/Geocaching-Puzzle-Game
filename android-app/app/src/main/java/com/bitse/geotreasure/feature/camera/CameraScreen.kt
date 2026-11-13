@@ -101,6 +101,7 @@ import com.bitse.geotreasure.core.ui.components.AppButtonStyle
 import com.bitse.geotreasure.core.ui.components.BannerBar
 import com.bitse.geotreasure.core.ui.components.BannerTone
 import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.system.StatusBarIconsDark
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.LocationOn
@@ -119,6 +120,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -852,7 +854,15 @@ fun CameraScreen(
     val inPreview = state.photoPath != null && !state.retaking
     val landmarkName = state.landmarkName ?: ""
 
-    Scaffold(containerColor = Color(0xFF0B0F0E)) { padding ->
+    // 深底页面：状态栏「时间/电量」用浅色图标，否则会和 #10201B 顶栏融成一片看不见
+    StatusBarIconsDark(darkIcons = false)
+
+    // contentWindowInsets 归零：顶部由 PageHeader 自己做 statusBarsPadding（避免双重 inset），
+    // 底部操作区已有 navigationBarsPadding
+    Scaffold(
+        containerColor = Color(0xFF0B0F0E),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)

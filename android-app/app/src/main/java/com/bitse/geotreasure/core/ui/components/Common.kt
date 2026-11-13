@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -267,7 +268,10 @@ fun OutlineCard(
     }
 }
 
-/** 页面底部固定 CTA 区（原型 .bottomcta：说明条在上、整宽主按钮在下，纵向排列） */
+/**
+ * 页面底部固定 CTA 区（原型 .bottomcta：说明条在上、整宽主按钮在下，纵向排列）。
+ * edge-to-edge：表面先铺满，再用 navigationBarsPadding 把按钮抬到手势条/三键导航之上。
+ */
 @Composable
 fun BottomCta(
     modifier: Modifier = Modifier,
@@ -279,7 +283,9 @@ fun BottomCta(
         border = BorderStroke(0.5.dp, HairLine)
     ) {
         Column(
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 14.dp),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             content = content
         )
