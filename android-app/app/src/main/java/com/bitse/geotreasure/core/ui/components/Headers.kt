@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -121,7 +122,8 @@ fun PageHeader(
             .fillMaxWidth()
             .background(background)
             .statusBarsPadding()
-            .height(Dimen.pageHeaderHeight)
+            // 最小高度而非固定高度：系统字体放大时标题不被裁切（默认仍是 60dp，视觉不变）
+            .heightIn(min = Dimen.pageHeaderHeight)
             .padding(end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
