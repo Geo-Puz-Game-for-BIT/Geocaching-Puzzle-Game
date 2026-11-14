@@ -4,20 +4,20 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Extension
@@ -39,20 +39,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +72,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.bitse.geotreasure.R
 import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.Landmark
@@ -76,6 +89,7 @@ import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
 import com.bitse.geotreasure.core.ui.theme.Primary
 import com.bitse.geotreasure.core.ui.theme.Radius
 import com.bitse.geotreasure.core.ui.theme.Surface
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -176,9 +190,6 @@ private val HandleGray = Color(0xFFB9C2B6)     // 底卡拖柄
 private val SubText = Color(0xFF5C6B64)        // 迷雾卡「已散开」
 
 // 3D 地图配色（取自原型 3D 地图色板，浅色系不压地图）
-private val CampusPlatform = Color(0xFFE7EDE8)
-private val CampusPlatformSide = Color(0xFFB8C6BF)
-private val CloudWhite = Color(0xFFF7FAF7)
 private val CloudShadow = Color(0xFF232D2A)
 
 /** 底部信息卡四态（对应 .fig：fog / next(=live) / campus / all；unlock 动画态不单列，见交付文档） */
@@ -207,9 +218,9 @@ private fun sheetSpecOf(state: Overview3DUiState): SheetSpec = when {
 }
 
 /**
- * P07 3D 校园地图（严格按 .fig / 原型 HTML）：
- * 头栏（标题+副标题+右侧 40dp 圆钮）→ 3D 地图区（径向渐变底 + 迷雾进度卡叠层 +
- * 全览/南/北/东分段 + 提示条 + 3D/2D 切换 + 「本期不纳入」标注）→ 底部信息卡（四态文案）→ 底部三 Tab。
+ * P07 3D 校园地图（按 .fig / 原型 HTML，浮层改上下排布防重叠）：
+ * 头栏（标题+副标题+右侧 40dp 圆钮）→ 迷雾进度卡 + 全览/南/北/东分段(右 3D/2D 切换) + 提示条 →
+ * 3D 地图区（径向渐变底 + 三校区插画卡片 + 「本期不纳入」标注）→ 底部信息卡（四态文案）→ 底部三 Tab。
  */
 @Composable
 fun Overview3DScreen(
@@ -235,6 +246,28 @@ fun Overview3DScreen(
             actionDescription = "一片云对应一个地标",
             onAction = onOpenMap,
         )
+
+        // 迷雾进度卡 / 分段 / 提示条独立排在画布上方（原型为画布内浮层，真机上会盖住北校区
+        // 卡片且聚焦缩放后卡片钻入浮层下方 → 改为不重叠的上下排布）
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        ) {
+            Spacer(Modifier.height(10.dp))
+            FogCard(state)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f)) {
+                    ZoomChips(state, onSelect = { viewModel.onAction(Overview3DAction.SelectZone(it)) })
+                }
+                Spacer(Modifier.width(8.dp))
+                // 3D/2D 切换（原型 .m3toggle，2D → 回 P01 地图）
+                M3Toggle(onOpen2D = onOpenMap)
+            }
+            Spacer(Modifier.height(8.dp))
+            TipRow()
+        }
 
         Box(
             modifier = Modifier
@@ -262,34 +295,11 @@ fun Overview3DScreen(
             )
             CampusCanvas(state = state, onOpenLandmark = onOpenLandmark)
 
-            // 左上叠层：迷雾进度卡 → 全览分段 → 提示条（与原型 .m3card/.m3zoom/.m3tip 顺序一致）
+            // 「本期不纳入 · 融创楼 · 工训楼」标注（右下空地，避开三张片区图）
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .align(Alignment.TopStart)
-            ) {
-                Spacer(Modifier.height(12.dp))
-                FogCard(state)
-                Spacer(Modifier.height(10.dp))
-                ZoomChips(state, onSelect = { viewModel.onAction(Overview3DAction.SelectZone(it)) })
-                Spacer(Modifier.height(10.dp))
-                TipRow()
-            }
-
-            // 右上 3D/2D 切换（原型 .m3toggle，2D → 回 P01 地图）
-            M3Toggle(
-                onOpen2D = onOpenMap,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 10.dp, end = 12.dp),
-            )
-
-            // 「本期不纳入 · 融创楼 · 工训楼」标注（原型在地图右中部）
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 210.dp, end = 20.dp),
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 26.dp, bottom = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text("本期不纳入", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NotInTitle)
@@ -621,33 +631,115 @@ private fun SheetHead(
     }
 }
 
-/** 校区在未缩放坐标系里的平台位置（比例坐标，随画布尺寸缩放） */
-private fun zoneRect(zone: CampusZone, w: Float, h: Float): Rect = when (zone) {
-    CampusZone.NORTH -> Rect(w * 0.05f, h * 0.06f, w * 0.50f, h * 0.38f)
-    CampusZone.SOUTH -> Rect(w * 0.05f, h * 0.56f, w * 0.50f, h * 0.88f)
-    CampusZone.EAST -> Rect(w * 0.54f, h * 0.24f, w * 0.95f, h * 0.66f)
+// ── 3D 底图：campus-unified-v5 三校区插画（源 D:\campus-unified-v5，按 calibration.json 裁切）──
+// 三张图共用一套米制投影：x=(lon-lon0)·mPerDeg·1.5，y=-(lat-lat0)·mPerDeg·1.125。
+// 钉子不直接取绝对像素（部分地标落在插画覆盖面之外），而是按同校区 4 个地标的投影坐标
+// min-max 归一后铺进卡片内框，保留相对方位且保证全部可见。
+private const val MAP3D_ORIGIN_LON = 116.16447
+private const val MAP3D_ORIGIN_LAT = 39.73013
+private const val MAP3D_EAST_M_PER_DEG = 85729.07360052191
+private const val MAP3D_NORTH_M_PER_DEG = 111029.4509960947
+private const val MAP3D_PX_PER_EAST_M = 1.5
+private const val MAP3D_PX_PER_NORTH_M = 1.125
+
+/** 插画裁切后的宽高比（与 res/drawable-nodpi/map3d_*.png 一致） */
+private fun zoneAspect(zone: CampusZone): Float = when (zone) {
+    CampusZone.NORTH -> 738f / 1019f
+    CampusZone.SOUTH -> 742f / 676f
+    CampusZone.EAST -> 708f / 699f
 }
 
-/** 校区内 2×2 地标槽位中心（按 pieceIndex 排布） */
-private fun slotCenters(zone: CampusZone, w: Float, h: Float, landmarks: List<Landmark>): Map<Int, Offset> {
-    val rect = zoneRect(zone, w, h)
-    val padX = rect.width * 0.12f
-    val padY = rect.height * 0.16f
-    val slotW = (rect.width - padX * 2) / 2f
-    val slotH = (rect.height - padY * 2) / 2f
-    return landmarks.associate { landmark ->
-        val col = landmark.pieceIndex % 2
-        val row = landmark.pieceIndex / 2
-        landmark.pieceIndex to Offset(
-            rect.left + padX + slotW * (col + 0.5f),
-            rect.top + padY + slotH * (row + 0.5f),
-        )
+/**
+ * 虚拟版式框（宽 1.0、高 1.10，单位=画布宽），三张卡片按此框内的比例坐标摆放，
+ * 再整体等比 contain 到画布并居中 —— 任何屏幕比例下卡片都不会重叠或溢出。
+ * 方位沿用原型三平台：北在上、东在右中、南在下。
+ */
+private const val MAP3D_LAYOUT_W = 1.0f
+private const val MAP3D_LAYOUT_H = 1.10f
+
+private fun zoneCardRect(zone: CampusZone, w: Float, h: Float): Rect {
+    val s = minOf(w / MAP3D_LAYOUT_W, h / MAP3D_LAYOUT_H)
+    val ox = (w - MAP3D_LAYOUT_W * s) / 2f
+    val oy = (h - MAP3D_LAYOUT_H * s) / 2f
+    val cwU = when (zone) {
+        CampusZone.NORTH -> 0.42f
+        CampusZone.SOUTH -> 0.46f
+        CampusZone.EAST -> 0.42f
     }
+    val chU = cwU / zoneAspect(zone)
+    val leftU = when (zone) {
+        CampusZone.NORTH -> 0.05f
+        CampusZone.SOUTH -> 0.02f
+        CampusZone.EAST -> 0.54f
+    }
+    val topU = when (zone) {
+        CampusZone.NORTH -> 0.02f
+        CampusZone.SOUTH -> 0.66f
+        CampusZone.EAST -> 0.24f
+    }
+    return Rect(
+        ox + leftU * s,
+        oy + topU * s,
+        ox + (leftU + cwU) * s,
+        oy + (topU + chU) * s,
+    )
+}
+
+/** 米制投影像素（只用于求相对方位） */
+private fun projectToPlane(lat: Double, lon: Double): Offset = Offset(
+    ((lon - MAP3D_ORIGIN_LON) * MAP3D_EAST_M_PER_DEG * MAP3D_PX_PER_EAST_M).toFloat(),
+    (-(lat - MAP3D_ORIGIN_LAT) * MAP3D_NORTH_M_PER_DEG * MAP3D_PX_PER_NORTH_M).toFloat(),
+)
+
+/** 同校区 4 个地标的归一化位置 (u,v) ∈ [0,1] */
+private fun zonePinUnits(pins: List<Landmark>): Map<String, Offset> {
+    if (pins.isEmpty()) return emptyMap()
+    val pts = pins.associate { it.id to projectToPlane(it.point.latitude, it.point.longitude) }
+    val minX = pts.values.minOf { it.x }
+    val maxX = pts.values.maxOf { it.x }
+    val minY = pts.values.minOf { it.y }
+    val maxY = pts.values.maxOf { it.y }
+    val spanX = (maxX - minX).takeIf { it > 1f } ?: 1f
+    val spanY = (maxY - minY).takeIf { it > 1f } ?: 1f
+    return pts.mapValues { (_, p) -> Offset((p.x - minX) / spanX, (p.y - minY) / spanY) }
+}
+
+/** 归一化位置 → 卡片内落点（内框留边，避免钉子贴边） */
+private fun pinCenter(rect: Rect, unit: Offset): Offset = Offset(
+    rect.left + rect.width * (0.14f + 0.72f * unit.x),
+    rect.top + rect.height * (0.18f + 0.64f * unit.y),
+)
+
+private fun cloudRadius(rect: Rect): Float = rect.width * 0.085f
+
+/** 软边云团：白心 → 透明边的径向渐变，叠几层像积云 */
+private fun DrawScope.cloudPuff(center: Offset, radius: Float, alpha: Float) {
+    drawCircle(
+        brush = Brush.radialGradient(
+            colorStops = arrayOf(
+                0f to Color.White.copy(alpha = alpha),
+                0.62f to Color.White.copy(alpha = alpha * 0.94f),
+                1f to Color.White.copy(alpha = 0f),
+            ),
+            center = center,
+            radius = radius,
+        ),
+        radius = radius,
+        center = center,
+    )
 }
 
 @Composable
 private fun CampusCanvas(state: Overview3DUiState, onOpenLandmark: (String) -> Unit) {
     val textMeasurer = rememberTextMeasurer()
+    val resources = LocalContext.current.resources
+    val images = remember {
+        mapOf(
+            CampusZone.NORTH to ImageBitmap.imageResource(resources, R.drawable.map3d_north),
+            CampusZone.SOUTH to ImageBitmap.imageResource(resources, R.drawable.map3d_south),
+            CampusZone.EAST to ImageBitmap.imageResource(resources, R.drawable.map3d_east),
+        )
+    }
     val scale = remember { Animatable(1f) }
     val offX = remember { Animatable(0f) }
     val offY = remember { Animatable(0f) }
@@ -655,7 +747,6 @@ private fun CampusCanvas(state: Overview3DUiState, onOpenLandmark: (String) -> U
 
     LaunchedEffect(state.selectedZone, size) {
         if (size == IntSize.Zero) return@LaunchedEffect
-        val targetScale = 2.1f
         if (state.selectedZone == null) {
             launch { scale.animateTo(1f) }
             launch { offX.animateTo(0f) }
@@ -663,8 +754,10 @@ private fun CampusCanvas(state: Overview3DUiState, onOpenLandmark: (String) -> U
         } else {
             val w = size.width.toFloat()
             val h = size.height.toFloat()
-            val rect = zoneRect(state.selectedZone, w, h)
-            val center = Offset(rect.center.x, rect.center.y)
+            val rect = zoneCardRect(state.selectedZone, w, h)
+            val targetScale = minOf(w * 0.94f / rect.width, h * 0.66f / rect.height)
+                .coerceIn(1.2f, 3.0f)
+            val center = rect.center
             val tx = w / 2f - center.x * targetScale
             val ty = h / 2f - center.y * targetScale
             launch { scale.animateTo(targetScale) }
@@ -687,12 +780,14 @@ private fun CampusCanvas(state: Overview3DUiState, onOpenLandmark: (String) -> U
                     val w = size.width.toFloat()
                     val h = size.height.toFloat()
                     for (zone in state.zones) {
-                        val slots = slotCenters(zone.zone, w, h, zone.pins.map { it.landmark })
+                        val rect = zoneCardRect(zone.zone, w, h)
+                        val units = zonePinUnits(zone.pins.map { it.landmark })
+                        val radius = cloudRadius(rect)
                         zone.pins.forEach { pin ->
                             if (!pin.opened) return@forEach
-                            val center = slots[pin.landmark.pieceIndex] ?: return@forEach
-                            val radius = slotRadius(zone.zone, w, h)
-                            if ((q - center).getDistance() <= radius * 1.15f) {
+                            val unit = units[pin.landmark.id] ?: return@forEach
+                            val center = pinCenter(rect, unit)
+                            if ((q - center).getDistance() <= radius * 1.3f) {
                                 onOpenLandmark(pin.landmark.id)
                             }
                         }
@@ -706,80 +801,91 @@ private fun CampusCanvas(state: Overview3DUiState, onOpenLandmark: (String) -> U
             translate(offX.value, offY.value)
             scale(scale.value, scale.value, pivot = Offset.Zero)
         }) {
-            drawCampus(state, w, h, textMeasurer)
+            drawCampus(state, w, h, textMeasurer, images)
         }
     }
-}
-
-private fun slotRadius(zone: CampusZone, w: Float, h: Float): Float {
-    val rect = zoneRect(zone, w, h)
-    return minOf(rect.width, rect.height) * 0.14f
 }
 
 private fun DrawScope.drawCampus(
     state: Overview3DUiState,
     w: Float,
     h: Float,
-    textMeasurer: androidx.compose.ui.text.TextMeasurer,
+    textMeasurer: TextMeasurer,
+    images: Map<CampusZone, ImageBitmap>,
 ) {
-    val depth = h * 0.018f
-
-    // 校区间步道
-    val southC = zoneRect(CampusZone.SOUTH, w, h).center
-    val northC = zoneRect(CampusZone.NORTH, w, h).center
-    val eastC = zoneRect(CampusZone.EAST, w, h).center
-    drawLine(CampusPlatformSide, Offset(northC.x, northC.y), Offset(eastC.x, eastC.y), strokeWidth = w * 0.012f)
-    drawLine(CampusPlatformSide, Offset(southC.x, southC.y), Offset(eastC.x, eastC.y), strokeWidth = w * 0.012f)
-
     state.zones.forEach { zone ->
-        val rect = zoneRect(zone.zone, w, h)
-        val corner = w * 0.05f
+        val rect = zoneCardRect(zone.zone, w, h)
+        val image = images[zone.zone] ?: return@forEach
+        val corner = minOf(rect.width, rect.height) * 0.055f
 
-        // 平台侧影（2.5D 厚度）
+        // 卡片投影（轻微下沉，营造浮起的 2.5D 感）
         drawRoundRect(
-            color = CampusPlatformSide,
-            topLeft = Offset(rect.left, rect.top + depth),
-            size = androidx.compose.ui.geometry.Size(rect.width, rect.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner),
+            color = Color(0x1F14201B),
+            topLeft = Offset(rect.left, rect.top + rect.height * 0.012f),
+            size = Size(rect.width, rect.height),
+            cornerRadius = CornerRadius(corner, corner),
         )
-        // 平台顶面
-        drawRoundRect(
-            color = CampusPlatform,
-            topLeft = Offset(rect.left, rect.top),
-            size = androidx.compose.ui.geometry.Size(rect.width, rect.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner),
-        )
-
-        val slots = slotCenters(zone.zone, w, h, zone.pins.map { it.landmark })
-        zone.pins.forEach { pin ->
-            val center = slots[pin.landmark.pieceIndex] ?: return@forEach
-            val base = slotRadius(zone.zone, w, h)
-            if (pin.opened) {
-                // 打卡后：干净孔洞 + 标记点
-                drawCircle(Color.White.copy(alpha = 0.9f), radius = base, center = center)
-                drawCircle(Primary, radius = base * 0.46f, center = center)
-                drawCircle(Color.White, radius = base * 0.16f, center = center)
-                drawText(
-                    textMeasurer = textMeasurer,
-                    text = pin.landmark.name,
-                    topLeft = Offset(center.x - base * 1.2f, center.y + base * 1.15f),
-                    style = TextStyle(fontSize = 10.sp, color = Color(0xFF202923), fontWeight = FontWeight.Bold),
-                )
-            } else {
-                // 未打卡：云层盖住（暗部 + 云体 + 高光三层）
-                drawCircle(CloudShadow.copy(alpha = 0.14f), radius = base * 1.05f, center = center + Offset(0f, depth))
-                drawCircle(CloudWhite.copy(alpha = 0.97f), radius = base * 0.78f, center = center + Offset(-base * 0.35f, base * 0.1f))
-                drawCircle(CloudWhite.copy(alpha = 0.97f), radius = base * 0.9f, center = center + Offset(base * 0.3f, -base * 0.05f))
-                drawCircle(Color.White.copy(alpha = 0.85f), radius = base * 0.5f, center = center + Offset(0f, -base * 0.32f))
-            }
+        // 圆角裁切后绘制插画底图
+        clipPath(Path().apply { addRoundRect(RoundRect(rect, CornerRadius(corner, corner))) }) {
+            drawImage(
+                image = image,
+                srcOffset = IntOffset.Zero,
+                srcSize = IntSize(image.width, image.height),
+                dstOffset = IntOffset(rect.left.roundToInt(), rect.top.roundToInt()),
+                dstSize = IntSize(rect.width.roundToInt(), rect.height.roundToInt()),
+                filterQuality = FilterQuality.Medium,
+            )
         }
 
-        // 校区标签
-        drawText(
-            textMeasurer = textMeasurer,
-            text = "${zone.label}·${zone.done}/${zone.total}",
-            topLeft = Offset(rect.left + rect.width * 0.04f, rect.top + rect.height * 0.02f),
-            style = TextStyle(fontSize = 12.sp, color = Color(0xFF404A46), fontWeight = FontWeight.Bold),
+        // 校区章（左上白底胶囊）
+        val chipPad = rect.width * 0.02f
+        val chipLayout = textMeasurer.measure(
+            text = AnnotatedString("${zone.label} · ${zone.done}/${zone.total}"),
+            style = TextStyle(fontSize = 10.5.sp, color = Color(0xFF20302A), fontWeight = FontWeight.Bold),
         )
+        val chipLeft = rect.left + chipPad
+        val chipTop = rect.top + chipPad
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.9f),
+            topLeft = Offset(chipLeft - chipPad * 0.8f, chipTop - chipPad * 0.45f),
+            size = Size(chipLayout.size.width + chipPad * 1.6f, chipLayout.size.height + chipPad * 0.9f),
+            cornerRadius = CornerRadius(chipLayout.size.height * 0.6f, chipLayout.size.height * 0.6f),
+        )
+        drawText(chipLayout, topLeft = Offset(chipLeft, chipTop))
+
+        // 地标：未打卡 = 云团压住；已打卡 = 白圈 + 主色钉 + 名称
+        val units = zonePinUnits(zone.pins.map { it.landmark })
+        val base = cloudRadius(rect)
+        zone.pins.forEach { pin ->
+            val unit = units[pin.landmark.id] ?: return@forEach
+            val center = pinCenter(rect, unit)
+            if (pin.opened) {
+                drawCircle(Color.White.copy(alpha = 0.92f), radius = base * 0.62f, center = center)
+                drawCircle(Primary, radius = base * 0.34f, center = center)
+                drawCircle(Color.White, radius = base * 0.12f, center = center)
+                val label = textMeasurer.measure(
+                    text = AnnotatedString(pin.landmark.name),
+                    style = TextStyle(fontSize = 9.5.sp, color = Color(0xFF1E2A24), fontWeight = FontWeight.Bold),
+                )
+                val labelTop = center.y + base * 0.66f
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.82f),
+                    topLeft = Offset(center.x - label.size.width / 2f - 4f, labelTop - 1f),
+                    size = Size(label.size.width + 8f, label.size.height.toFloat() + 2f),
+                    cornerRadius = CornerRadius(5f, 5f),
+                )
+                drawText(label, topLeft = Offset(center.x - label.size.width / 2f, labelTop))
+            } else {
+                // 未打卡：软边云团（径向渐变白 → 透明，三层叠加出蓬松感）
+                drawCircle(
+                    color = CloudShadow.copy(alpha = 0.10f),
+                    radius = base * 1.10f,
+                    center = center + Offset(0f, base * 0.14f),
+                )
+                cloudPuff(center + Offset(-base * 0.34f, base * 0.10f), base * 0.86f, 0.95f)
+                cloudPuff(center + Offset(base * 0.30f, -base * 0.04f), base * 0.96f, 0.95f)
+                cloudPuff(center + Offset(0f, -base * 0.26f), base * 0.64f, 0.9f)
+            }
+        }
     }
 }
