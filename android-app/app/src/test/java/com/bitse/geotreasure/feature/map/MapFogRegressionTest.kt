@@ -1,11 +1,13 @@
 package com.bitse.geotreasure.feature.map
 
+import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import com.bitse.geotreasure.core.model.LocalOffsetMeters
 import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
+import kotlin.math.abs
 import kotlinx.datetime.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -143,8 +145,15 @@ class MapFogRegressionTest {
     @Test
     fun `landmark appears only after accurate entry into its check in area`() {
         val landmark = LiangxiangTreasureCatalog.landmarks.first()
-        val outside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(70.0, 0.0))
-        val inside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(20.0, 0.0))
+        // 内外点按地标实际打卡区域尺寸计算（2026-11-14 实测校准后占地最大 390x202m，
+        // 固定 70m 偏移会落在北湖区域内），保证测试与 Catalog 占地解耦。
+        val halfExtent = when (val area = landmark.checkInArea) {
+            is CircularCheckInArea -> area.radiusMeters
+            is PolygonCheckInArea -> area.vertices.maxOf { abs(it.eastMeters) }
+            else -> 60.0
+        }
+        val outside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(halfExtent + 30.0, 0.0))
+        val inside = com.bitse.geotreasure.core.location.offsetPoint(landmark.point, LocalOffsetMeters(10.0, 0.0))
 
         assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(outside, 2f)).isEmpty())
         assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(inside, 70f)).isEmpty())
