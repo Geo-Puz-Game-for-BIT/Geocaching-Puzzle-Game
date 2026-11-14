@@ -3,6 +3,8 @@ package com.bitse.geotreasure.feature.overview
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,22 +14,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Stars
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,17 +38,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,12 +64,18 @@ import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
+import com.bitse.geotreasure.core.ui.components.AppButton
 import com.bitse.geotreasure.core.ui.components.AppTab
 import com.bitse.geotreasure.core.ui.components.AppTabBar
+import com.bitse.geotreasure.core.ui.components.PageHeader
+import com.bitse.geotreasure.core.ui.components.zoneFullName
+import com.bitse.geotreasure.core.ui.theme.Background
+import com.bitse.geotreasure.core.ui.theme.GoldText
+import com.bitse.geotreasure.core.ui.theme.OnSurface
 import com.bitse.geotreasure.core.ui.theme.OnSurfaceVariant
 import com.bitse.geotreasure.core.ui.theme.Primary
 import com.bitse.geotreasure.core.ui.theme.Radius
-import com.bitse.geotreasure.core.ui.theme.SurfaceVariant
+import com.bitse.geotreasure.core.ui.theme.Surface
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -151,20 +162,55 @@ internal val ZONE_LABELS: List<Pair<CampusZone, String>> = listOf(
     CampusZone.EAST to "东",
 )
 
+// ── P07 配色（.fig / 原型 CSS 实测）───────────────────────────────────
+private val FogChipBg = Color(0xFFEAF5EF)      // 迷雾卡图标盒 / 「M/3 校区」章 / mtag
+private val CellOff = Color(0xFFD8E2DD)        // 迷雾小格未开
+private val ZoneCountLabel = Color(0xFF7A8A83) // 「南 4」小字
+private val CloudThumbBg = Color(0xFFEDF4F0)   // fog 态缩略图底
+private val NotInTitle = Color(0xFF6C7464)     // 「本期不纳入」
+private val NotInSub = Color(0xFF7E8476)
+private val TipTextC = Color(0xFF4A5A53)       // 提示条文字
+private val TipIconC = Color(0xFF6E9A8C)
+private val ZoomIdle = Color(0xFF63736C)       // 分段未选中 / 2D
+private val HandleGray = Color(0xFFB9C2B6)     // 底卡拖柄
+private val SubText = Color(0xFF5C6B64)        // 迷雾卡「已散开」
+
 // 3D 地图配色（取自原型 3D 地图色板，浅色系不压地图）
-private val CampusGround = Color(0xFFDDE5E1)
 private val CampusPlatform = Color(0xFFE7EDE8)
 private val CampusPlatformSide = Color(0xFFB8C6BF)
-private val CampusSlot = Color(0xFFCBD8D2)
 private val CloudWhite = Color(0xFFF7FAF7)
 private val CloudShadow = Color(0xFF232D2A)
 
+/** 底部信息卡四态（对应 .fig：fog / next(=live) / campus / all；unlock 动画态不单列，见交付文档） */
+private sealed interface SheetSpec {
+    data object Fog : SheetSpec
+    data object All : SheetSpec
+    data class CampusDone(val zoneName: String, val lastLandmark: String) : SheetSpec
+    data class NextTarget(val zoneName: String, val unlocked: Int, val landmarkId: String) : SheetSpec
+}
+
+private fun sheetSpecOf(state: Overview3DUiState): SheetSpec = when {
+    state.openedTotal >= 12 -> SheetSpec.All
+    state.openedTotal == 0 -> SheetSpec.Fog
+    else -> {
+        val focused = state.selectedZone
+            ?.let { sel -> state.zones.firstOrNull { it.zone == sel } }
+            ?: state.zones.firstOrNull { !it.complete }
+            ?: state.zones.first()
+        val zoneName = zoneFullName(focused.zone)
+        if (focused.complete) {
+            SheetSpec.CampusDone(zoneName, focused.pins.last { it.opened }.landmark.name)
+        } else {
+            SheetSpec.NextTarget(zoneName, focused.done, focused.pins.first { !it.opened }.landmark.id)
+        }
+    }
+}
+
 /**
- * P07 3D 校园地图（原型 p07 对齐）：
- * 迷雾卡片（三校区 4 点计数）/ 全览-南-北-东 聚焦切换 / 2.5D 校园 Canvas（打卡后云散开）/ 点标记看任务。
- * 迷雾读 ExplorationProgressStore 同一份进度（两套地图共用一份数据）。
+ * P07 3D 校园地图（严格按 .fig / 原型 HTML）：
+ * 头栏（标题+副标题+右侧 40dp 圆钮）→ 3D 地图区（径向渐变底 + 迷雾进度卡叠层 +
+ * 全览/南/北/东分段 + 提示条 + 3D/2D 切换 + 「本期不纳入」标注）→ 底部信息卡（四态文案）→ 底部三 Tab。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Overview3DScreen(
     viewModel: Overview3DViewModel,
@@ -176,171 +222,402 @@ fun Overview3DScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("3D 校园地图", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text(
-                            "良乡 · 云层已散开 ${state.openedTotal}/12 片 · ${state.doneMods}/3 校区",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnSurfaceVariant,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenMap) {
-                        Icon(Icons.Outlined.Map, contentDescription = "切换 2D 地图")
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            // P07 原型：底部三 Tab，「探索」为选中态（点探索回 2D 地图）
-            AppTabBar(
-                current = AppTab.Explore,
-                shards = state.openedTotal,
-                onSelect = { tab ->
-                    when (tab) {
-                        AppTab.Explore -> onOpenMap()
-                        AppTab.Puzzle -> onOpenPuzzle()
-                        AppTab.Records -> onOpenRecords()
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            FogCard(state)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Background)
+    ) {
+        PageHeader(
+            title = "3D 校园地图",
+            subtitle = "良乡 · 云层已散开 ${state.openedTotal}/12 片 · ${state.doneMods}/3 校区",
+            onBack = onBack,
+            actionIcon = Icons.Outlined.Map,
+            actionDescription = "一片云对应一个地标",
+            onAction = onOpenMap,
+        )
 
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            // 径向渐变底（原型 .m3wrap：radial-gradient(120% 70% at 50% 8%)）
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawRect(
+                            Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0f to Color(0xFFF2F7EC),
+                                    0.42f to Color(0xFFE7F0E3),
+                                    0.72f to Color(0xFFDCE9DC),
+                                    1f to Color(0xFFD3E2D6),
+                                ),
+                                center = Offset(size.width / 2f, size.height * 0.08f),
+                                radius = size.width * 1.25f,
+                            )
+                        )
+                    }
+            )
+            CampusCanvas(state = state, onOpenLandmark = onOpenLandmark)
+
+            // 左上叠层：迷雾进度卡 → 全览分段 → 提示条（与原型 .m3card/.m3zoom/.m3tip 顺序一致）
+            Column(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .clip(Radius.cardLarge)
-                    .background(CampusGround),
+                    .padding(horizontal = 12.dp)
+                    .align(Alignment.TopStart)
             ) {
-                CampusCanvas(state = state, onOpenLandmark = onOpenLandmark)
+                Spacer(Modifier.height(12.dp))
+                FogCard(state)
+                Spacer(Modifier.height(10.dp))
+                ZoomChips(state, onSelect = { viewModel.onAction(Overview3DAction.SelectZone(it)) })
+                Spacer(Modifier.height(10.dp))
+                TipRow()
             }
 
-            TipRow()
-            ZoomChips(state, onSelect = { viewModel.onAction(Overview3DAction.SelectZone(it)) })
-            Spacer(Modifier.height(6.dp))
+            // 右上 3D/2D 切换（原型 .m3toggle，2D → 回 P01 地图）
+            M3Toggle(
+                onOpen2D = onOpenMap,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 12.dp),
+            )
+
+            // 「本期不纳入 · 融创楼 · 工训楼」标注（原型在地图右中部）
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 210.dp, end = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("本期不纳入", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NotInTitle)
+                Spacer(Modifier.height(3.dp))
+                Text("融创楼 · 工训楼", fontSize = 10.sp, color = NotInSub)
+            }
         }
+
+        M3Sheet(
+            state = state,
+            onOpenPuzzle = onOpenPuzzle,
+            onOpenLandmark = onOpenLandmark,
+        )
+
+        // P07 原型：底部三 Tab，「探索」为选中态（点探索回 2D 地图）
+        AppTabBar(
+            current = AppTab.Explore,
+            shards = state.openedTotal,
+            onSelect = { tab ->
+                when (tab) {
+                    AppTab.Explore -> onOpenMap()
+                    AppTab.Puzzle -> onOpenPuzzle()
+                    AppTab.Records -> onOpenRecords()
+                }
+            },
+        )
     }
 }
 
+/** 迷雾进度卡（原型 .m3card）：图标盒 + 迷雾/已散开 N/12 片 + 校区章；下排三组 2×2 小格 + 注释 */
 @Composable
 private fun FogCard(state: Overview3DUiState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = Radius.card,
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE7E9DE)),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.96f),
+        shadowElevation = 3.dp,
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(
+            Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 11.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Cloud, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("迷雾", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(FogChipBg),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Cloud, contentDescription = null, tint = Primary, modifier = Modifier.size(16.dp))
+                }
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    "已散开 ",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OnSurfaceVariant,
-                )
-                Text(
-                    "${state.openedTotal}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Primary,
-                )
-                Text(
-                    "/12 片",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OnSurfaceVariant,
-                )
+                Text("迷雾", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                Spacer(Modifier.width(8.dp))
+                Text("已散开 ", fontSize = 12.sp, color = SubText)
+                Text("${state.openedTotal}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Primary)
+                Text("/12 片", fontSize = 12.sp, color = SubText)
                 Spacer(Modifier.weight(1f))
-                Surface(shape = Radius.chip, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                Surface(shape = Radius.pill, color = FogChipBg) {
                     Text(
                         "${state.doneMods}/3 校区",
-                        style = AppTextSmall,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                     )
                 }
             }
             Spacer(Modifier.height(9.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 state.zones.forEach { zone ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        zone.pins.forEach { pin ->
-                            Box(
-                                Modifier
-                                    .size(10.dp)
-                                    .clip(Radius.pill)
-                                    .background(if (pin.opened) Primary else SurfaceVariant),
-                            )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            zone.pins.forEach { pin ->
+                                Box(
+                                    Modifier
+                                        .size(11.dp)
+                                        .clip(Radius.pill)
+                                        .background(if (pin.opened) Primary else CellOff),
+                                )
+                            }
                         }
-                        Text("${zone.label} ${zone.done}", style = AppTextSmall, color = OnSurfaceVariant)
+                        Spacer(Modifier.height(3.dp))
+                        Text("${zone.label} ${zone.done}", fontSize = 9.sp, color = ZoneCountLabel)
                     }
+                    Spacer(Modifier.width(6.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                Text("每片云\n= 一个地标", style = AppTextCaption, color = OnSurfaceVariant)
+                Text(
+                    "每片云\n= 一个地标",
+                    fontSize = 10.5.sp,
+                    lineHeight = 13.sp,
+                    color = OnSurfaceVariant,
+                    textAlign = TextAlign.Right,
+                )
             }
         }
     }
 }
 
-private val AppTextSmall = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold)
-private val AppTextCaption = TextStyle(fontSize = 10.5.sp, lineHeight = 13.sp)
-
-@Composable
-private fun TipRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(Icons.Outlined.Layers, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(16.dp))
-        Text("点标记看任务 · 打卡后云会散开", style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariant)
-    }
-}
-
+/** 全览/南/北/东 聚焦分段（原型 .m3zoom）：白色容器，选中项主色底白字 */
 @Composable
 private fun ZoomChips(state: Overview3DUiState, onSelect: (CampusZone?) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ZoomChip(label = "全览", selected = state.selectedZone == null, onClick = { onSelect(null) })
-        state.zones.forEach { zone ->
-            ZoomChip(label = zone.label, selected = state.selectedZone == zone.zone, onClick = { onSelect(zone.zone) })
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.95f),
+        shadowElevation = 3.dp,
+    ) {
+        Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            ZoomChip(label = "全览", selected = state.selectedZone == null, onClick = { onSelect(null) })
+            state.zones.forEach { zone ->
+                ZoomChip(label = zone.label, selected = state.selectedZone == zone.zone, onClick = { onSelect(zone.zone) })
+            }
         }
     }
 }
 
 @Composable
 private fun ZoomChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = Radius.chip,
-        color = if (selected) Primary else MaterialTheme.colorScheme.surface,
-        contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE7E9DE)),
+    Box(
+        modifier = Modifier
+            .height(30.dp)
+            .defaultMinSize(minWidth = 38.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) Primary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = if (selected) Color.White else ZoomIdle)
+    }
+}
+
+/** 提示条（原型 .m3tip） */
+@Composable
+private fun TipRow() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = Color.White.copy(alpha = 0.94f),
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(Icons.Outlined.Layers, contentDescription = null, tint = TipIconC, modifier = Modifier.size(16.dp))
+            Text("点标记看任务 · 打卡后云会散开", fontSize = 10.5.sp, color = TipTextC)
+        }
+    }
+}
+
+/** 3D/2D 切换（原型 .m3toggle）：3D 常亮，2D 回 P01 地图 */
+@Composable
+private fun M3Toggle(onOpen2D: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.96f),
+        shadowElevation = 3.dp,
+    ) {
+        Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            ToggleBtn("3D", selected = true, onClick = {})
+            ToggleBtn("2D", selected = false, onClick = onOpen2D)
+        }
+    }
+}
+
+@Composable
+private fun ToggleBtn(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(width = 36.dp, height = 32.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) Primary else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = if (selected) Color.White else ZoomIdle)
+    }
+}
+
+/** 底部信息卡（原型 .m3sheet）：拖柄 + 64dp 缩略图 + 标题（可带 mtag）+ 副标题 + lead + 整宽主按钮 */
+@Composable
+private fun M3Sheet(
+    state: Overview3DUiState,
+    onOpenPuzzle: () -> Unit,
+    onOpenLandmark: (String) -> Unit,
+) {
+    val spec = sheetSpecOf(state)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = Surface,
+        shadowElevation = 8.dp,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 36.dp, height = 4.dp)
+                    .clip(Radius.pill)
+                    .background(HandleGray)
+            )
+            Spacer(Modifier.height(12.dp))
+            when (spec) {
+                SheetSpec.Fog -> {
+                    SheetHead(
+                        thumbBg = CloudThumbBg, thumbTint = Primary, icon = Icons.Outlined.Cloud,
+                        title = "校园被云层盖住了", tag = null,
+                        sub = "12 片云，一片对应一个地标",
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        "到地标跟前拍一张并打卡成功，它头顶的云就会散开；一个校区 4 个地标都打卡，整片云一起散。",
+                        fontSize = 12.sp, lineHeight = 19.sp, color = OnSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    AppButton(
+                        text = "去最近的地标打卡",
+                        icon = Icons.Outlined.PhotoCamera,
+                        onClick = {
+                            val first = state.zones.firstOrNull { !it.complete }
+                                ?.pins?.firstOrNull { !it.opened }?.landmark?.id
+                            if (first != null) onOpenLandmark(first) else onOpenPuzzle()
+                        },
+                    )
+                }
+                SheetSpec.All -> {
+                    SheetHead(
+                        thumbBg = GoldThumbBg, thumbTint = GoldText, icon = Icons.Rounded.Stars,
+                        title = "12 片云全部散开", tag = null,
+                        sub = "三个校区都集齐了，3D 校园完整可见",
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    AppButton(
+                        text = "查看拼图",
+                        icon = Icons.Outlined.Extension,
+                        onClick = onOpenPuzzle,
+                    )
+                }
+                is SheetSpec.CampusDone -> {
+                    SheetHead(
+                        thumbBg = GoldThumbBg, thumbTint = GoldText, icon = Icons.Outlined.Extension,
+                        title = "${spec.zoneName} 云层整片散开", tag = null,
+                        sub = "${spec.lastLandmark} 打卡完成 · 4/4 全部点亮",
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        "最后一片云也在散开 —— 整片 ${spec.zoneName} 露出完整 3D 地图。",
+                        fontSize = 12.sp, lineHeight = 19.sp, color = OnSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    AppButton(
+                        text = "查看 ${spec.zoneName}拼图",
+                        icon = Icons.Outlined.Extension,
+                        onClick = onOpenPuzzle,
+                    )
+                }
+                is SheetSpec.NextTarget -> {
+                    SheetHead(
+                        thumbBg = GoldThumbBg, thumbTint = GoldText, icon = Icons.Rounded.LocationOn,
+                        title = "？", tag = "下一个目标",
+                        sub = "${spec.zoneName} · 已解锁 ${spec.unlocked}/4 片云",
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        "这一片云还没散开。走到这块地标跟前拍一张、打卡成功，它头顶的云就会散开。",
+                        fontSize = 12.sp, lineHeight = 19.sp, color = OnSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    AppButton(
+                        text = "去这个地标打卡",
+                        icon = Icons.Outlined.PhotoCamera,
+                        onClick = { onOpenLandmark(spec.landmarkId) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val GoldThumbBg = Color(0xFFFBF3DD)
+
+@Composable
+private fun SheetHead(
+    thumbBg: Color,
+    thumbTint: Color,
+    icon: ImageVector,
+    title: String,
+    tag: String?,
+    sub: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(thumbBg),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = thumbTint, modifier = Modifier.size(32.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = OnSurface)
+                if (tag != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Surface(shape = RoundedCornerShape(6.dp), color = FogChipBg) {
+                        Text(
+                            tag,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(3.dp))
+            Text(sub, fontSize = 12.5.sp, color = OnSurfaceVariant)
+        }
     }
 }
 
