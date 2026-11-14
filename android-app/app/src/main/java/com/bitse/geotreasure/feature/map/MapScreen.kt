@@ -94,7 +94,6 @@ import com.bitse.geotreasure.core.ui.components.BannerTone
 import com.bitse.geotreasure.core.ui.components.BrandHeader
 import com.bitse.geotreasure.core.ui.components.CampusSegmentedControl
 import com.bitse.geotreasure.core.ui.components.LandmarkImage
-import com.bitse.geotreasure.core.ui.components.MAP_DISCLAIMER
 import com.bitse.geotreasure.core.ui.components.ProtoMetaRow
 import com.bitse.geotreasure.core.ui.components.REVEAL_HINT_TEXT
 import com.bitse.geotreasure.core.ui.components.terrainOf
@@ -187,7 +186,7 @@ fun MapScreen(
             )
         }
 
-        // P01 原型顶部：品牌头图（右上是「我的记录」热区）+ 校区分段 + 探索进度卡
+        // P01 原型顶部：品牌头图（右上是「我的记录」热区）+ 校区分段
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -217,13 +216,6 @@ fun MapScreen(
                             )
                         }
                     },
-                )
-                CampusProgressCard(
-                    zone = selectedCampus,
-                    completedLandmarkIds = uiState.completedLandmarkIds,
-                    recommended = uiState.landmarks.firstOrNull {
-                        it.campusZone == selectedCampus && it.id !in uiState.completedLandmarkIds
-                    }?.name,
                 )
             }
         }
@@ -360,18 +352,6 @@ fun MapScreen(
                         }
                     }
                 }
-            }
-            // 原型免责声明小条（#FFFFFF 胶囊，10.5sp #5D6962）
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White,
-            ) {
-                Text(
-                    MAP_DISCLAIMER,
-                    style = AppText.caption,
-                    color = OnSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                )
             }
             uiState.selectedLandmark?.let { landmark ->
                 LandmarkPanel(
@@ -514,80 +494,6 @@ private fun DeveloperMapDebugPanel(
                     OutlinedButton(onClick = { onAction(MapAction.DebugCompleteSelectedLandmark) }) {
                         Text("完成地标")
                     }
-                }
-            }
-        }
-    }
-}
-
-/** P01 原型「南校区探索」进度卡：标题 + 「N/4」+ 四段小进度条 + 推荐位 chip */
-@Composable
-private fun CampusProgressCard(
-    zone: com.bitse.geotreasure.core.model.CampusZone,
-    completedLandmarkIds: Set<String>,
-    recommended: String?,
-    modifier: Modifier = Modifier,
-) {
-    val zoneLandmarks = LiangxiangTreasureCatalog.landmarks.filter { it.campusZone == zone }
-    val done = zoneLandmarks.count { it.id in completedLandmarkIds }
-    val zoneName = when (zone) {
-        com.bitse.geotreasure.core.model.CampusZone.SOUTH -> "南校区"
-        com.bitse.geotreasure.core.model.CampusZone.NORTH -> "北校区"
-        com.bitse.geotreasure.core.model.CampusZone.EAST -> "东校区"
-    }
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        color = BrandSurface,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "${zoneName}探索",
-                    style = AppText.small.copy(fontWeight = FontWeight.Bold),
-                    color = OnSurface,
-                )
-                Spacer(Modifier.height(7.dp))
-                // 四段小进度条（原型 83×6 ×4）
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    zoneLandmarks.forEach { lm ->
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(if (lm.id in completedLandmarkIds) Primary else Color(0xFFDDE3D6)),
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.width(10.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    "$done",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Primary,
-                )
-                Text(
-                    "/${zoneLandmarks.size}",
-                    style = AppText.tiny.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF8A958D),
-                )
-            }
-            recommended?.let { name ->
-                Spacer(Modifier.width(8.dp))
-                Surface(shape = RoundedCornerShape(10.dp), color = BrandSurface) {
-                    Text(
-                        name,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Primary,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
                 }
             }
         }
