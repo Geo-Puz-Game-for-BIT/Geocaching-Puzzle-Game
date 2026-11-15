@@ -1,7 +1,7 @@
 package com.bitse.geotreasure.feature.map
 
 import com.bitse.geotreasure.core.location.distanceMeters
-import com.bitse.geotreasure.core.location.isWithinCheckInArea
+import com.bitse.geotreasure.core.location.containsArea
 import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.Landmark
@@ -70,11 +70,10 @@ internal fun discoverLandmarks(
     return landmarks.filter { landmark ->
         landmark.id !in alreadyRevealed &&
             landmark.revealPointsOrCenter().any { revealPoint ->
-                isWithinCheckInArea(
+                containsArea(
                     location.point,
                     revealPoint,
                     revealArea(landmark.checkInArea),
-                    location.accuracyMeters,
                 )
             }
     }

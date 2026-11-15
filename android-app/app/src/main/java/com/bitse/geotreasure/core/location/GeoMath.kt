@@ -61,8 +61,17 @@ fun isWithinCheckInArea(
     areaCenter: GeoPoint,
     area: CheckInArea,
     accuracyMeters: Float,
+): Boolean = accuracyMeters.isFinite() && accuracyMeters in 0f..MAX_CHECK_IN_ACCURACY_METERS &&
+    containsArea(point, areaCenter, area)
+
+fun containsArea(
+    point: GeoPoint,
+    areaCenter: GeoPoint,
+    area: CheckInArea,
 ): Boolean {
-    if (accuracyMeters > MAX_CHECK_IN_ACCURACY_METERS) return false
+    if (!point.latitude.isFinite() || !point.longitude.isFinite() ||
+        !areaCenter.latitude.isFinite() || !areaCenter.longitude.isFinite()
+    ) return false
     return when (area) {
         is CircularCheckInArea -> distanceMeters(areaCenter, point) <= area.radiusMeters
         is PolygonCheckInArea -> pointInPolygon(localOffsetMeters(areaCenter, point), area.vertices)

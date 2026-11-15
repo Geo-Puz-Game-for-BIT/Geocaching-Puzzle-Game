@@ -8,6 +8,7 @@ import com.bitse.geotreasure.core.model.LocationSample
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
 import kotlinx.datetime.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -171,6 +172,18 @@ class MapFogRegressionTest {
 
         assertEquals(listOf(landmark), discoverLandmarks(listOf(landmark), emptySet(), sample(revealOnly, 2f)))
         assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(outsideReveal, 2f)).isEmpty())
+    }
+
+    @Test
+    fun `exploration quality location can reveal while check in remains blocked`() {
+        val landmark = LiangxiangTreasureCatalog.landmarks.first { it.id == "lmk_north_student_service" }
+        val location = sample(landmark.point, 40f)
+
+        assertEquals(listOf(landmark), discoverLandmarks(listOf(landmark), emptySet(), location))
+        assertTrue(discoverLandmarks(listOf(landmark), emptySet(), sample(landmark.point, 51f)).isEmpty())
+        assertFalse(com.bitse.geotreasure.core.location.isWithinCheckInArea(
+            location.point, landmark.point, landmark.checkInArea, location.accuracyMeters,
+        ))
     }
 
     @Test

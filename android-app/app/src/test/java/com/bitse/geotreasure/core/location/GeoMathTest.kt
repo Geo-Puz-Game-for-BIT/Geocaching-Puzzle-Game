@@ -39,6 +39,7 @@ class GeoMathTest {
 
         assertTrue(isWithinCheckInArea(nearbyPoint, center, CircularCheckInArea(20.0), accuracyMeters = 10f))
         assertFalse(isWithinCheckInArea(nearbyPoint, center, CircularCheckInArea(10.0), accuracyMeters = 10f))
+        assertFalse(isWithinCheckInArea(nearbyPoint, center, CircularCheckInArea(20.0), accuracyMeters = Float.NaN))
     }
 
     @Test
