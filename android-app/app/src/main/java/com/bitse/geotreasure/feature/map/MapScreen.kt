@@ -84,8 +84,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
-import com.bitse.geotreasure.core.ui.theme.OnPrimaryContainer
 import com.bitse.geotreasure.core.ui.components.AppButton
 import com.bitse.geotreasure.core.ui.components.AppTab
 import com.bitse.geotreasure.core.ui.components.AppTabBar
@@ -115,7 +113,6 @@ fun MapScreen(
     onOpenLandmark: (String) -> Unit,
     onOpenPuzzle: () -> Unit,
     onOpenRecords: () -> Unit,
-    onOpenOverview3D: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -289,32 +286,6 @@ fun MapScreen(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // P01 原型 2D/3D 切换：白底胶囊，2D 为主色块，3D 文字进 3D 总览页
-            Surface(shape = RoundedCornerShape(10.dp), color = Color.White) {
-                Row(
-                    Modifier.padding(3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "2D",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OnPrimaryContainer,
-                        modifier = Modifier
-                            .background(Primary, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 9.dp, vertical = 7.dp),
-                    )
-                    Text(
-                        "3D",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF63736C),
-                        modifier = Modifier
-                            .clickable { onOpenOverview3D() }
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                    )
-                }
-            }
             if (shouldUseAmap) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     uiState.selectedLandmark?.let { landmark ->

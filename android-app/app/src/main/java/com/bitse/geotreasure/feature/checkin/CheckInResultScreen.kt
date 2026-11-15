@@ -103,14 +103,13 @@ class CheckInResultViewModel(
  * P04 打卡结果 · 成功 —— 视觉层严格按交付原型 .fig（P04 打卡结果 · 成功）实现：
  * 头栏（打卡结果 / X · 碎片已归位）→ 84dp 成功圆标（#D6EBDD）→ 「打卡成功」24sp
  * → 副题与确认文案 → 2×2 碎片格（#DCE5E1，本块高亮）→ 归位说明 → 奖励卡（#FFFEFA + 金色计数）
- * → 底部三键：查看拼图（主）/ 看 3D 地图开云 / 继续探索。
+ * → 底部两键：查看拼图（主）/ 继续探索。
  */
 @Composable
 fun CheckInResultScreen(
     viewModel: CheckInResultViewModel,
     onOpenPuzzle: (String) -> Unit,
     onOpenMap: () -> Unit,
-    onOpenOverview3D: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
@@ -195,12 +194,6 @@ fun CheckInResultScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(6.dp))
-            AppButton(
-                text = "看 3D 地图开云",
-                onClick = onOpenOverview3D,
-                modifier = Modifier.fillMaxWidth(),
-                style = com.bitse.geotreasure.core.ui.components.AppButtonStyle.Text,
-            )
             AppButton(
                 text = "继续探索",
                 onClick = onOpenMap,

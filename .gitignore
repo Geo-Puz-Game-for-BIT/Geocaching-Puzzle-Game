@@ -59,3 +59,6 @@ api-tests/environments/private/
 api-tests/.env
 cloudbase/.env
 .env.local
+
+# 本地工作缓存（构建临时目录等，勿入库）
+.cache/
