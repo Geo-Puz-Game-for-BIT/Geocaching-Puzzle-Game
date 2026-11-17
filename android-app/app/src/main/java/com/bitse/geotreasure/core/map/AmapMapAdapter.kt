@@ -3,6 +3,7 @@ package com.bitse.geotreasure.core.map
 import android.graphics.Color
 import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
+import com.amap.api.maps.model.BitmapDescriptor
 import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.Circle
 import com.amap.api.maps.model.CircleOptions
@@ -30,6 +31,8 @@ internal class AmapMapAdapter(
     private val locationSource: AmapRenderLocationSource,
 ) : MapAdapter {
     private val events = MutableSharedFlow<MapEvent>(extraBufferCapacity = 8)
+    private val artworkOverlay = CampusArtworkOverlay(map)
+    private var artworkBasePrepared = false
     private val landmarkOverlays = mutableMapOf<String, LandmarkOverlay>()
     private val normalLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
     private val selectedLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
@@ -283,7 +286,28 @@ internal class AmapMapAdapter(
         null
     }
 
+    /**
+     * P01 底图嵌入：收敛高德原生底图元素，让校正插画成为唯一的风格层。
+     * 关闭 3D 楼块/室内图/文字标注，并锁定正俯视（校正图是正射视角，倾斜会露馅）。
+     */
+    fun prepareArtworkBase() {
+        if (artworkBasePrepared) return
+        map.showMapText(false)
+        map.showBuildings(false)
+        map.showIndoorMap(false)
+        map.uiSettings.isTiltGesturesEnabled = false
+        map.moveCamera(CameraUpdateFactory.changeTilt(0f))
+        artworkBasePrepared = true
+    }
+
+    /** 安装一张校正底图；由 AmapMapContent 在 MapView 就绪后调用一次，不在 render() 中重复调用 */
+    fun installArtwork(spec: CampusArtworkSpec, image: BitmapDescriptor) {
+        artworkOverlay.install(spec, image, ARTWORK_Z_INDEX)
+    }
+
     override fun release() {
+        // 必须在 MapView.onDestroy 之前释放：先移除覆盖物，再回收图片
+        artworkOverlay.clear()
         map.isMyLocationEnabled = false
         locationSource.deactivate()
         landmarkOverlays.values.forEach(LandmarkOverlay::remove)
@@ -324,6 +348,8 @@ internal class AmapMapAdapter(
         private const val CAMERA_ANIMATION_MILLIS = 220L
         private const val LOCATION_INTERVAL_MILLIS = 1_000L
         private const val SCOUT_Z_INDEX = 31f
+        // 校正底图压在最底下：低于打卡区域/侦查圈（31f），也不参与迷雾（Compose 层在其上）
+        private const val ARTWORK_Z_INDEX = 0f
         private val SCOUT_STROKE_COLOR = 0xCC66D7B0.toInt()
         private val SCOUT_FILL_COLOR = 0x2266D7B0
         private val SELECTED_STROKE_COLOR = 0xFFE07A23.toInt()

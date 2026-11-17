@@ -2,6 +2,7 @@
 .gradle/
 .kotlin/
 **/build/
+**/build_prev*/
 local.properties
 captures/
 .externalNativeBuild/
