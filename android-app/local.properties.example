@@ -2,3 +2,6 @@
 # Adjust this path to match the Android SDK location on your machine.
 sdk.dir=D\:\\Android\\Sdk
 AMAP_API_KEY=
+API_BASE_URL=https://your-cloudbase-gateway.example.com/api/v1
+DEMO_AUTH_TOKEN=
+DEMO_USER_ID=usr_demo01

@@ -1,0 +1,338 @@
+{
+  "source": {
+    "adr": "docs/adr/0002-campus-puzzle-reveal.md",
+    "androidBranch": "feat/map-fog-of-war",
+    "androidCommit": "1320ce3e45dec8ea3c811761d7e27c435b3f0e90",
+    "confirmedAt": "2026-10-26"
+  },
+  "puzzleId": "puzzle_liangxiang_campus",
+  "title": "良乡校区探索图",
+  "defaultRevealMode": "FOG_OF_WAR",
+  "sections": [
+    {
+      "id": "section_north",
+      "campusZone": "NORTH",
+      "rows": 2,
+      "columns": 2,
+      "fragments": [
+        {
+          "id": "fragment_north_lake",
+          "landmarkId": "lmk_north_lake",
+          "taskId": "task_north_lake",
+          "title": "北湖",
+          "pieceIndex": 0,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_north_lake.png"
+        },
+        {
+          "id": "fragment_north_zongjiao",
+          "landmarkId": "lmk_north_zongjiao",
+          "taskId": "task_north_zongjiao",
+          "title": "综教",
+          "pieceIndex": 1,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_north_zongjiao.png"
+        },
+        {
+          "id": "fragment_north_student_service",
+          "landmarkId": "lmk_north_student_service",
+          "taskId": "task_north_student_service",
+          "title": "学服",
+          "pieceIndex": 2,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_north_student_service.png"
+        },
+        {
+          "id": "fragment_north_library",
+          "landmarkId": "lmk_north_library",
+          "taskId": "task_north_library",
+          "title": "图书馆",
+          "pieceIndex": 3,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_north_library.png"
+        }
+      ]
+    },
+    {
+      "id": "section_east",
+      "campusZone": "EAST",
+      "rows": 2,
+      "columns": 2,
+      "fragments": [
+        {
+          "id": "fragment_east_gantang",
+          "landmarkId": "lmk_east_gantang",
+          "taskId": "task_east_gantang",
+          "title": "甘棠",
+          "pieceIndex": 0,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_east_gantang.png"
+        },
+        {
+          "id": "fragment_east_qinyuan",
+          "landmarkId": "lmk_east_qinyuan",
+          "taskId": "task_east_qinyuan",
+          "title": "勤园",
+          "pieceIndex": 1,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_east_qinyuan.png"
+        },
+        {
+          "id": "fragment_east_wencui",
+          "landmarkId": "lmk_east_wencui",
+          "taskId": "task_east_wencui",
+          "title": "文萃",
+          "pieceIndex": 2,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_east_wencui.png"
+        },
+        {
+          "id": "fragment_east_wenbo",
+          "landmarkId": "lmk_east_wenbo",
+          "taskId": "task_east_wenbo",
+          "title": "文博中心",
+          "pieceIndex": 3,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_east_wenbo.png"
+        }
+      ]
+    },
+    {
+      "id": "section_south",
+      "campusZone": "SOUTH",
+      "rows": 2,
+      "columns": 2,
+      "fragments": [
+        {
+          "id": "fragment_south_shutong",
+          "landmarkId": "lmk_south_shutong",
+          "taskId": "task_south_shutong",
+          "title": "疏桐",
+          "pieceIndex": 0,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_south_shutong.png"
+        },
+        {
+          "id": "fragment_south_boya",
+          "landmarkId": "lmk_south_boya",
+          "taskId": "task_south_boya",
+          "title": "博雅",
+          "pieceIndex": 1,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_south_boya.png"
+        },
+        {
+          "id": "fragment_south_lijiao",
+          "landmarkId": "lmk_south_lijiao",
+          "taskId": "task_south_lijiao",
+          "title": "理教",
+          "pieceIndex": 2,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_south_lijiao.png"
+        },
+        {
+          "id": "fragment_south_industrial_ecology",
+          "landmarkId": "lmk_south_industrial_ecology",
+          "taskId": "task_south_industrial_ecology",
+          "title": "工业生态楼",
+          "pieceIndex": 3,
+          "imageKey": "puzzles/puzzle_liangxiang_campus/fragment_south_industrial_ecology.png"
+        }
+      ]
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "lmk_north_lake",
+      "name": "北湖",
+      "sectionId": "section_north",
+      "pieceIndex": 0,
+      "latitude": 39.7366,
+      "longitude": 116.1666,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "circle",
+        "radiusMeters": 55
+      }
+    },
+    {
+      "id": "lmk_north_zongjiao",
+      "name": "综教",
+      "sectionId": "section_north",
+      "pieceIndex": 1,
+      "latitude": 39.7339,
+      "longitude": 116.168,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -32.727, "northMeters": -25.806 },
+          { "eastMeters": 38.572, "northMeters": -15.785 },
+          { "eastMeters": 32.727, "northMeters": 25.806 },
+          { "eastMeters": -38.572, "northMeters": 15.785 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_north_student_service",
+      "name": "学服",
+      "sectionId": "section_north",
+      "pieceIndex": 2,
+      "latitude": 39.7336,
+      "longitude": 116.1662,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -25.646, "northMeters": -14.398 },
+          { "eastMeters": 22.092, "northMeters": -19.416 },
+          { "eastMeters": 25.646, "northMeters": 14.398 },
+          { "eastMeters": -22.092, "northMeters": 19.416 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_north_library",
+      "name": "图书馆",
+      "sectionId": "section_north",
+      "pieceIndex": 3,
+      "latitude": 39.7335,
+      "longitude": 116.1649,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -41.221, "northMeters": -26.941 },
+          { "eastMeters": 44.569, "northMeters": -20.942 },
+          { "eastMeters": 41.221, "northMeters": 26.941 },
+          { "eastMeters": -44.569, "northMeters": 20.942 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_east_gantang",
+      "name": "甘棠",
+      "sectionId": "section_east",
+      "pieceIndex": 0,
+      "latitude": 39.7371,
+      "longitude": 116.1717,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "circle",
+        "radiusMeters": 42
+      }
+    },
+    {
+      "id": "lmk_east_qinyuan",
+      "name": "勤园",
+      "sectionId": "section_east",
+      "pieceIndex": 1,
+      "latitude": 39.7368,
+      "longitude": 116.1743,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "circle",
+        "radiusMeters": 42
+      }
+    },
+    {
+      "id": "lmk_east_wencui",
+      "name": "文萃",
+      "sectionId": "section_east",
+      "pieceIndex": 2,
+      "latitude": 39.7339,
+      "longitude": 116.173,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -39, "northMeters": -25 },
+          { "eastMeters": 39, "northMeters": -25 },
+          { "eastMeters": 39, "northMeters": 25 },
+          { "eastMeters": -39, "northMeters": 25 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_east_wenbo",
+      "name": "文博中心",
+      "sectionId": "section_east",
+      "pieceIndex": 3,
+      "latitude": 39.734,
+      "longitude": 116.1754,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -35, "northMeters": -27.5 },
+          { "eastMeters": 35, "northMeters": -27.5 },
+          { "eastMeters": 35, "northMeters": 27.5 },
+          { "eastMeters": -35, "northMeters": 27.5 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_south_shutong",
+      "name": "疏桐",
+      "sectionId": "section_south",
+      "pieceIndex": 0,
+      "latitude": 39.7305,
+      "longitude": 116.1661,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "circle",
+        "radiusMeters": 45
+      }
+    },
+    {
+      "id": "lmk_south_boya",
+      "name": "博雅",
+      "sectionId": "section_south",
+      "pieceIndex": 1,
+      "latitude": 39.7269,
+      "longitude": 116.1657,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "circle",
+        "radiusMeters": 45
+      }
+    },
+    {
+      "id": "lmk_south_lijiao",
+      "name": "理教",
+      "sectionId": "section_south",
+      "pieceIndex": 2,
+      "latitude": 39.7301,
+      "longitude": 116.1695,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -35.798, "northMeters": -23.906 },
+          { "eastMeters": 38.101, "northMeters": -20.033 },
+          { "eastMeters": 35.798, "northMeters": 23.906 },
+          { "eastMeters": -38.101, "northMeters": 20.033 }
+        ]
+      }
+    },
+    {
+      "id": "lmk_south_industrial_ecology",
+      "name": "工业生态楼",
+      "sectionId": "section_south",
+      "pieceIndex": 3,
+      "latitude": 39.727,
+      "longitude": 116.1697,
+      "coordinateSystem": "GCJ02",
+      "coordinateVerified": false,
+      "checkInArea": {
+        "type": "polygon",
+        "vertices": [
+          { "eastMeters": -35.875, "northMeters": -19.949 },
+          { "eastMeters": 31.866, "northMeters": -25.876 },
+          { "eastMeters": 35.875, "northMeters": 19.949 },
+          { "eastMeters": -31.866, "northMeters": 25.876 }
+        ]
+      }
+    }
+  ]
+}

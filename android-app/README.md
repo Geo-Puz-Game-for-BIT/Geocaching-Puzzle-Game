@@ -5,6 +5,17 @@
 1. 安装 JDK 17、Android SDK 36 和 Build Tools 35.0.0；当前 AGP 8.13.2 使用后者，版本口径见 [统一工具链](../docs/toolchain.md)。
 2. 将 `local.properties.example` 复制为 `local.properties`，填写本机 `sdk.dir`。
 3. 需要真实高德地图时，填写 `AMAP_API_KEY`；没有 Key 时应用自动使用可交互的演示地图。
+4. 联机模式还需要在未跟踪的 `local.properties` 中填写：
+
+```properties
+API_BASE_URL=https://<cloudbase-gateway>/api/v1
+DEMO_AUTH_TOKEN=<private-test-token>
+DEMO_USER_ID=usr_demo01
+```
+
+`API_BASE_URL` 与 `DEMO_AUTH_TOKEN` 都非空时，App 使用 CloudBase 地标接口；否则回退到本地演示数据。
+真机不要使用 `127.0.0.1` 或 `localhost` 作为 API 地址。高德 Key 必须绑定包名
+`com.bitse.geotreasure` 与当前 APK 签名 SHA-1。
 4. 执行 `gradlew.bat assembleDebug`，APK 位于 `app/build/outputs/apk/debug/`。
 
 当前仓库上级目录包含中文字符。AGP 可以通过 `android.overridePathCheck=true` 构建 APK，但 Windows JUnit classpath 仍可能找不到测试类。完整验收请在仓库根目录执行：

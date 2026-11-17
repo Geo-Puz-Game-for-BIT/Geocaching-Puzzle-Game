@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitse.geotreasure.core.checkin.CheckInGateResult
 import com.bitse.geotreasure.core.ui.compactDescription
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +49,7 @@ fun LandmarkDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.draftId)
+                is LandmarkDetailEffect.NavigateToCamera -> onOpenCamera(effect.landmarkId, effect.attemptId)
             }
         }
     }
@@ -112,9 +115,47 @@ fun LandmarkDetailScreen(
                         Text(landmark.hint ?: "到达地标后查看现场提示。")
                     }
                     Spacer(Modifier.weight(1f))
+
+                    when (val gate = uiState.gate) {
+                        is CheckInGateResult.Ready -> {
+                            gate.distanceMeters?.let {
+                                Text(
+                                    "已进入打卡范围（距离约 ${it.roundToInt()} 米）",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+
+                        is CheckInGateResult.Blocked -> {
+                            Text(
+                                gate.reason.message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            gate.distanceMeters?.let {
+                                Text(
+                                    "距离约 ${it.roundToInt()} 米",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.onAction(LandmarkDetailAction.RefreshLocation) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("重新定位")
+                            }
+                        }
+
+                        null -> {}
+                    }
+
                     Button(
                         onClick = { viewModel.onAction(LandmarkDetailAction.StartTask) },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = uiState.canStartTask,
                     ) {
                         Icon(Icons.Rounded.CameraAlt, contentDescription = null)
                         Text("  开始拍照任务")
