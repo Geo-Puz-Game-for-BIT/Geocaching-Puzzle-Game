@@ -22,11 +22,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
 import com.bitse.geotreasure.core.model.CampusZone
@@ -36,8 +33,6 @@ import com.bitse.geotreasure.core.model.FogOfWarRules
 import com.bitse.geotreasure.core.model.Landmark
 import com.bitse.geotreasure.core.model.MapRenderState
 import com.bitse.geotreasure.core.model.PolygonCheckInArea
-import com.bitse.geotreasure.core.model.campusRevealBlocks
-import com.bitse.geotreasure.core.location.offsetPoint
 
 @Composable
 fun DemoMapContent(
@@ -49,7 +44,6 @@ fun DemoMapContent(
     val projection = remember(state.landmarks) {
         state.landmarks.takeIf { it.isNotEmpty() }?.let(::DemoMapProjection)
     }
-    val revealBlocks = remember(state.landmarks) { campusRevealBlocks(state.landmarks) }
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -102,6 +96,16 @@ fun DemoMapContent(
             )
         }
 
+        // P01 迷雾 v3：卡通云层铺满全图，已打卡地标开软边孔（画在底图之上、水滴之下，对齐原型层级）
+        if (!state.debugRevealAll) {
+            FogOverlay(
+                landmarks = state.landmarks,
+                completedLandmarkIds = state.completedLandmarkIds,
+                projection = projection,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
         BoxWithConstraints(Modifier.fillMaxSize()) {
             state.landmarks.filter { it.id in state.visibleLandmarkIds }.forEach { landmark ->
                 val position = projection?.position(landmark.point) ?: return@forEach
@@ -117,36 +121,12 @@ fun DemoMapContent(
                 )
             }
         }
-        Canvas(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
-        ) {
-            if (!state.debugRevealAll) {
-                drawRect(color = Color(0x66343A40))
+        // 旧深灰迷雾已由 FogOverlay（卡通云层）替代；此画布仅保留侦查圈调试环
+        Canvas(Modifier.fillMaxSize()) {
+            if (state.debugShowScoutRange) {
                 projection?.let { mapProjection ->
-                    state.exploredCenters.forEach { explored ->
-                        val position = mapProjection.position(explored)
-                        val radius = mapProjection.radiusFractions(FogOfWarRules.SCOUT_RADIUS_METERS)
-                        drawOval(
-                            color = Color.Transparent,
-                            topLeft = Offset(size.width * (position.xFraction - radius.xFraction), size.height * (position.yFraction - radius.yFraction)),
-                            size = Size(size.width * radius.xFraction * 2, size.height * radius.yFraction * 2),
-                            blendMode = BlendMode.Clear,
-                        )
-                    }
                     state.liveScoutCenter?.let { center ->
                         val position = mapProjection.position(center)
-                        val radius = mapProjection.radiusFractions(FogOfWarRules.SCOUT_RADIUS_METERS)
-                        drawOval(
-                            color = Color.Transparent,
-                            topLeft = Offset(size.width * (position.xFraction - radius.xFraction), size.height * (position.yFraction - radius.yFraction)),
-                            size = Size(size.width * radius.xFraction * 2, size.height * radius.yFraction * 2),
-                            blendMode = BlendMode.Clear,
-                        )
-                    }
-                    if (state.debugShowScoutRange && state.liveScoutCenter != null) {
-                        val position = mapProjection.position(state.liveScoutCenter)
                         val radius = mapProjection.radiusFractions(FogOfWarRules.SCOUT_RADIUS_METERS)
                         drawOval(
                             color = Color(0xCC66D7B0),
@@ -154,44 +134,6 @@ fun DemoMapContent(
                             size = Size(size.width * radius.xFraction * 2, size.height * radius.yFraction * 2),
                             style = Stroke(width = 3.dp.toPx()),
                         )
-                    }
-                }
-                revealBlocks.filter { it.landmarkId in state.completedLandmarkIds }.forEach { block ->
-                    val mapProjection = projection ?: return@forEach
-                    val path = Path()
-                    block.vertices.forEachIndexed { index, vertex ->
-                        val position = mapProjection.position(vertex)
-                        val x = size.width * position.xFraction
-                        val y = size.height * position.yFraction
-                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    }
-                    path.close()
-                    drawPath(path, color = Color.Transparent, blendMode = BlendMode.Clear)
-                }
-                state.landmarks.filter { it.id in state.revealedLandmarkIds }.forEach { landmark ->
-                    val mapProjection = projection ?: return@forEach
-                    when (val area = landmark.checkInArea) {
-                        is CircularCheckInArea -> {
-                            val position = mapProjection.position(landmark.point)
-                            val radius = mapProjection.radiusFractions(area.radiusMeters)
-                            drawOval(
-                                color = Color.Transparent,
-                                topLeft = Offset(size.width * (position.xFraction - radius.xFraction), size.height * (position.yFraction - radius.yFraction)),
-                                size = Size(size.width * radius.xFraction * 2, size.height * radius.yFraction * 2),
-                                blendMode = BlendMode.Clear,
-                            )
-                        }
-                        is PolygonCheckInArea -> {
-                            val path = Path()
-                            area.vertices.forEachIndexed { index, offset ->
-                                val position = mapProjection.position(offsetPoint(landmark.point, offset))
-                                val x = size.width * position.xFraction
-                                val y = size.height * position.yFraction
-                                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                            }
-                            path.close()
-                            drawPath(path, color = Color.Transparent, blendMode = BlendMode.Clear)
-                        }
                     }
                 }
             }
