@@ -101,7 +101,12 @@ fun DemoMapContent(
             FogOverlay(
                 landmarks = state.landmarks,
                 completedLandmarkIds = state.completedLandmarkIds,
-                projection = projection,
+                holeScreenPos = { landmark ->
+                    projection?.position(landmark.point)?.let { position ->
+                        Offset(position.xFraction * constraints.maxWidth, position.yFraction * constraints.maxHeight)
+                    }
+                },
+                // 演示路径 marker 由 Compose 画在本层之上，无需开小孔
                 modifier = Modifier.fillMaxSize(),
             )
         }

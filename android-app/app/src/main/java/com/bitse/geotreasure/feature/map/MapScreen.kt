@@ -62,6 +62,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -164,10 +165,13 @@ fun MapScreen(
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxWidth().weight(1f)) {
         val shouldUseAmap = !uiState.usingDemoMap && uiState.privacyAccepted
+        // P01 迷雾（高德路径）：AMap 原生 marker 的屏幕坐标，供 FogOverlay 在 marker/已打卡处开孔
+        var amapMarkerScreens by remember { mutableStateOf<Map<String, Offset>>(emptyMap()) }
         if (shouldUseAmap) {
             AmapMapContent(
                 state = uiState.renderState,
                 focusRequest = focusRequest,
+                onMarkerScreens = { amapMarkerScreens = it },
                 onEvent = { event ->
                     when (event) {
                         is MapEvent.LandmarkSelected -> viewModel.onAction(MapAction.SelectLandmark(event.landmarkId))
@@ -176,6 +180,19 @@ fun MapScreen(
                     }
                 },
             )
+            // P01 迷雾 v3：卡通云层叠加在高德地图之上（画在底图上、水滴/头部 UI 下），
+            // 已打卡地标开 104px 大孔；可见 marker 开小孔透出水滴（marker 在本层之下）
+            if (!uiState.renderState.debugRevealAll) {
+                FogOverlay(
+                    landmarks = uiState.renderState.landmarks,
+                    completedLandmarkIds = uiState.renderState.completedLandmarkIds,
+                    holeScreenPos = { landmark -> amapMarkerScreens[landmark.id] },
+                    markerScreenPos = amapMarkerScreens.filterKeys { id ->
+                        id in uiState.renderState.visibleLandmarkIds && id !in uiState.renderState.completedLandmarkIds
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         } else {
             DemoMapContent(
                 state = uiState.renderState,

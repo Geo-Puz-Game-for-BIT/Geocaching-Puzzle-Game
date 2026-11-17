@@ -39,7 +39,6 @@ internal class AmapMapAdapter(
     private var renderedLiveScoutCenter: GeoPoint? = null
     private var renderedDebugShowScoutRange = false
     private var scoutCircle: Circle? = null
-    private val fogOverlay = FogPolygonOverlay(map)
     private var debugDraggableLandmarkId: String? = null
     private var selectedLandmarkId: String? = null
 
@@ -92,7 +91,7 @@ internal class AmapMapAdapter(
         selectedLandmarkId = state.selectedLandmarkId
         debugDraggableLandmarkId = state.debugDraggableLandmarkId
         reconcileLandmarks(state.landmarks.filter { it.id in state.visibleLandmarkIds }, state.selectedLandmarkId)
-        fogOverlay.render(state)
+        // 旧深灰迷雾（FogPolygonOverlay）已退役：卡通云迷雾由 MapScreen 在本视图之上叠加 FogOverlay 实现
         if (
             state.userLocation != renderedLocation ||
             state.liveScoutCenter != renderedLiveScoutCenter ||
@@ -276,13 +275,20 @@ internal class AmapMapAdapter(
 
     override fun observeEvents(): Flow<MapEvent> = events.asSharedFlow()
 
+    /** 地理坐标 → 屏幕像素（MapView 坐标系）；地图未就绪或投影不可用时返回 null */
+    fun screenPoint(point: GeoPoint): Pair<Float, Float>? = try {
+        val screen = map.projection.toScreenLocation(LatLng(point.latitude, point.longitude))
+        screen.x.toFloat() to screen.y.toFloat()
+    } catch (_: Exception) {
+        null
+    }
+
     override fun release() {
         map.isMyLocationEnabled = false
         locationSource.deactivate()
         landmarkOverlays.values.forEach(LandmarkOverlay::remove)
         landmarkOverlays.clear()
         scoutCircle?.remove()
-        fogOverlay.remove()
         scoutCircle = null
         map.setOnMarkerClickListener(null)
         map.setOnMarkerDragListener(null)

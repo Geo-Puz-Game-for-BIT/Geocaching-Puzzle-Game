@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 import com.bitse.geotreasure.core.model.Landmark
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -49,8 +50,10 @@ import kotlin.math.sin
  * 4) 云形 5 种（蓬松团云/扁宽长云/高积云/小卷云/叠云）× 确定性缩放·翻转·旋转 × 三种漂移节奏。
  *
  * 层级：本层画在底图之上、地标水滴之下（原型 fog z5 < pins z7），pointer-events 全部穿透。
- * 范围：仅演示地图（DemoMapContent）；真实高德地图路径沿用 FogPolygonOverlay 逻辑。
- * 迷雾语义：孔 = 已打卡地标（对齐原型）；旧「侦查半径视觉开孔」退役，侦查圈调试环保留。
+ * 路径覆盖：演示地图（DemoMapContent）与真实高德地图（MapScreen 叠加于 AmapMapContent 之上）共用本层；
+ *   孔位由调用方以屏幕像素坐标提供（演示路径 = 固定投影 fraction，高德路径 = AMap projection 实时投影，
+ *   随相机移动刷新），marker 处由调用方按需开小孔以透出高德原生 marker。
+ * 迷雾语义：大孔 = 已打卡地标（对齐原型）；旧「侦查半径视觉开孔」退役，侦查圈调试环保留。
  */
 private const val FOG_LAYER_ALPHA = 0.62f       // --fogA：整层不透明度（半透明，底图可辨）
 private const val FOG_BASE_RADIUS_PX = 104f     // FOG_R @ 原型 390px 地图宽
@@ -59,6 +62,7 @@ private const val REVEAL_DURATION_MS = 1700     // 孔生长 1.7s
 private const val REVEAL_DELAY_MS = 120         // 先柔光再化开的起手延迟
 private const val PUFF_DURATION_MS = 1900       // 单朵小云飘散 1.9s
 private const val PUFF_COUNT = 5
+private const val MARKER_HOLE_DP = 30f          // 高德路径：marker 透出小孔半径（dp）
 
 private val FogShadow = Color(0xFF89A687)
 private val FogBody = Color(0xFFB9D4B5)
@@ -210,7 +214,8 @@ private class HoleAnim {
 internal fun FogOverlay(
     landmarks: List<Landmark>,
     completedLandmarkIds: Set<String>,
-    projection: DemoMapProjection?,
+    holeScreenPos: (Landmark) -> Offset?,
+    markerScreenPos: Map<String, Offset> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     val clouds = remember { buildCloudField() }
@@ -278,7 +283,6 @@ internal fun FogOverlay(
                 drawCloudShape(FOG_SHAPES[cloud.kind], cloud.opacity)
             }
         }
-        if (projection == null) return@Canvas
         // 软边开孔：已打卡地标（Clear 混合擦出底图）
         val baseRadius = FOG_BASE_RADIUS_PX * unit
         val completed = landmarks.filter { it.id in completedLandmarkIds }
@@ -286,8 +290,7 @@ internal fun FogOverlay(
             val anim = holeAnims[landmark.id]
             val fraction = anim?.reveal?.value ?: 1f
             if (fraction <= 0f) return@forEach
-            val position = projection.position(landmark.point)
-            val center = Offset(position.xFraction * size.width, position.yFraction * size.height)
+            val center = holeScreenPos(landmark) ?: return@forEach
             val radius = baseRadius * fraction
             drawCircle(
                 brush = Brush.radialGradient(
@@ -302,14 +305,32 @@ internal fun FogOverlay(
                 blendMode = BlendMode.Clear,
             )
         }
+        // 高德路径：marker 由原生 MapView 绘制、位于本层之下，
+        // 在可见 marker 处开小孔让水滴透出（演示路径 marker 在本层之上，传空即可）
+        val markerHoleRadius = MARKER_HOLE_DP.dp.toPx()
+        markerScreenPos.forEach { (id, center) ->
+            if (id in completedLandmarkIds) return@forEach
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0f to Color.Black,
+                    .8f to Color.Black,
+                    1f to Color.Black.copy(alpha = 0f),
+                    center = center,
+                    radius = markerHoleRadius,
+                ),
+                radius = markerHoleRadius,
+                center = center,
+                blendMode = BlendMode.Clear,
+            )
+        }
         // 新打卡飘散的小云（fogpuff：向左右上飘出淡出）
         completed.forEach { landmark ->
             val anim = holeAnims[landmark.id] ?: return@forEach
             val puffT = anim.puff.value
             if (puffT <= 0f || puffT >= 1f) return@forEach
-            val position = projection.position(landmark.point)
-            val cx = position.xFraction * size.width
-            val cy = position.yFraction * size.height
+            val center = holeScreenPos(landmark) ?: return@forEach
+            val cx = center.x
+            val cy = center.y
             val window = PUFF_DURATION_MS.toFloat() / (PUFF_DURATION_MS + PUFF_COUNT * 120)
             for (k in 0 until PUFF_COUNT) {
                 val start = k * 120f / (PUFF_DURATION_MS + PUFF_COUNT * 120)
