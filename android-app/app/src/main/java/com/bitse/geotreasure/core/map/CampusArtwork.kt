@@ -11,6 +11,10 @@ import org.json.JSONObject
  * 运行时用的 PNG 已被重采样为「正北向上、东西南北同尺 1.5px/m」，
  * 因此每张图可精确对应一个经纬度矩形，直接交给高德 GroundOverlay。
  *
+ * v2 追加：以东/南区实机反馈「比例尺与真图不符、覆盖不全」为线索，改用卫星影像
+ * （ArcGIS World Imagery）做真值校验，实测东/南两区插画被竖向压缩至 0.625、横向 0.862，
+ * 已按实测仿射重采样并重算 bounds（北区实测与真图一致，保持原样）。
+ *
  * 坐标系：config.json 的 south/west/north/east 已由 WGS-84 换算为 GCJ-02，
  * 与高德地图、地标目录 (LiangxiangTreasureCatalog) 保持一致。
  */
