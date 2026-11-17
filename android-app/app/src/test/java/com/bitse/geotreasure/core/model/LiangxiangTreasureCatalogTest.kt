@@ -45,6 +45,21 @@ class LiangxiangTreasureCatalogTest {
     }
 
     @Test
+    fun `catalog uses reconciled gcj02 coordinate centers`() {
+        val points = LiangxiangTreasureCatalog.landmarks.associateBy { it.id }
+
+        assertEquals(39.734934, points.getValue("lmk_north_lake").point.latitude, 0.000001)
+        assertEquals(116.170196, points.getValue("lmk_north_lake").point.longitude, 0.000001)
+        assertEquals(3, points.getValue("lmk_north_lake").revealPoints.size)
+        assertEquals(39.731851, points.getValue("lmk_north_library").point.latitude, 0.000001)
+        assertEquals(116.171335, points.getValue("lmk_north_library").point.longitude, 0.000001)
+        assertEquals(39.734705, points.getValue("lmk_east_qinyuan").point.latitude, 0.000001)
+        assertEquals(116.176207, points.getValue("lmk_east_qinyuan").point.longitude, 0.000001)
+        assertEquals(39.726058, points.getValue("lmk_south_industrial_ecology").point.latitude, 0.000001)
+        assertEquals(116.171010, points.getValue("lmk_south_industrial_ecology").point.longitude, 0.000001)
+    }
+
+    @Test
     fun `catalog demonstrates adjustable circle and polygon check in areas`() {
         val areas = LiangxiangTreasureCatalog.landmarks.map { it.checkInArea }
 

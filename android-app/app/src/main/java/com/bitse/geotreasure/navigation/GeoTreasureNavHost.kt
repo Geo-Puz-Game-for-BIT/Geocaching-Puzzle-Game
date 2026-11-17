@@ -36,6 +36,7 @@ fun GeoTreasureNavHost() {
                     privacyManager = container.privacyManager,
                     explorationProgressStore = container.explorationProgressStore,
                     hasAmapKey = BuildConfig.HAS_AMAP_KEY,
+                    hasCloudApi = BuildConfig.HAS_CLOUD_API,
                     debugEnabled = BuildConfig.DEBUG,
                 ),
             )
@@ -50,29 +51,52 @@ fun GeoTreasureNavHost() {
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
             val detailViewModel: LandmarkDetailViewModel = viewModel(
-                factory = LandmarkDetailViewModel.factory(landmarkId, container.landmarkRepository),
+                factory = LandmarkDetailViewModel.factory(
+                    landmarkId = landmarkId,
+                    repository = container.landmarkRepository,
+                    locationProvider = container.locationProvider,
+                ),
             )
             LandmarkDetailScreen(
                 viewModel = detailViewModel,
                 onBack = navController::popBackStack,
-                onOpenCamera = { id, draftId -> navController.navigate(AppRoutes.camera(id, draftId)) },
+                onOpenCamera = { id, attemptId -> navController.navigate(AppRoutes.camera(id, attemptId)) },
             )
         }
         composable(
             route = AppRoutes.CAMERA,
             arguments = listOf(
                 navArgument("landmarkId") { type = NavType.StringType },
-                navArgument("draftId") { type = NavType.StringType },
+                navArgument("attemptId") { type = NavType.StringType },
             ),
         ) { entry ->
             val landmarkId = requireNotNull(entry.arguments?.getString("landmarkId"))
-            val draftId = requireNotNull(entry.arguments?.getString("draftId"))
-            val cameraViewModel: CameraViewModel = viewModel(factory = CameraViewModel.factory(landmarkId, draftId))
+            val attemptId = requireNotNull(entry.arguments?.getString("attemptId"))
+            val cameraViewModel: CameraViewModel = viewModel(
+                factory = CameraViewModel.factory(
+                    landmarkId = landmarkId,
+                    attemptId = attemptId,
+                    draftStore = container.checkInDraftStore,
+                    cameraManager = container.createCameraManager(),
+                    checkInRepository = container.checkInRepository,
+                    submitCoordinator = container.submitCoordinator,
+                    progressStore = container.explorationProgressStore,
+                    locationProvider = container.locationProvider,
+                    faceQualityChecker = container.createFaceQualityChecker(),
+                    landmarkRepository = container.landmarkRepository,
+                ),
+            )
             CameraScreen(
                 viewModel = cameraViewModel,
                 onBack = navController::popBackStack,
                 onResult = { checkInId, completedLandmarkId ->
                     navController.navigate(AppRoutes.checkInResult(checkInId, completedLandmarkId))
+                },
+                onOpenDraft = { draftLandmarkId, draftAttemptId ->
+                    // C-2：续用旧草稿，替换当前 camera 入口，避免旧弹窗残留
+                    navController.navigate(AppRoutes.camera(draftLandmarkId, draftAttemptId)) {
+                        popUpTo(AppRoutes.CAMERA) { inclusive = true }
+                    }
                 },
             )
         }
@@ -89,7 +113,6 @@ fun GeoTreasureNavHost() {
                 factory = CheckInResultViewModel.factory(
                     checkInId = checkInId,
                     landmarkId = landmarkId,
-                    progressStore = container.explorationProgressStore,
                 ),
             )
             CheckInResultScreen(

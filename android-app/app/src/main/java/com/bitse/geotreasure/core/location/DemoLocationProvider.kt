@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.core.location
 
+import android.os.SystemClock
 import com.bitse.geotreasure.core.common.AppResult
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
 import com.bitse.geotreasure.core.model.LocationSample
@@ -23,5 +24,6 @@ class DemoLocationProvider : LocationProvider {
         accuracyMeters = 18f,
         capturedAt = Clock.System.now(),
         source = LocationSourceKind.DEMO,
+        elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos(),
     )
 }

@@ -61,8 +61,17 @@ fun isWithinCheckInArea(
     areaCenter: GeoPoint,
     area: CheckInArea,
     accuracyMeters: Float,
+): Boolean = accuracyMeters.isFinite() && accuracyMeters in 0f..MAX_CHECK_IN_ACCURACY_METERS &&
+    containsArea(point, areaCenter, area)
+
+fun containsArea(
+    point: GeoPoint,
+    areaCenter: GeoPoint,
+    area: CheckInArea,
 ): Boolean {
-    if (accuracyMeters > MAX_CHECK_IN_ACCURACY_METERS) return false
+    if (!point.latitude.isFinite() || !point.longitude.isFinite() ||
+        !areaCenter.latitude.isFinite() || !areaCenter.longitude.isFinite()
+    ) return false
     return when (area) {
         is CircularCheckInArea -> distanceMeters(areaCenter, point) <= area.radiusMeters
         is PolygonCheckInArea -> pointInPolygon(localOffsetMeters(areaCenter, point), area.vertices)
@@ -90,4 +99,6 @@ private fun pointInPolygon(
     return inside
 }
 
-private const val MAX_CHECK_IN_ACCURACY_METERS = 50f
+// 正式打卡门控精度上限：≤30m（2026-10-30 团队拍板）。
+// 战争迷雾探索阈值见 FogOfWarRules.MAX_EXPLORATION_ACCURACY_METERS（保持 50m，两者勿混用）。
+const val MAX_CHECK_IN_ACCURACY_METERS = 30f
