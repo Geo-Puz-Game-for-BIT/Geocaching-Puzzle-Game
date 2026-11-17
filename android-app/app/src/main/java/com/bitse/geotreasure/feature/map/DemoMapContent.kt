@@ -2,17 +2,16 @@ package com.bitse.geotreasure.feature.map
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.MyLocation
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,7 +25,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
-import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.CheckInArea
 import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.FogOfWarRules
@@ -112,16 +110,17 @@ fun DemoMapContent(
         }
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
+            // P01 地标标记（对齐原型 dropPin）：倒立水滴锚点=地标坐标，已打卡绿底白勾 / 未打卡绿底白问号
             state.landmarks.filter { it.id in state.visibleLandmarkIds }.forEach { landmark ->
                 val position = projection?.position(landmark.point) ?: return@forEach
                 DemoLandmarkMarker(
                     landmark = landmark,
                     selected = landmark.id == state.selectedLandmarkId,
-                    color = landmark.campusZone.markerColor(),
+                    isDone = landmark.id in state.completedLandmarkIds,
                     onClick = { onLandmarkSelected(landmark.id) },
                     modifier = Modifier.offset(
-                        x = maxWidth * position.xFraction - 24.dp,
-                        y = maxHeight * position.yFraction - 24.dp,
+                        x = maxWidth * position.xFraction - 17.dp,
+                        y = maxHeight * position.yFraction - 34.dp,
                     ),
                 )
             }
@@ -162,26 +161,32 @@ fun DemoMapContent(
 private fun DemoLandmarkMarker(
     landmark: Landmark,
     selected: Boolean,
-    color: Color,
+    isDone: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val areaColor = MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier.size(96.dp),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.TopStart,
     ) {
         if (selected) {
+            // 选中态：打卡区域高亮圈（水滴尖端锚点在地标坐标上，圈心即 34dp/2 = 17dp 处）
             DemoCheckInArea(
                 area = landmark.checkInArea,
-                color = color,
-                modifier = Modifier.fillMaxSize(),
+                color = areaColor,
+                modifier = Modifier
+                    .offset(x = 17.dp - 48.dp, y = 34.dp - 48.dp)
+                    .size(96.dp),
             )
         }
-        MapMarkerButton(
-            landmark = landmark,
-            selected = selected,
-            color = color,
-            onClick = onClick,
+        LandmarkPin(
+            isDone = isDone,
+            modifier = Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
         )
     }
 }
@@ -225,29 +230,3 @@ private fun DemoCheckInArea(
     }
 }
 
-@Composable
-private fun MapMarkerButton(
-    landmark: Landmark,
-    selected: Boolean,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier.size(if (selected) 52.dp else 44.dp),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = if (selected) MaterialTheme.colorScheme.secondary else color,
-            contentColor = Color.White,
-        ),
-    ) {
-        Icon(Icons.Rounded.LocationOn, contentDescription = "选择${landmark.name}")
-    }
-}
-
-@Composable
-private fun CampusZone.markerColor(): Color = when (this) {
-    CampusZone.NORTH -> MaterialTheme.colorScheme.primary
-    CampusZone.EAST -> MaterialTheme.colorScheme.tertiary
-    CampusZone.SOUTH -> MaterialTheme.colorScheme.secondary
-}

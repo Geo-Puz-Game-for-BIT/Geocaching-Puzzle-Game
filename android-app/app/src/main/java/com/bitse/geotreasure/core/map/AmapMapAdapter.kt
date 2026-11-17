@@ -34,8 +34,10 @@ internal class AmapMapAdapter(
     private val artworkOverlay = CampusArtworkOverlay(map)
     private var artworkBasePrepared = false
     private val landmarkOverlays = mutableMapOf<String, LandmarkOverlay>()
-    private val normalLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
-    private val selectedLandmarkIcon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+    // P01 地标水滴（对齐原型 dropPin）：绿底白勾（已打卡）/ 绿底白问号（未打卡），锚点=水滴尖端
+    private val pinSizePx = LandmarkPinBitmaps.pinSizePx()
+    private val donePinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = true, sizePx = pinSizePx)) }
+    private val todoPinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = false, sizePx = pinSizePx)) }
     private var cameraInitialized = false
     private var cameraFocusedOnUser = false
     private var renderedLocation: LocationSample? = null
@@ -93,7 +95,11 @@ internal class AmapMapAdapter(
     override fun render(state: MapRenderState) {
         selectedLandmarkId = state.selectedLandmarkId
         debugDraggableLandmarkId = state.debugDraggableLandmarkId
-        reconcileLandmarks(state.landmarks.filter { it.id in state.visibleLandmarkIds }, state.selectedLandmarkId)
+        reconcileLandmarks(
+            state.landmarks.filter { it.id in state.visibleLandmarkIds },
+            state.selectedLandmarkId,
+            state.completedLandmarkIds,
+        )
         // 旧深灰迷雾（FogPolygonOverlay）已退役：卡通云迷雾由 MapScreen 在本视图之上叠加 FogOverlay 实现
         if (
             state.userLocation != renderedLocation ||
@@ -125,6 +131,7 @@ internal class AmapMapAdapter(
     private fun reconcileLandmarks(
         landmarks: List<Landmark>,
         selectedLandmarkId: String?,
+        completedLandmarkIds: Set<String>,
     ) {
         val incomingIds = landmarks.mapTo(mutableSetOf()) { it.id }
         landmarkOverlays.keys
@@ -135,12 +142,14 @@ internal class AmapMapAdapter(
 
         landmarks.forEach { landmark ->
             val selected = landmark.id == selectedLandmarkId
+            val done = landmark.id in completedLandmarkIds
             val existing = landmarkOverlays[landmark.id]
             if (existing == null) {
-                landmarkOverlays[landmark.id] = createLandmarkOverlay(landmark, selected)
+                landmarkOverlays[landmark.id] = createLandmarkOverlay(landmark, selected, done)
             } else if (existing.landmark != landmark || existing.selected != selected ||
+                existing.done != done ||
                 existing.marker.isDraggable != (landmark.id == debugDraggableLandmarkId)) {
-                existing.update(landmark, selected)
+                existing.update(landmark, selected, done)
             }
         }
     }
@@ -148,17 +157,19 @@ internal class AmapMapAdapter(
     private fun createLandmarkOverlay(
         landmark: Landmark,
         selected: Boolean,
+        done: Boolean,
     ): LandmarkOverlay {
         val marker = map.addMarker(
             MarkerOptions()
                 .position(LatLng(landmark.point.latitude, landmark.point.longitude))
                 .title(landmark.name)
-                .icon(iconFor(selected))
+                .icon(pinIcon(done))
+                .anchor(0.5f, 1f)
                 .draggable(landmark.id == debugDraggableLandmarkId),
         ).apply {
             `object` = landmark.id
         }
-        return LandmarkOverlay(marker, createAreaOverlay(landmark, selected), landmark, selected)
+        return LandmarkOverlay(marker, createAreaOverlay(landmark, selected), landmark, selected, done)
     }
 
     private fun createAreaOverlay(landmark: Landmark, selected: Boolean): AreaOverlay = when (val area = landmark.checkInArea) {
@@ -224,8 +235,7 @@ internal class AmapMapAdapter(
         }
     }
 
-    private fun iconFor(selected: Boolean) =
-        if (selected) selectedLandmarkIcon else normalLandmarkIcon
+    private fun pinIcon(done: Boolean) = if (done) donePinIcon else todoPinIcon
 
     private fun updateScoutCircle(state: MapRenderState) {
         val liveScoutCenter = state.liveScoutCenter
@@ -251,15 +261,16 @@ internal class AmapMapAdapter(
         }
     }
 
-    private fun LandmarkOverlay.update(landmark: Landmark, selected: Boolean) {
+    private fun LandmarkOverlay.update(landmark: Landmark, selected: Boolean, done: Boolean) {
         val position = LatLng(landmark.point.latitude, landmark.point.longitude)
         marker.position = position
         marker.title = landmark.name
-        marker.setIcon(iconFor(selected))
+        marker.setIcon(pinIcon(done))
         marker.isDraggable = landmark.id == debugDraggableLandmarkId
         areaOverlay = updateAreaOverlay(areaOverlay, landmark, selected)
         this.landmark = landmark
         this.selected = selected
+        this.done = done
     }
 
     override fun focusOn(point: GeoPoint) {
@@ -324,6 +335,7 @@ internal class AmapMapAdapter(
         var areaOverlay: AreaOverlay,
         var landmark: Landmark,
         var selected: Boolean,
+        var done: Boolean,
     ) {
         fun remove() {
             marker.remove()
