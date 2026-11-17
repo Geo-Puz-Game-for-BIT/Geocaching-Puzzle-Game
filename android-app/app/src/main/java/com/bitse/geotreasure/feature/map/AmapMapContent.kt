@@ -20,8 +20,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amap.api.maps.MapView
 import com.bitse.geotreasure.core.map.AmapMapAdapter
 import com.bitse.geotreasure.core.map.AmapRenderLocationSource
+import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.MapEvent
 import com.bitse.geotreasure.core.model.MapRenderState
+import kotlin.math.cos
 import kotlinx.coroutines.delay
 
 @Composable
@@ -31,6 +33,7 @@ fun AmapMapContent(
     onEvent: (MapEvent) -> Unit,
     modifier: Modifier = Modifier,
     onMarkerScreens: (Map<String, Offset>) -> Unit = {},
+    onFogFrame: (FogGeoFrame) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -40,9 +43,10 @@ fun AmapMapContent(
     val locationSource = remember { AmapRenderLocationSource() }
     val adapter = remember(mapView, locationSource) { AmapMapAdapter(mapView.map, locationSource) }
 
-    // P01 迷雾：把全部地标的屏幕像素坐标回传给调用方（FogOverlay 用来在 marker/已打卡处开孔）
+    // P01 迷雾：把地标屏幕坐标与地理锚定帧回传给调用方
+    // （FogOverlay 用屏幕坐标开孔、用锚定帧把云场「套在地图上」）
     val latestState by rememberUpdatedState(state)
-    fun pushMarkerScreens() {
+    fun pushFogScreens() {
         val screens = mutableMapOf<String, Offset>()
         latestState.landmarks.forEach { landmark ->
             adapter.screenPoint(landmark.point)?.let { point ->
@@ -50,12 +54,28 @@ fun AmapMapContent(
             }
         }
         onMarkerScreens(screens)
+        // 地理锚定帧：锚点 = 地标包围盒中心；pxPerMeter 用东向 500m 参考点实测投影求出
+        val anchor = fogAnchorPoint(latestState.landmarks)
+        val origin = adapter.screenPoint(anchor) ?: return
+        val radLat = Math.toRadians(anchor.latitude)
+        val east = GeoPoint(
+            latitude = anchor.latitude,
+            longitude = anchor.longitude + 500.0 / (111_320.0 * cos(radLat)),
+        )
+        val eastScreen = adapter.screenPoint(east) ?: return
+        val metersPx = kotlin.math.hypot(
+            (eastScreen.first - origin.first).toDouble(),
+            (eastScreen.second - origin.second).toDouble(),
+        ) / 500.0
+        if (metersPx > 1e-5) {
+            onFogFrame(FogGeoFrame(Offset(origin.first, origin.second), metersPx.toFloat()))
+        }
     }
 
     LaunchedEffect(adapter) {
         adapter.observeEvents().collect { event ->
             onEvent(event)
-            if (event is MapEvent.CameraMoved) pushMarkerScreens()
+            if (event is MapEvent.CameraMoved) pushFogScreens()
         }
     }
 
@@ -63,7 +83,7 @@ fun AmapMapContent(
     LaunchedEffect(adapter) {
         repeat(6) { attempt ->
             delay(if (attempt == 0) 500L else 700L)
-            pushMarkerScreens()
+            pushFogScreens()
         }
     }
 
@@ -92,7 +112,7 @@ fun AmapMapContent(
         modifier = modifier.fillMaxSize(),
         update = {
             adapter.render(latestState)
-            pushMarkerScreens()
+            pushFogScreens()
         },
     )
 }

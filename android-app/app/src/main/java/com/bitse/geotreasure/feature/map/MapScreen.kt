@@ -165,13 +165,15 @@ fun MapScreen(
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.fillMaxWidth().weight(1f)) {
         val shouldUseAmap = !uiState.usingDemoMap && uiState.privacyAccepted
-        // P01 迷雾（高德路径）：AMap 原生 marker 的屏幕坐标，供 FogOverlay 在 marker/已打卡处开孔
+        // P01 迷雾（高德路径）：AMap 原生 marker 的屏幕坐标 + 地理锚定帧，供 FogOverlay 开孔与云场跟随地图
         var amapMarkerScreens by remember { mutableStateOf<Map<String, Offset>>(emptyMap()) }
+        var amapFogFrame by remember { mutableStateOf<FogGeoFrame?>(null) }
         if (shouldUseAmap) {
             AmapMapContent(
                 state = uiState.renderState,
                 focusRequest = focusRequest,
                 onMarkerScreens = { amapMarkerScreens = it },
+                onFogFrame = { amapFogFrame = it },
                 onEvent = { event ->
                     when (event) {
                         is MapEvent.LandmarkSelected -> viewModel.onAction(MapAction.SelectLandmark(event.landmarkId))
@@ -180,8 +182,8 @@ fun MapScreen(
                     }
                 },
             )
-            // P01 迷雾 v3：卡通云层叠加在高德地图之上（画在底图上、水滴/头部 UI 下），
-            // 已打卡地标开 104px 大孔；可见 marker 开小孔透出水滴（marker 在本层之下）
+            // P01 迷雾 v3.2：卡通云层叠加在高德地图之上，云场锚定地理坐标（滑动/缩放跟随地图），
+            // 已打卡地标开软边大孔（孔随比例尺缩放）；可见 marker 开小孔透出水滴（marker 在本层之下）
             if (!uiState.renderState.debugRevealAll) {
                 FogOverlay(
                     landmarks = uiState.renderState.landmarks,
@@ -190,6 +192,7 @@ fun MapScreen(
                     markerScreenPos = amapMarkerScreens.filterKeys { id ->
                         id in uiState.renderState.visibleLandmarkIds && id !in uiState.renderState.completedLandmarkIds
                     },
+                    geoFrame = amapFogFrame,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

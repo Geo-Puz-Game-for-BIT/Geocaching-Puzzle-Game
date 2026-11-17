@@ -34,20 +34,29 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.Landmark
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.sin
 
 /**
- * P01 探索页 · 迷雾叠加层 v3（对齐 design/prototype/index.html 的 P01 迷雾 v2/v3 设计）。
+ * P01 探索页 · 迷雾叠加层 v3.2（对齐 design/prototype/index.html 的 P01 迷雾 v2/v3 设计）。
  *
  * 设计要点（与原型逐项对应）：
- * 1) 默认态：整张地图被 70+ 朵卡通云铺满（云层不透明度 --fogA≈.62，半透明），底图轮廓仍可辨认；
+ * 1) 默认态：整张地图被卡通云铺满（云层不透明度 --fogA≈.62，半透明），底图轮廓仍可辨认；
  * 2) 已打卡：以该地标为圆心开出半径 FOG_R 的软边空洞（径向渐变 Clear），孔外云雾保持原样；
  * 3) 新打卡：孔半径 0→FOG_R 生长 1.7s（缓出曲线 0.22,0.7,0.3,1），同时 5 朵小云向左右上飘散淡出 1.9s；
  * 4) 云形 5 种（蓬松团云/扁宽长云/高积云/小卷云/叠云）× 确定性缩放·翻转·旋转 × 三种漂移节奏。
+ *
+ * v3.2 地理锚定：高德路径传入 [FogGeoFrame]（锚点屏幕坐标 + 每米像素数）后，云场改为
+ * 「米制无穷网格」——每朵云对应地面上一个固定位置，滑动地图时云跟着地图走、缩放时云随
+ * 比例尺缩放，即「迷雾套在地图上」；极远缩放时按 stride 抽稀网格并放大云体，保证覆盖与帧率。
+ * 未传 geoFrame（演示地图，不滑动）保持 v3.1 的屏幕比例网格行为。
  *
  * 层级：本层画在底图之上、地标水滴之下（原型 fog z5 < pins z7），pointer-events 全部穿透。
  * 路径覆盖：演示地图（DemoMapContent）与真实高德地图（MapScreen 叠加于 AmapMapContent 之上）共用本层；
@@ -63,6 +72,39 @@ private const val REVEAL_DELAY_MS = 120         // 先柔光再化开的起手�
 private const val PUFF_DURATION_MS = 1900       // 单朵小云飘散 1.9s
 private const val PUFF_COUNT = 5
 private const val MARKER_HOLE_DP = 30f          // 高德路径：marker 透出小孔半径（dp）
+
+// —— v3.2 地理锚定参数（原型 390px 视口 ≈ PROTO_VIEW_M 米的地面范围）——
+private const val PROTO_VIEW_M = 1000f          // 原型视口宽对应的地面跨度（米）
+private const val LATICE_STEP_X_M = 160f        // 云网格横向步长（原型列距 16% 视口）
+private const val LATICE_STEP_Y_M = 140f        // 云网格纵向步长（原型行距 14% 视口）
+private const val GRID_PHASE_X_M = 20f          // 网格相位（让基准场对齐原型的错位布局）
+private const val GRID_PHASE_Y_M = -20f
+private const val JITTER_M = 10f                // 抖动系数（原型 ±5% 视口 → ±50m）
+private const val DRIFT_X_M = 18f               // 漂移幅度（原型 7px → 18m，地理锚定下云在地面摆动）
+private const val DRIFT_Y_M = 10f               // 原型 4px → 10m
+private const val BASE_CLOUD_PX = 220f          // 云形基准宽度（原型坐标空间）
+private const val MIN_GRID_SPACING_PX = 170f    // 极远缩放时抽稀网格的目标间距（px）
+private const val CLOUD_COVER_FACTOR = 1.9f     // 抽稀后云体放大系数（保覆盖）
+
+/** 迷雾地理锚定帧：地理锚点在屏幕上的位置 + 当前缩放下的每米像素数，随相机移动刷新 */
+data class FogGeoFrame(
+    val originScreen: Offset,
+    val pxPerMeter: Float,
+)
+
+/**
+ * 迷雾地理锚点：全部地标的包围盒中心（演示/高德共用同一算法，保证锚点一致）。
+ * 空表时回退良乡校区近似中心。
+ */
+fun fogAnchorPoint(landmarks: List<Landmark>): GeoPoint {
+    if (landmarks.isEmpty()) return GeoPoint(latitude = 39.734, longitude = 116.172)
+    val lats = landmarks.map { it.point.latitude }
+    val lngs = landmarks.map { it.point.longitude }
+    return GeoPoint(
+        latitude = (lats.min() + lats.max()) / 2.0,
+        longitude = (lngs.min() + lngs.max()) / 2.0,
+    )
+}
 
 private val FogShadow = Color(0xFF89A687)
 private val FogBody = Color(0xFFB9D4B5)
@@ -167,11 +209,13 @@ private class FogCloud(
     val driftPhase: Float,
 )
 
+/** 云场确定性缩放档位（原型 fogCloudField() scales） */
+private val FOG_SCALES = floatArrayOf(1.10f, 1.26f, .98f, 1.30f, 1.16f)
+
 /** 云场：9 列 × 9 行错位叠铺（超出画布防边缘漏底），确定性抖动，与原型 fogCloudField() 同一套公式 */
 private fun buildCloudField(): List<FogCloud> {
     val xs = floatArrayOf(-12f, 4f, 20f, 36f, 52f, 68f, 84f, 100f, 116f)
     val ys = floatArrayOf(-8f, 6f, 20f, 34f, 48f, 62f, 76f, 90f, 104f)
-    val scales = floatArrayOf(1.10f, 1.26f, .98f, 1.30f, 1.16f)
     val clouds = mutableListOf<FogCloud>()
     var n = 0
     for (row in ys.indices) {
@@ -180,7 +224,7 @@ private fun buildCloudField(): List<FogCloud> {
             val jx = ((col * 37 + row * 19) % 11) - 5f
             val jy = ((col * 23 + row * 31) % 11) - 5f
             val kind = (row * 3 + col * 2) % 5
-            val s = scales[(row + col * 2) % 5]
+            val s = FOG_SCALES[(row + col * 2) % 5]
             val rot = ((col * 29 + row * 17) % 13) - 6f
             val flip = if ((col + row) % 3 == 0) -1f else 1f
             val drift = 1 + ((col + row) % 3)
@@ -216,6 +260,7 @@ internal fun FogOverlay(
     completedLandmarkIds: Set<String>,
     holeScreenPos: (Landmark) -> Offset?,
     markerScreenPos: Map<String, Offset> = emptyMap(),
+    geoFrame: FogGeoFrame? = null,
     modifier: Modifier = Modifier,
 ) {
     val clouds = remember { buildCloudField() }
@@ -260,7 +305,7 @@ internal fun FogOverlay(
             },
     ) {
         val unit = size.width / PROTO_MAP_WIDTH_PX
-        // 云缝雾底（fogWash，opacity .26）
+        // 云缝雾底（fogWash，opacity .26）——屏幕铺满，与地图滚动无关
         drawRect(
             brush = Brush.verticalGradient(
                 0f to FogWashTop.copy(alpha = .26f),
@@ -270,22 +315,29 @@ internal fun FogOverlay(
         )
         // 卡通云层（fogdriftA/B/C 三种漂移节奏）
         val twoPi = 2f * PI.toFloat()
-        clouds.forEach { cloud ->
-            val px = cloud.xFrac * size.width +
-                sin(driftT * twoPi + cloud.driftPhase) * 7f * unit * cloud.driftSpeed
-            val py = cloud.yFrac * size.height +
-                cos(driftT * twoPi + cloud.driftPhase * .7f) * 4f * unit * cloud.driftSpeed
-            withTransform({
-                translate(px, py)
-                rotate(cloud.rotation, pivot = Offset.Zero)
-                scale(cloud.scale * cloud.flip * unit, cloud.scale * unit, pivot = Offset.Zero)
-            }) {
-                drawCloudShape(FOG_SHAPES[cloud.kind], cloud.opacity)
+        val frame = geoFrame
+        if (frame != null) {
+            // v3.2 地理锚定路径：云场套在地图上（滑动跟随、缩放随比例尺）
+            drawGeoCloudField(frame, driftT, twoPi)
+        } else {
+            clouds.forEach { cloud ->
+                val px = cloud.xFrac * size.width +
+                    sin(driftT * twoPi + cloud.driftPhase) * 7f * unit * cloud.driftSpeed
+                val py = cloud.yFrac * size.height +
+                    cos(driftT * twoPi + cloud.driftPhase * .7f) * 4f * unit * cloud.driftSpeed
+                withTransform({
+                    translate(px, py)
+                    rotate(cloud.rotation, pivot = Offset.Zero)
+                    scale(cloud.scale * cloud.flip * unit, cloud.scale * unit, pivot = Offset.Zero)
+                }) {
+                    drawCloudShape(FOG_SHAPES[cloud.kind], cloud.opacity)
+                }
             }
         }
-        // 软边开孔：已打卡地标（Clear 混合擦出底图）
-        val baseRadius = FOG_BASE_RADIUS_PX * unit
+        // 软边开孔：已打卡地标（Clear 混合擦出底图）；地理锚定下孔半径随缩放（套在地图上）
         val completed = landmarks.filter { it.id in completedLandmarkIds }
+        val geoHoleRadius = frame?.let { max(FOG_BASE_RADIUS_PX * geoScaleOf(it), MARKER_HOLE_DP.dp.toPx()) }
+        val baseRadius = geoHoleRadius ?: (FOG_BASE_RADIUS_PX * unit)
         completed.forEach { landmark ->
             val anim = holeAnims[landmark.id]
             val fraction = anim?.reveal?.value ?: 1f
@@ -337,16 +389,91 @@ internal fun FogOverlay(
                 val local = ((puffT - start) / window).coerceIn(0f, 1f)
                 if (local <= 0f) continue
                 val dir = PUFF_DIRS[k]
-                val px = cx + dir * .022f * size.width + dir * 96f * unit * local
-                val py = cy - (k % 2) * .015f * size.height - (38f + (k % 3) * 16f) * unit * local
+                // 位移/尺寸：屏幕路径用屏幕比例，地理锚定路径换算成地面米数
+                val geoFrame = frame
+                val px: Float
+                val py: Float
+                val puffScale: Float
+                if (geoFrame != null) {
+                    val geoScale = geoScaleOf(geoFrame)
+                    val ppm = geoFrame.pxPerMeter
+                    px = cx + dir * (22f + 246f * local) * ppm
+                    py = cy - ((k % 2) * 30f + (97f + (k % 3) * 41f) * local) * ppm
+                    puffScale = geoScale
+                } else {
+                    px = cx + dir * .022f * size.width + dir * 96f * unit * local
+                    py = cy - (k % 2) * .015f * size.height - (38f + (k % 3) * 16f) * unit * local
+                    puffScale = unit
+                }
                 val scaleF = (1.10f + (k % 2) * .16f) * (1f + .3f * local)
                 withTransform({
                     translate(px, py)
                     rotate(dir * 9f, pivot = Offset.Zero)
-                    scale(scaleF * unit, scaleF * unit, pivot = Offset.Zero)
+                    scale(scaleF * puffScale, scaleF * puffScale, pivot = Offset.Zero)
                 }) {
                     drawCloudShape(FOG_SHAPES[(k + 2) % 5], .5f * (1f - local))
                 }
+            }
+        }
+    }
+}
+
+/** 地理锚定缩放系数：当前每米像素数折算到「原型 390px 视口」的基准（默认视角下 ≈ 屏宽/390） */
+private fun geoScaleOf(frame: FogGeoFrame): Float =
+    frame.pxPerMeter * PROTO_VIEW_M / PROTO_MAP_WIDTH_PX
+
+/**
+ * v3.2 地理锚定云场：米制无穷网格，网格点 (i,j) 对应地面固定位置；
+ * 云形/缩放/抖动参数按 (i mod 9, j mod 9) 从原型 9×9 场取模复用，确定性一致。
+ * 极远缩放（网格间距 < MIN_GRID_SPACING_PX）时按 stride 抽稀并放大云体保覆盖。
+ */
+private fun DrawScope.drawGeoCloudField(frame: FogGeoFrame, driftT: Float, twoPi: Float) {
+    val ppm = frame.pxPerMeter.coerceAtLeast(1e-4f)
+    val k = geoScaleOf(frame)
+    val spacingPx = LATICE_STEP_X_M * ppm
+    val stride = max(1, ceil(MIN_GRID_SPACING_PX / spacingPx).toInt())
+    val cloudPx = max(BASE_CLOUD_PX * k, spacingPx * stride * CLOUD_COVER_FACTOR)
+    val cloudScale = cloudPx / BASE_CLOUD_PX
+    val cull = cloudPx
+
+    // 可见网格范围（锚点米制坐标，x 向东、y 向北为正）
+    val leftM = -frame.originScreen.x / ppm
+    val rightM = (size.width - frame.originScreen.x) / ppm
+    val topM = frame.originScreen.y / ppm
+    val bottomM = (frame.originScreen.y - size.height) / ppm
+    val iMin = floor(leftM / LATICE_STEP_X_M).toInt() - 1
+    val iMax = ceil(rightM / LATICE_STEP_X_M).toInt() + 1
+    val jMin = floor(bottomM / LATICE_STEP_Y_M).toInt() - 1
+    val jMax = ceil(topM / LATICE_STEP_Y_M).toInt() + 1
+
+    for (i in iMin..iMax step stride) {
+        for (j in jMin..jMax step stride) {
+            val c = ((i % 9) + 9) % 9
+            val r = ((j % 9) + 9) % 9
+            if ((r * 5 + c * 3) % 11 == 0) continue // 打散网格感（与原型同式）
+            val jx = (((c * 37 + r * 19) % 11) - 5f) * JITTER_M
+            val jy = (((c * 23 + r * 31) % 11) - 5f) * JITTER_M
+            val gx = i * LATICE_STEP_X_M + GRID_PHASE_X_M + jx
+            val gy = j * LATICE_STEP_Y_M + GRID_PHASE_Y_M + jy
+            val kind = (r * 3 + c * 2) % 5
+            val shapeScale = FOG_SCALES[(r + c * 2) % 5]
+            val rot = ((c * 29 + r * 17) % 13) - 6f
+            val flip = if ((c + r) % 3 == 0) -1f else 1f
+            val drift = 1 + ((c + r) % 3)
+            val speed = when (drift) { 1 -> 0.55f; 2 -> 0.38f; else -> 0.72f }
+            val phase = (((i * 733 + j * 1997) % 11000 + 11000) % 11000 / 11000f) * twoPi
+            val opacity = 0.78f + ((c * 2 + r * 3) % 5) * 0.055f
+            val px = frame.originScreen.x +
+                (gx + sin(driftT * twoPi + phase) * DRIFT_X_M * speed) * ppm
+            val py = frame.originScreen.y -
+                (gy + cos(driftT * twoPi + phase * .7f) * DRIFT_Y_M * speed) * ppm
+            if (px < -cull || px > size.width + cull || py < -cull || py > size.height + cull) continue
+            withTransform({
+                translate(px, py)
+                rotate(rot, pivot = Offset.Zero)
+                scale(cloudScale * shapeScale * flip, cloudScale * shapeScale, pivot = Offset.Zero)
+            }) {
+                drawCloudShape(FOG_SHAPES[kind], opacity)
             }
         }
     }
