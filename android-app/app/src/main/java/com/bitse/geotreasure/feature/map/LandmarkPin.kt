@@ -37,7 +37,7 @@ private const val CANVAS_W = 34f
 private const val CENTER_X = 17f
 private const val CENTER_Y = 14.2f
 private const val TIP_Y = 32.4f
-private const val DISC_R = 7.9f
+private const val DISC_R = 7.6f
 private const val OUTLINE_W = 2.8f
 
 /** 水滴轮廓（对应原型 PIN_D：左曲线 → 上半圆弧 → 右曲线，尖端 (17,32.4)） */
@@ -57,7 +57,7 @@ fun LandmarkPin(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val textStyle = remember {
-        TextStyle(fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = PIN_GREEN)
+        TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = PIN_GREEN)
     }
     Canvas(modifier = modifier.size(width = size, height = size * (38f / CANVAS_W))) {
         val s = this.size.width / CANVAS_W
@@ -83,7 +83,7 @@ fun LandmarkPin(
 
         // 5) 圆内符号（深绿）
         if (isDone) {
-            val k = 0.88f
+            val k = 0.82f
             fun gx(x: Float) = (CENTER_X + (x - CENTER_X) * k) * s
             fun gy(y: Float) = (CENTER_Y + (y - CENTER_Y) * k) * s
             val check = Path().apply {

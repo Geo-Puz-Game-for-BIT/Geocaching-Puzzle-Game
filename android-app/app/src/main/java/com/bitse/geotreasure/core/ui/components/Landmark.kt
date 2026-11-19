@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -29,19 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Canvas
 import com.bitse.geotreasure.core.ui.assets.LandmarkImages
 import com.bitse.geotreasure.core.ui.theme.AppText
 import com.bitse.geotreasure.core.ui.theme.ErrorRed
@@ -70,105 +62,6 @@ fun LandmarkImage(
         modifier = modifier,
         contentScale = if (crop) ContentScale.Crop else ContentScale.Fit
     )
-}
-
-/*
- * 水滴标记的几何（设计稿 viewBox 34×34）：
- *  - 圆头：圆心 (17, 14.2)，半径 10.4
- *  - 尖端：把圆周两点 (6.9,13.2)/(27.1,13.2) 连到 (17,32.4)
- * 用「圆 + 三角」直接构造，不走 SVG path 解析 —— 少一层出错的余地，缩放也简单。
- */
-private const val PIN_BOX = 34f
-private const val HEAD_CX = 17f
-private const val HEAD_CY = 14.2f
-private const val HEAD_R = 10.4f
-private const val TIP_Y = 32.4f
-
-private fun buildDropPath(s: Float): Path = Path().apply {
-    addOval(Rect(center = Offset(HEAD_CX * s, HEAD_CY * s), radius = HEAD_R * s))
-    moveTo(6.9f * s, 13.2f * s)
-    lineTo(HEAD_CX * s, TIP_Y * s)
-    lineTo(27.1f * s, 13.2f * s)
-    close()
-}
-
-private fun buildCheckPath(s: Float): Path = Path().apply {
-    moveTo(11.7f * s, 14.4f * s)
-    lineTo(15.3f * s, 18.0f * s)
-    lineTo(22.4f * s, 10.2f * s)
-}
-
-/**
- * 地图水滴标记。
- * 已打卡 = 深绿底 + 白勾 + 下方地名；未解锁 = 白底绿描边 + 问号，不显示名称。
- * 锚点是尖端（调用方按 x% / y% 定位，再左移 17dp、上移 34dp）。
- */
-@Composable
-fun LandmarkPin(
-    done: Boolean,
-    label: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier.width(34.dp)) {
-        Canvas(
-            modifier = Modifier
-                .size(34.dp)
-                .clickable(onClick = onClick)
-        ) {
-            // 直接按画布像素构造路径：viewBox 34 单位 → size.width 像素
-            val s = size.width / PIN_BOX
-            val dropPath = buildDropPath(s)
-            val checkPath = buildCheckPath(s)
-
-            if (done) {
-                drawPath(dropPath, color = Primary)
-                drawPath(dropPath, color = Color(0xFF004B3A), style = Stroke(width = 1.2f * s))
-                drawPath(
-                    checkPath,
-                    color = Color.White,
-                    style = Stroke(
-                        width = 2.7f * s,
-                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                        join = androidx.compose.ui.graphics.StrokeJoin.Round
-                    )
-                )
-            } else {
-                drawPath(dropPath, color = Color(0xFFFFFEFA))
-                drawPath(dropPath, color = Primary, style = Stroke(width = 2f * s))
-            }
-        }
-
-        if (done && label != null) {
-            Text(
-                text = label,
-                style = AppText.tiny.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Primary),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = 35.dp)
-                    .wrapContentWidth(unbounded = true)
-                    .background(Color(0xF0FFFEFA), Radius.chip)
-                    .border(1.dp, Primary.copy(alpha = 0.20f), Radius.chip)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                    // 名字标签也在热区内：只点名字也能打开详情（水滴本体只有 34dp，实机走查发现点名字无响应）
-                    .clickable(onClick = onClick),
-                maxLines = 1
-            )
-        }
-
-        if (!done) {
-            Text(
-                text = "?",
-                color = Primary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = 4.dp)
-            )
-        }
-    }
 }
 
 /**

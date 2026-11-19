@@ -39,7 +39,7 @@ object LandmarkPinBitmaps {
     const val CENTER_Y = 14.2f
     const val TIP_Y = 32.4f
 
-    private const val DISC_R = 7.9f
+    private const val DISC_R = 7.6f
     private const val OUTLINE_W = 2.8f
 
     private val BODY_FILL = 0xFF00634D.toInt()
@@ -110,8 +110,8 @@ object LandmarkPinBitmaps {
 
         // 5) 圆内符号：打卡后勾 / 未打卡问号（均深绿）
         if (isDone) {
-            // 原型勾线 M11.7 14.4 l3.6 3.6 l7.1 -7.8，按 0.88 收进白圆内
-            val k = 0.88f
+            // 原型勾线 M11.7 14.4 l3.6 3.6 l7.1 -7.8，按 0.82 收进白圆内
+            val k = 0.82f
             fun gx(x: Float) = (CENTER_X + (x - CENTER_X) * k) * s
             fun gy(y: Float) = (CENTER_Y + (y - CENTER_Y) * k) * s
             val check = Path().apply {
@@ -133,10 +133,10 @@ object LandmarkPinBitmaps {
             canvas.drawText(
                 "?",
                 CENTER_X * s,
-                18.7f * s,
+                19.0f * s,
                 Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = GLYPH
-                    textSize = 12.5f * s
+                    textSize = 13.5f * s
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                     textAlign = Paint.Align.CENTER
                 },
