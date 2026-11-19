@@ -120,7 +120,7 @@ fun DemoMapContent(
                     onClick = { onLandmarkSelected(landmark.id) },
                     modifier = Modifier.offset(
                         x = maxWidth * position.xFraction - 17.dp,
-                        y = maxHeight * position.yFraction - 34.dp,
+                        y = maxHeight * position.yFraction - 32.4.dp,
                     ),
                 )
             }
@@ -171,12 +171,12 @@ private fun DemoLandmarkMarker(
         contentAlignment = Alignment.TopStart,
     ) {
         if (selected) {
-            // 选中态：打卡区域高亮圈（水滴尖端锚点在地标坐标上，圈心即 34dp/2 = 17dp 处）
+            // 选中态：打卡区域高亮圈（水滴尖端锚点在地标坐标上，圈心落在 32.4dp 尖端处）
             DemoCheckInArea(
                 area = landmark.checkInArea,
                 color = areaColor,
                 modifier = Modifier
-                    .offset(x = 17.dp - 48.dp, y = 34.dp - 48.dp)
+                    .offset(x = 17.dp - 48.dp, y = 32.4.dp - 48.dp)
                     .size(96.dp),
             )
         }

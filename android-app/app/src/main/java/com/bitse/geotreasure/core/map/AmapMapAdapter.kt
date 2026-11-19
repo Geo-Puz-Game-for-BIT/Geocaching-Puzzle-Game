@@ -36,8 +36,8 @@ internal class AmapMapAdapter(
     private val landmarkOverlays = mutableMapOf<String, LandmarkOverlay>()
     // P01 地标水滴（对齐原型 dropPin）：绿底白勾（已打卡）/ 绿底白问号（未打卡），锚点=水滴尖端
     private val pinSizePx = LandmarkPinBitmaps.pinSizePx()
-    private val donePinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = true, sizePx = pinSizePx)) }
-    private val todoPinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = false, sizePx = pinSizePx)) }
+    private val donePinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = true, widthPx = pinSizePx)) }
+    private val todoPinIcon by lazy { BitmapDescriptorFactory.fromBitmap(LandmarkPinBitmaps.create(isDone = false, widthPx = pinSizePx)) }
     private var cameraInitialized = false
     private var cameraFocusedOnUser = false
     private var renderedLocation: LocationSample? = null
@@ -164,7 +164,7 @@ internal class AmapMapAdapter(
                 .position(LatLng(landmark.point.latitude, landmark.point.longitude))
                 .title(landmark.name)
                 .icon(pinIcon(done))
-                .anchor(0.5f, 1f)
+                .anchor(0.5f, LandmarkPinBitmaps.ANCHOR_Y)
                 .draggable(landmark.id == debugDraggableLandmarkId),
         ).apply {
             `object` = landmark.id

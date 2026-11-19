@@ -1,7 +1,7 @@
 {
-  "version": "campus-artwork-v3",
-  "source": "campus-unified-v5 + 卫星真值仿射校正(v2) + 南区跑道局部形变(v3)",
-  "rectification": "v1(2.5D->north-up 1.5px/m) + satellite-fitted affine (east/south y*1.6, x*1.16) + south track local warp (E*0.855/N*0.940, cosine falloff)",
+  "version": "campus-artwork-v2",
+  "source": "campus-unified-v5 + 卫星真值仿射校正(v2)",
+  "rectification": "v1(2.5D->north-up 1.5px/m) + satellite-fitted affine (east/south y*1.6, x*1.16)",
   "maps": [
     {
       "campusId": "north",
@@ -34,8 +34,8 @@
     {
       "campusId": "south",
       "assetPath": "campus_maps/south.png",
-      "version": "campus-artwork-v3",
-      "sha256": "9097f691470e26193560e4ba3ff82b1e01288b11ae5fa7ec5e6be1c867b8e410",
+      "version": "campus-artwork-v2",
+      "sha256": "da76dfc73c4020116061dd8e7cd6d37cb152488951b7bd705703ce29c9de56b0",
       "widthPx": 841,
       "heightPx": 998,
       "coordinateSystem": "GCJ-02",

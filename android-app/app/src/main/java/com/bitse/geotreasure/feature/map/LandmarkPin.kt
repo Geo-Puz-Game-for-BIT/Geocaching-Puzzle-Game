@@ -7,11 +7,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -21,24 +22,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * P01 地标水滴图标（Compose 版，演示地图用）——严格对齐 design/prototype/index.html 的 dropPin()。
+ * P01 地标水滴图标（Compose 版，演示地图用）。
  *
- * - 倒立水滴（PIN_D，34×34 视口），尖端朝下、锚点在坐标点上；
- * - 深绿色底 #00634D、描边 #004B3A；
- * - 打卡后白色对勾；打卡前白色问号（按用户口径取深绿底，与高德路径 LandmarkPinBitmaps 同规格）。
+ * 视觉口径（2026-11-19 用户给图）：深绿水滴 + 白描边 + 头部白色内圆，
+ * 圆内深绿问号（未打卡）/ 深绿对勾（已打卡）+ 尖端下方柔和投影；
+ * 几何沿用原型 PIN_D，画布 34×38（多 3.6 给投影），尖端在 32.4 处即锚点。
  *
- * 与 core/map/LandmarkPinBitmaps 保持同一几何/配色，改动需两处同步。
+ * 与 core/map/LandmarkPinBitmaps 同几何同配色，改动需两处同步。
  */
 private val PIN_GREEN = Color(0xFF00634D)
-private val PIN_GREEN_DARK = Color(0xFF004B3A)
 private val PIN_WHITE = Color(0xFFFFFFFF)
 
+private const val CANVAS_W = 34f
+private const val CENTER_X = 17f
+private const val CENTER_Y = 14.2f
+private const val TIP_Y = 32.4f
+private const val DISC_R = 7.9f
+private const val OUTLINE_W = 2.8f
+
 /** 水滴轮廓（对应原型 PIN_D：左曲线 → 上半圆弧 → 右曲线，尖端 (17,32.4)） */
-private fun DrawScope.dropPath(s: Float): Path = Path().apply {
-    moveTo(17f * s, 32.4f * s)
-    cubicTo(17f * s, 32.4f * s, 6.6f * s, 21.6f * s, 6.6f * s, 14.2f * s)
+private fun dropPath(s: Float): Path = Path().apply {
+    moveTo(CENTER_X * s, TIP_Y * s)
+    cubicTo(CENTER_X * s, TIP_Y * s, 6.6f * s, 21.6f * s, 6.6f * s, CENTER_Y * s)
     arcTo(Rect(6.6f * s, 3.8f * s, 27.4f * s, 24.6f * s), 180f, 180f, false)
-    cubicTo(27.4f * s, 21.6f * s, 17f * s, 32.4f * s, 17f * s, 32.4f * s)
+    cubicTo(27.4f * s, 21.6f * s, CENTER_X * s, TIP_Y * s, CENTER_X * s, TIP_Y * s)
     close()
 }
 
@@ -50,35 +57,46 @@ fun LandmarkPin(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val textStyle = remember {
-        TextStyle(fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = PIN_WHITE)
+        TextStyle(fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = PIN_GREEN)
     }
-    Canvas(modifier = modifier.size(size)) {
-        val s = this.size.minDimension / 34f
+    Canvas(modifier = modifier.size(width = size, height = size * (38f / CANVAS_W))) {
+        val s = this.size.width / CANVAS_W
         val drop = dropPath(s)
-        // 原型 filter: drop-shadow(0 3px 6px rgba(32,41,35,.18)) 的简化版（无模糊，偏移 2px）
-        translate(0f, 2f * s) {
-            drawPath(drop, Color(0x2E202923))
-        }
+
+        // 1) 地面投影：两层椭圆近似柔边（外浅内深）
+        drawOval(
+            color = Color(0x1F202923),
+            topLeft = Offset(8.4f * s, 32.6f * s),
+            size = Size(17.2f * s, 4.6f * s),
+        )
+        drawOval(
+            color = Color(0x2E202923),
+            topLeft = Offset(9.6f * s, 33.2f * s),
+            size = Size(14.8f * s, 3.4f * s),
+        )
+        // 2) 白色描边（宽描边在下、绿色填充在上，露出外圈白边）
+        drawPath(drop, PIN_WHITE, style = Stroke(width = OUTLINE_W * s, join = StrokeJoin.Round))
+        // 3) 深绿主体
         drawPath(drop, PIN_GREEN)
-        drawPath(drop, PIN_GREEN_DARK, style = Stroke(width = 1.2f * s))
+        // 4) 头部白色内圆
+        drawCircle(PIN_WHITE, radius = DISC_R * s, center = Offset(CENTER_X * s, CENTER_Y * s))
+
+        // 5) 圆内符号（深绿）
         if (isDone) {
-            // 白色对勾：M11.7 14.4 l3.6 3.6 l7.1 -7.8
+            val k = 0.88f
+            fun gx(x: Float) = (CENTER_X + (x - CENTER_X) * k) * s
+            fun gy(y: Float) = (CENTER_Y + (y - CENTER_Y) * k) * s
             val check = Path().apply {
-                moveTo(11.7f * s, 14.4f * s)
-                lineTo(15.3f * s, 18f * s)
-                lineTo(22.4f * s, 10.2f * s)
+                moveTo(gx(11.7f), gy(14.4f))
+                lineTo(gx(15.3f), gy(18f))
+                lineTo(gx(22.4f), gy(10.2f))
             }
-            drawPath(
-                check,
-                PIN_WHITE,
-                style = Stroke(width = 2.7f * s, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round),
-            )
+            drawPath(check, PIN_GREEN, style = Stroke(width = 2.5f * s, cap = StrokeCap.Round, join = StrokeJoin.Round))
         } else {
-            // 白色问号：原型 text x=17 y=19 font-size=13（这里以圆头中心垂直居中，视觉一致）
             val layout = textMeasurer.measure("?", textStyle)
             drawText(
                 textLayoutResult = layout,
-                topLeft = Offset(17f * s - layout.size.width / 2f, 14.6f * s - layout.size.height / 2f),
+                topLeft = Offset(CENTER_X * s - layout.size.width / 2f, CENTER_Y * s - layout.size.height / 2f),
             )
         }
     }

@@ -2,91 +2,150 @@ package com.bitse.geotreasure.core.map
 
 import androidx.core.graphics.createBitmap
 import android.content.res.Resources
+import android.graphics.BlurMaskFilter
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Typeface
 
 /**
  * P01 地标水滴图标的位图工厂（高德 marker 用）。
  *
- * 严格对齐 design/prototype/index.html 的 dropPin()（PIN_D，34×34 视口）：
- * - 形状：倒立水滴（尖端朝下为锚点），上半圆 + 两条对称曲线收拢到尖端；
- * - 底色：深绿 #00634D，描边 #004B3A（两种状态一致，按用户口径）；
- * - 打卡后：白色对勾（原型勾线 M11.7 14.4 l3.6 3.6 l7.1 -7.8，白 2.7 宽圆头圆角）；
- * - 打卡前：白色问号（用户口径：深绿底 + 白问号；原型 todo 态为白底绿问号，此处按用户要求取深绿底）。
+ * 视觉口径（2026-11-19 用户给图）：深绿水滴 + 白色描边 + 头部白色内圆，
+ * 圆内深绿问号（未打卡）/ 深绿对勾（已打卡），尖端下方一道柔和地面投影。
+ *
+ * 几何沿用原型 PIN_D（34 宽视口，尖端 (17,32.4)、圆心 (17,14.2)、半径 10.4）；
+ * 画布加高到 38 单位，多出的 3.6 单位放投影，锚点 = 尖端 32.4 / 38（[ANCHOR_Y]）。
+ *
+ * 与 feature/map/LandmarkPin（Compose 版）保持同一几何/配色，改动需两处同步。
  */
 object LandmarkPinBitmaps {
 
-    /** 原型 34×34 视口下图标标准显示宽度（dp） */
+    /** 图标标准显示宽度（dp） */
     const val PIN_SIZE_DP = 34f
 
-    private const val BODY_FILL = 0xFF00634D.toInt()
-    private const val BODY_STROKE = 0xFF004B3A.toInt()
-    private const val MARK_COLOR = 0xFFFFFFFF.toInt()
+    /** 画布宽高比（宽 34 / 高 38），供 Compose 版与 marker 尺寸换算共用 */
+    const val HEIGHT_RATIO = 38f / 34f
+
+    /** 尖端在画布中的归一化纵坐标，作为 marker 锚点 */
+    const val ANCHOR_Y = 32.4f / 38f
+
+    /** 画布单位（与原型 34 视口同标尺） */
+    const val CANVAS_W = 34f
+    const val CANVAS_H = 38f
+    const val CENTER_X = 17f
+    const val CENTER_Y = 14.2f
+    const val TIP_Y = 32.4f
+
+    private const val DISC_R = 7.9f
+    private const val OUTLINE_W = 2.8f
+
+    private val BODY_FILL = 0xFF00634D.toInt()
+    private val OUTLINE = 0xFFFFFFFF.toInt()
+    private val GLYPH = 0xFF00634D.toInt()
+    private val SHADOW = 0x33202923
 
     /**
-     * 水滴轮廓。对应原型 PIN_D = 'M17 32.4C17 32.4 6.6 21.6 6.6 14.2a10.4 10.4 0 1 1 20.8 0C27.4 21.6 17 32.4 17 32.4Z'：
-     * 左曲线收拢到尖端 → 上半圆弧（左端点经顶部到右端点）→ 右曲线回尖端。
+     * 水滴轮廓（原型 PIN_D）：左曲线收拢到尖端 → 上半圆弧 → 右曲线回尖端。
+     * 注意描边在填充之前画且更宽，形成「白色外圈 + 绿色内芯」。
      */
     fun buildDropPath(s: Float): Path = Path().apply {
-        moveTo(17f * s, 32.4f * s)
-        cubicTo(17f * s, 32.4f * s, 6.6f * s, 21.6f * s, 6.6f * s, 14.2f * s)
+        moveTo(CENTER_X * s, TIP_Y * s)
+        cubicTo(CENTER_X * s, TIP_Y * s, 6.6f * s, 21.6f * s, 6.6f * s, CENTER_Y * s)
         // a10.4 10.4 0 1 1 20.8 0：圆心 (17,14.2) 半径 10.4，180°→0°（经顶部）
         arcTo(6.6f * s, 3.8f * s, 27.4f * s, 24.6f * s, 180f, 180f, false)
-        cubicTo(27.4f * s, 21.6f * s, 17f * s, 32.4f * s, 17f * s, 32.4f * s)
+        cubicTo(27.4f * s, 21.6f * s, CENTER_X * s, TIP_Y * s, CENTER_X * s, TIP_Y * s)
         close()
     }
 
-    /** 生成一张水滴位图，[sizePx] 为正方形边长（像素） */
-    fun create(isDone: Boolean, sizePx: Int): Bitmap {
-        val bitmap = createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    /** 生成水滴位图；[widthPx] 为图标宽度，高度按 [HEIGHT_RATIO] 换算 */
+    fun create(isDone: Boolean, widthPx: Int): Bitmap {
+        val heightPx = (widthPx * HEIGHT_RATIO).toInt().coerceAtLeast(1)
+        val bitmap = createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val s = sizePx / 34f
+        val s = widthPx / CANVAS_W
 
-        val bodyFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = BODY_FILL
+        // 1) 地面投影（尖端下方椭圆，柔和模糊）
+        val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = SHADOW
             style = Paint.Style.FILL
+            maskFilter = BlurMaskFilter(1.6f * s, BlurMaskFilter.Blur.NORMAL)
         }
-        val bodyStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = BODY_STROKE
-            style = Paint.Style.STROKE
-            strokeWidth = 1.2f * s
-        }
-        val dropPath = buildDropPath(s)
-        canvas.drawPath(dropPath, bodyFill)
-        canvas.drawPath(dropPath, bodyStroke)
+        canvas.drawOval(
+            RectF(9.4f * s, 33.2f * s, 24.6f * s, 36.6f * s),
+            shadow,
+        )
 
-        if (isDone) {
-            // 白色对勾：M11.7 14.4 l3.6 3.6 l7.1 -7.8
-            val check = Path().apply {
-                moveTo(11.7f * s, 14.4f * s)
-                lineTo(15.3f * s, 18f * s)
-                lineTo(22.4f * s, 10.2f * s)
-            }
-            val checkStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = MARK_COLOR
+        val dropPath = buildDropPath(s)
+        // 2) 白色描边（先画宽描边，再填充绿色，露出外圈白边约 1.4 单位）
+        canvas.drawPath(
+            dropPath,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 2.7f * s
-                strokeCap = Paint.Cap.ROUND
+                strokeWidth = OUTLINE_W * s
+                color = OUTLINE
                 strokeJoin = Paint.Join.ROUND
+            },
+        )
+        // 3) 深绿主体
+        canvas.drawPath(
+            dropPath,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = BODY_FILL
+            },
+        )
+        // 4) 头部白色内圆
+        canvas.drawCircle(
+            CENTER_X * s,
+            CENTER_Y * s,
+            DISC_R * s,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                color = OUTLINE
+            },
+        )
+
+        // 5) 圆内符号：打卡后勾 / 未打卡问号（均深绿）
+        if (isDone) {
+            // 原型勾线 M11.7 14.4 l3.6 3.6 l7.1 -7.8，按 0.88 收进白圆内
+            val k = 0.88f
+            fun gx(x: Float) = (CENTER_X + (x - CENTER_X) * k) * s
+            fun gy(y: Float) = (CENTER_Y + (y - CENTER_Y) * k) * s
+            val check = Path().apply {
+                moveTo(gx(11.7f), gy(14.4f))
+                lineTo(gx(15.3f), gy(18f))
+                lineTo(gx(22.4f), gy(10.2f))
             }
-            canvas.drawPath(check, checkStroke)
+            canvas.drawPath(
+                check,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 2.5f * s
+                    color = GLYPH
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                },
+            )
         } else {
-            // 白色问号：原型 <text x="17" y="19" font-size="13" font-weight="800">
-            val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = MARK_COLOR
-                textSize = 13f * s
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
-            }
-            canvas.drawText("?", 17f * s, 19f * s, text)
+            canvas.drawText(
+                "?",
+                CENTER_X * s,
+                18.7f * s,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = GLYPH
+                    textSize = 12.5f * s
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                    textAlign = Paint.Align.CENTER
+                },
+            )
         }
         return bitmap
     }
 
-    /** 按 34dp 生成两张状态位图的边长（像素），供 BitmapDescriptorFactory 使用 */
+    /** 图标宽度像素（34dp × density），供 BitmapDescriptorFactory 使用 */
     fun pinSizePx(): Int {
         val density = Resources.getSystem().displayMetrics.density
         return (PIN_SIZE_DP * density).toInt().coerceAtLeast(24)
