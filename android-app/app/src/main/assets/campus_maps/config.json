@@ -1,13 +1,13 @@
 {
-  "version": "campus-artwork-v2",
-  "source": "campus-unified-v5 + 卫星真值仿射校正(v2)",
-  "rectification": "v1(2.5D->north-up 1.5px/m) + satellite-fitted affine (east/south y*1.6, x*1.16)",
+  "version": "campus-artwork-v4",
+  "source": "campus-unified-v5 + 卫星真值仿射校正(v2) + 围界羽化裁边(v4)",
+  "rectification": "v1(2.5D->north-up 1.5px/m) + satellite-fitted affine (east/south y*1.6, x*1.16) + v4 campus-boundary alpha feather (trim 5~50m overshoot ring)",
   "maps": [
     {
       "campusId": "north",
       "assetPath": "campus_maps/north.png",
-      "version": "campus-artwork-v2",
-      "sha256": "14cc21230a543abe69f061d2a664730c6b5984449ca96097b5989f10717dfaf6",
+      "version": "campus-artwork-v4",
+      "sha256": "cbb926724cb017672f8cc1e1c282fa0dbe55d046bbd56e3949e9233394ccda17",
       "widthPx": 839,
       "heightPx": 1441,
       "coordinateSystem": "GCJ-02",
@@ -20,8 +20,8 @@
     {
       "campusId": "east",
       "assetPath": "campus_maps/east.png",
-      "version": "campus-artwork-v2",
-      "sha256": "3ea8e3bc800e256cd781a9af49fc59d55850f918f80cf05e06e044d983033168",
+      "version": "campus-artwork-v4",
+      "sha256": "ddbb8894bfc7e875165df300c491f9acf45fb857b7c70db193fa839473712dfb",
       "widthPx": 849,
       "heightPx": 1049,
       "coordinateSystem": "GCJ-02",
@@ -34,8 +34,8 @@
     {
       "campusId": "south",
       "assetPath": "campus_maps/south.png",
-      "version": "campus-artwork-v2",
-      "sha256": "da76dfc73c4020116061dd8e7cd6d37cb152488951b7bd705703ce29c9de56b0",
+      "version": "campus-artwork-v4",
+      "sha256": "a191709f33fbd93b2c7baec7d746a0951d917b9c14a355492889e0264e256e1e",
       "widthPx": 841,
       "heightPx": 998,
       "coordinateSystem": "GCJ-02",
