@@ -51,3 +51,21 @@ D（张博淳）侧 dev 服务（`cloud-d0g0u4r64556b8177-1510671296.ap-shanghai
 - 服务端再发布：`cloudbase/` 下 `npm run build:cloud` 出 `deploy/dist/main.cjs`，
   再用 CloudBase MCP `manageFunctions(updateFunctionCode)` 或 `tcb deploy --only functions` 更新。
 - 服务端 API Key 属敏感凭据：只存于函数环境变量与 D 私发渠道，不写入任何入库文件。
+
+## 追记：地标坐标回归修复（2026-11-21 晚）
+
+真机验收发现 12 个水滴整体偏离真实建筑 126~580m。根因：重放迁移时
+`align_campus_catalog.sql`（ON CONFLICT DO UPDATE）把早期开发演示坐标写回了数据库，
+而 App 本地目录 `LiangxiangTreasureCatalog.kt` 自 2026-11-14 起已是实测校准值（GCJ-02），
+D 原环境是手工同步过的，重建后未再同步。
+
+修复：新增迁移 `20261121103000_calibrate_landmark_coordinates.sql`
+（版本 20261121103000，已入远端迁移历史），内容：
+
+- 12 个 active 地标 lat/lon 全部改为 2026-11-14 校准值（GCJ-02，与高德底图同系）；
+- `check_in_area` 同步为校准打卡区（矩形按 ±w/2±h/2，学服圆 r=56m），
+  `check_in_radius_meters` 改为圆半径/矩形半对角线；
+- `coordinate_verified=true`，hint 去掉「仅用于开发演示」声明。
+
+验证：`/landmarks` 返回 12/12 与本地校准值逐位一致。App 代码零改动，
+v8 APK 继续可用（坐标由云端下发），重装/杀进程刷新地标列表即可生效。
