@@ -182,12 +182,14 @@ fun MapScreen(
                     }
                 },
             )
-            // P01 迷雾 v3.2：卡通云层叠加在高德地图之上，云场锚定地理坐标（滑动/缩放跟随地图），
-            // 已打卡地标开软边大孔（孔随比例尺缩放）；可见 marker 开小孔透出水滴（marker 在本层之下）
+            // P01 迷雾 v4（E「连续云层·步行开雾」）：云纹平铺 + 软件遮罩（校外恒1/校内0.35/
+            // 羽化/揭雾），云场与遮罩锚定地理坐标（滑动/缩放跟随地图）；可见 marker 开小孔透出水滴
             if (!uiState.renderState.debugRevealAll) {
                 FogOverlay(
                     landmarks = uiState.renderState.landmarks,
                     completedLandmarkIds = uiState.renderState.completedLandmarkIds,
+                    exploredCenters = uiState.renderState.exploredCenters,
+                    liveScoutCenter = uiState.renderState.liveScoutCenter,
                     holeScreenPos = { landmark -> amapMarkerScreens[landmark.id] },
                     markerScreenPos = amapMarkerScreens.filterKeys { id ->
                         id in uiState.renderState.visibleLandmarkIds && id !in uiState.renderState.completedLandmarkIds

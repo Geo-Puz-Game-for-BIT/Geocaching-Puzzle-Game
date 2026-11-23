@@ -94,17 +94,32 @@ fun DemoMapContent(
             )
         }
 
-        // P01 迷雾 v3：卡通云层铺满全图，已打卡地标开软边孔（画在底图之上、水滴之下，对齐原型层级）
+        // P01 迷雾 v4（E「连续云层·步行开雾」）：云纹 + 软件遮罩。
+        // 演示地图静态不滑动，由投影合成地理锚定帧（锚点=投影原点，ppm 取画面尺寸/跨度）；
+        // 演示路径 marker 由 Compose 画在本层之上，无需开小孔
         if (!state.debugRevealAll) {
+            val demoGeoFrame = projection?.let { p ->
+                val position = p.position(p.originPoint)
+                FogGeoFrame(
+                    originScreen = Offset(
+                        position.xFraction * constraints.maxWidth,
+                        position.yFraction * constraints.maxHeight,
+                    ),
+                    pxPerMeter = (constraints.maxWidth / p.eastSpanMeters).toFloat(),
+                    pxPerMeterY = (constraints.maxHeight / p.northSpanMeters).toFloat(),
+                )
+            }
             FogOverlay(
                 landmarks = state.landmarks,
                 completedLandmarkIds = state.completedLandmarkIds,
+                exploredCenters = state.exploredCenters,
+                liveScoutCenter = state.liveScoutCenter,
                 holeScreenPos = { landmark ->
                     projection?.position(landmark.point)?.let { position ->
                         Offset(position.xFraction * constraints.maxWidth, position.yFraction * constraints.maxHeight)
                     }
                 },
-                // 演示路径 marker 由 Compose 画在本层之上，无需开小孔
+                geoFrame = demoGeoFrame,
                 modifier = Modifier.fillMaxSize(),
             )
         }

@@ -7,6 +7,11 @@ import com.bitse.geotreasure.core.model.Landmark
 internal data class DemoMapPosition(val xFraction: Float, val yFraction: Float)
 
 internal class DemoMapProjection(landmarks: List<Landmark>) {
+    /** 投影原点（首个地标坐标），供迷雾合成地理锚定帧 */
+    val originPoint: GeoPoint get() = origin
+    val eastSpanMeters: Double get() = eastSpan
+    val northSpanMeters: Double get() = northSpan
+
     private val origin = landmarks.first().point
     private val offsets = landmarks.map { localOffsetMeters(origin, it.point) }
     private val minEast = offsets.minOf { it.eastMeters } - PADDING_METERS
