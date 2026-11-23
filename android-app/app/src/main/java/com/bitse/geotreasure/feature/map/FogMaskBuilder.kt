@@ -54,7 +54,7 @@ data class FogMaskBounds(
  * 迷雾 v4 遮罩构建器：在地面米制坐标系渲染一张 ALPHA_8 位图，
  * 像素值 = 该地面点的雾不透明度。渲染管线（自下而上）：
  * 1) 全图填 1（校外恒全遮挡优先）；
- * 2) 三区围界多边形内填未探索浓度（0.35）；
+ * 2) 三区围界多边形内按 DST_OUT 衰减到未探索浓度（0.35）；
  * 3) 围界描边 + 模糊 = 校界内侧羽化（界内从 1 渐落回 0.35，界外保持 1）；
  * 4) 已打卡 reveal block（DST_OUT + 模糊）整块点亮，边缘保留过渡；
  * 5) 历史探索点 / 临时视野（DST_OUT + 径向渐变）中心清晰露图、边缘回落雾浓度。
@@ -99,11 +99,14 @@ object FogMaskBuilder {
         val fill = Paint().apply { color = 0xFF000000.toInt() }
         canvas.drawRect(0f, 0f, widthPx.toFloat(), heightPx.toFloat(), fill)
 
-        // 2) 校界内填未探索浓度
+        // 2) 校界内降雾到未探索浓度：DST_OUT 衰减 dst *= 1-src（衰减量 = 1-浓度）。
+        //    不能用半透明色 SRC_OVER 直接填——位图已是全不透明，SRC_OVER 叠半透明色
+        //    结果恒为 1，校内迷雾会完全挡死底图（2026-11-23 核对页发现并修正）。
         val baseAlpha = (FogMaskParams.UNEXPLORED_ALPHA * 255).toInt().coerceIn(0, 255)
         val fenceFill = Paint().apply {
-            color = (baseAlpha shl 24)
+            color = ((255 - baseAlpha) shl 24)
             style = Paint.Style.FILL
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
         }
         val fencePaths = fences.map { polygon ->
             Path().apply {
