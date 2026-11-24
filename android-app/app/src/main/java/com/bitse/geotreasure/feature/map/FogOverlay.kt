@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.bitse.geotreasure.core.model.GeoPoint
 import com.bitse.geotreasure.core.model.Landmark
-import com.bitse.geotreasure.core.model.campusRevealBlocks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,7 +48,8 @@ import kotlin.math.floor
  * 设计（依据 E《README-接入说明.md》）：
  * 1) 视觉 = 单张云纹（fog-cloud-texture.png）按固定地面尺寸平铺，随地图平移/缩放（地理锚定）；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
- *    校外恒 1 → 校界内侧宽羽化 → 校内未探索 0.55 → 临时视野/历史探索带/已打卡整块按揭雾权重减淡；
+ *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
+ *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
  * 3) 层级：底图 < 云层 < 现有地标及定位标记 < 界面控件（AMap 原生 marker 在本层之下，
  *    可见 marker 由本层开 30dp 小孔透出，演示路径 marker 在本层之上无需开孔）；
  * 4) 校外无底图/业务标记漏出（雾在校外恒不透明）；云上无「未开放区域」文字。
@@ -209,16 +209,16 @@ internal fun FogOverlay(
 
     // 遮罩：状态变化（打卡/探索记录/定位/锚点）时后台重建
     val anchor = remember(landmarks) { fogAnchorPoint(landmarks) }
-    val completedBlocks = remember(landmarks, completedLandmarkIds) {
-        campusRevealBlocks(landmarks).filter { it.landmarkId in completedLandmarkIds }
+    val completedCenters = remember(landmarks, completedLandmarkIds) {
+        landmarks.filter { it.id in completedLandmarkIds }.map { it.point }
     }
     val mask by produceState<Pair<ImageBitmap, FogMaskBounds>?>(
         initialValue = null,
-        completedBlocks, exploredCenters, liveScoutCenter, anchor,
+        completedCenters, exploredCenters, liveScoutCenter, anchor,
     ) {
         value = withContext(Dispatchers.Default) {
             runCatching {
-                FogMaskBuilder.build(anchor, completedBlocks, exploredCenters, liveScoutCenter)
+                FogMaskBuilder.build(anchor, completedCenters, exploredCenters, liveScoutCenter)
                     ?.let { (bitmap, bounds) -> bitmap.asImageBitmap() to bounds }
             }.getOrNull()
         }

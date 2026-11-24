@@ -11,23 +11,21 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import com.bitse.geotreasure.core.location.localOffsetMeters
 import com.bitse.geotreasure.core.model.CampusFences
-import com.bitse.geotreasure.core.model.CampusRevealBlock
 import com.bitse.geotreasure.core.model.GeoPoint
 
 /**
- * 迷雾 v4（E「连续云层·步行开雾」第二版；2026-11-23 按参照效果图调参：0.55/120m/60m）调参常量。
- * 依据：校外雾 alpha 恒 1；校内未探索半透明（底图隐约可辨）；校界宽羽化无直线感；
- * 临时/历史/已完成分别计算揭雾权重取最大混合；校外全遮挡优先。
+ * 迷雾 v6 调参常量（2026-11-24 按用户要求：「三块校区整体朦胧半透明、无分区感；
+ * 校外恒不透明不分区的雾；打卡后仅对应地标上方散开」）。
  */
 object FogMaskParams {
-    /** 校内未探索雾不透明度（参照效果图 2026-11-23 调至 0.55：底图隐约可辨、雾感明显） */
-    const val UNEXPLORED_ALPHA = 0.55f
+    /** 校内未探索雾不透明度（全校区统一朦胧半透明，底图隐约可辨） */
+    const val UNEXPLORED_ALPHA = 0.50f
 
-    /** 校界内侧羽化宽度（米）：界内雾从 1 渐落到未探索浓度；120m 让校界多边形无直线感（参照图柔和过渡） */
-    const val BOUNDARY_FEATHER_M = 120f
+    /** 校界多边形填充的模糊半径（米）：界内外在此宽度内渐变过渡，不出现任何线/带状分区 */
+    const val BOUNDARY_BLUR_M = 180f
 
-    /** 已打卡整块开雾的边缘过渡宽度（米）：60m 消除 reveal block 分块边线 */
-    const val COMPLETE_FEATHER_M = 60f
+    /** 打卡后该地标上方迷雾散开的半径（米）：中心全清 → 边缘回落雾浓度 */
+    const val COMPLETED_REVEAL_RADIUS_M = 180.0
 
     /** 临时视野（实时定位）揭雾半径（米） */
     const val TEMP_VIEW_RADIUS_M = 60.0
@@ -38,8 +36,8 @@ object FogMaskParams {
     /** 遮罩地面分辨率（像素/米） */
     const val MASK_PX_PER_M = 0.6
 
-    /** 遮罩地面范围在围界包络外扩（米）；之外按校外恒 1 处理（遮罩不覆盖即不降低 alpha） */
-    const val MASK_PAD_M = 250.0
+    /** 遮罩地面范围在围界包络外扩（米）；之外遮罩不覆盖 = 云纹保持全不透明（校外恒雾） */
+    const val MASK_PAD_M = 400.0
 }
 
 /** 遮罩地面框：以迷雾锚点为原点的局部米制坐标范围（东/北为正） */
@@ -51,13 +49,14 @@ data class FogMaskBounds(
 )
 
 /**
- * 迷雾 v4 遮罩构建器：在地面米制坐标系渲染一张 ALPHA_8 位图，
+ * 迷雾 v6 遮罩构建器：在地面米制坐标系渲染一张 ALPHA_8 位图，
  * 像素值 = 该地面点的雾不透明度。渲染管线（自下而上）：
  * 1) 全图填 1（校外恒全遮挡优先）；
- * 2) 三区围界多边形内按 DST_OUT 衰减到未探索浓度（0.35）；
- * 3) 围界描边 + 模糊 = 校界内侧羽化（界内从 1 渐落回 0.35，界外保持 1）；
- * 4) 已打卡 reveal block（DST_OUT + 模糊）整块点亮，边缘保留过渡；
- * 5) 历史探索点 / 临时视野（DST_OUT + 径向渐变）中心清晰露图、边缘回落雾浓度。
+ * 2) 三区围界多边形「带大半径模糊」的 DST_OUT 衰减填充到未探索浓度（0.50）——
+ *    界内外在同一blur过渡带内渐变，不出现任何线/带状分区（v5 的不透明羽化描边会
+ *    在校内沿边界形成一圈不透明带，即用户反馈的「分区感」，已废弃该做法）；
+ * 3) 已打卡地标：以地标为圆心径向散开（中心全清 → 边缘回落雾浓度），只动该地标上方；
+ * 4) 历史探索点 / 临时视野（DST_OUT + 径向渐变）中心清晰露图、边缘回落雾浓度。
  *
  * 权重语义：DST_OUT 为乘法衰减（dst *= 1-src），探索点按 10m 记录间隔密集重叠后
  * 步行带中心自然趋近全清、边缘自然过渡，符合「取最大权重混合」的视觉效果。
@@ -66,7 +65,7 @@ object FogMaskBuilder {
 
     fun build(
         anchor: GeoPoint,
-        completedBlocks: List<CampusRevealBlock>,
+        completedCenters: List<GeoPoint>,
         exploredCenters: List<GeoPoint>,
         liveScoutCenter: GeoPoint?,
     ): Pair<Bitmap, FogMaskBounds>? {
@@ -99,16 +98,21 @@ object FogMaskBuilder {
         val fill = Paint().apply { color = 0xFF000000.toInt() }
         canvas.drawRect(0f, 0f, widthPx.toFloat(), heightPx.toFloat(), fill)
 
-        // 2) 校界内降雾到未探索浓度：DST_OUT 衰减 dst *= 1-src（衰减量 = 1-浓度）。
-        //    不能用半透明色 SRC_OVER 直接填——位图已是全不透明，SRC_OVER 叠半透明色
-        //    结果恒为 1，校内迷雾会完全挡死底图（2026-11-23 核对页发现并修正）。
+        // 2) 校界内降雾到未探索浓度：带模糊的 DST_OUT 衰减填充（dst *= 1-src，衰减量 = 1-浓度）。
+        //    模糊让界线两侧在 BOUNDARY_BLUR_M 宽度内平滑渐变——校外保持近 1、校内趋近浓度，
+        //    全程无可见的线或带。不能用半透明色 SRC_OVER 直接填——位图已是全不透明，
+        //    SRC_OVER 叠半透明色结果恒为 1，校内迷雾会完全挡死底图（2026-11-23 已验证）。
         val baseAlpha = (FogMaskParams.UNEXPLORED_ALPHA * 255).toInt().coerceIn(0, 255)
-        val fenceFill = Paint().apply {
+        val fenceFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ((255 - baseAlpha) shl 24)
             style = Paint.Style.FILL
+            maskFilter = BlurMaskFilter(
+                (FogMaskParams.BOUNDARY_BLUR_M * ppm).toFloat(),
+                BlurMaskFilter.Blur.NORMAL,
+            )
             xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
         }
-        val fencePaths = fences.map { polygon ->
+        fences.map { polygon ->
             Path().apply {
                 polygon.forEachIndexed { index, point ->
                     val (x, y) = maskPx(point)
@@ -116,42 +120,9 @@ object FogMaskBuilder {
                 }
                 close()
             }
-        }
-        fencePaths.forEach { canvas.drawPath(it, fenceFill) }
+        }.forEach { canvas.drawPath(it, fenceFill) }
 
-        // 3) 校界内侧羽化：界线描边（半宽 = 羽化宽）+ 模糊，界外已是 1 不会变淡
-        val feather = FogMaskParams.BOUNDARY_FEATHER_M
-        val featherStroke = Paint().apply {
-            color = 0xFF000000.toInt()
-            style = Paint.Style.STROKE
-            strokeWidth = (2.0 * feather * ppm).toFloat()
-            maskFilter = BlurMaskFilter((0.45 * feather * ppm).toFloat(), BlurMaskFilter.Blur.NORMAL)
-        }
-        fencePaths.forEach { canvas.drawPath(it, featherStroke) }
-
-        // 4) 已打卡整块开雾（DST_OUT + 模糊软边）
-        val completeBlur = BlurMaskFilter(
-            (0.5 * FogMaskParams.COMPLETE_FEATHER_M * ppm).toFloat(),
-            BlurMaskFilter.Blur.NORMAL,
-        )
-        val completePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFF000000.toInt()
-            maskFilter = completeBlur
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
-        }
-        completedBlocks.forEach { block ->
-            if (block.vertices.isEmpty()) return@forEach
-            val path = Path().apply {
-                block.vertices.forEachIndexed { index, point ->
-                    val (x, y) = maskPx(point)
-                    if (index == 0) moveTo(x, y) else lineTo(x, y)
-                }
-                close()
-            }
-            canvas.drawPath(path, completePaint)
-        }
-
-        // 5) 探索带 + 临时视野：径向渐变揭雾（中心全清 → 边缘回落雾浓度）
+        // 3) 径向揭雾工具：中心全清 → 边缘回落雾浓度（DST_OUT 径向渐变）
         val revealPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
         }
@@ -167,6 +138,11 @@ object FogMaskBuilder {
             )
             canvas.drawCircle(cx, cy, r, revealPaint)
         }
+
+        // 4) 已打卡：仅该地标上方迷雾散开（径向全清 → 边缘回落雾浓度）
+        completedCenters.forEach { reveal(it, FogMaskParams.COMPLETED_REVEAL_RADIUS_M) }
+
+        // 5) 探索带 + 临时视野：径向渐变揭雾
         exploredCenters.forEach { reveal(it, FogMaskParams.EXPLORED_RADIUS_M) }
         liveScoutCenter?.let { reveal(it, FogMaskParams.TEMP_VIEW_RADIUS_M) }
 
