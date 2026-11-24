@@ -40,14 +40,17 @@ import com.bitse.geotreasure.core.model.Landmark
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.hypot
 
 /**
  * P01 探索页 · 迷雾叠加层 v4（E「连续云层·步行开雾」第二版，替代 v3.2 卡通云场）。
  *
- * 设计（依据 E《README-接入说明.md》）：
- * 1) 视觉 = 连续雾面：全屏平涂雾色打底（校外恒不透明，无任何分块，全域覆盖任意缩放级别）+
- *    单张云纹「整张单次放置」的大尺度柔变（地理锚定 32km 固定地面矩形，不重复采样同一贴图，
- *    边缘远离可视区），随地图平移/缩放/旋转；
+ * 设计（依据 E《README-接入说明.md》并按真机反馈迭代）：
+ * 1) 视觉 = 连续雾面：云纹在加载时做「回绕交叉渐变」无缝化处理（左右/上下边界像素连续），
+ *    校外用平移平铺补充雾面——相邻格像素级连续、无拼接界限，按云纹纹理自然过渡；
+ *    全屏雾色打底保证任意缩放级别全域覆盖；地理锚定随地图平移/缩放/旋转；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
  *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
@@ -55,8 +58,8 @@ import kotlinx.coroutines.withContext
  *    可见 marker 由本层开 30dp 小孔透出，演示路径 marker 在本层之上无需开孔）；
  * 4) 校外无底图/业务标记漏出（雾在校外恒不透明）；云上无「未开放区域」文字。
  *
- * 实现要点：云影与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
- * 在后台线程重建（打卡/探索记录/定位更新时），每帧仅一次云纹 drawImage 与一次 DstIn 遮罩
+ * 实现要点：云纹平铺与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
+ * 在后台线程重建（打卡/探索记录/定位更新时），每帧仅若干次云纹 drawImage 与一次 DstIn 遮罩
  * 与少量小孔/飘散动画，开销远低于 v3.2 的逐帧云朵矢量绘制。
  * 打卡反馈：整块点亮由遮罩重建完成，另有 5 朵小云飘散动画保留打卡瞬间反馈。
  */
@@ -70,8 +73,8 @@ private const val PUFF_RISE_M = 140f          // 飘散上升高度（地面米�
 private const val PUFF_SPREAD_M = 260f        // 飘散横向距离（地面米）
 private const val PUFF_CLOUD_M = 90f          // 飘散小云地面尺寸（米）
 private const val MARKER_HOLE_DP = 30f        // 高德路径：marker 透出小孔半径（dp）
-private const val FOG_SHEET_M = 32768f        // 云影整张放置的地面边长（米，单次采样不重复平铺）
-private const val FOG_SHEET_ALPHA = 0.55f     // 云影叠加透明度（大尺度自然明暗，无分块）
+private const val TEXTURE_TILE_M = 512f       // 云纹单格地面尺寸（米，地理锚定平铺）
+private const val SEAM_FADE_FRAC = 1f / 6f    // 无缝化回绕交叉渐变占比（各边）
 
 private val FogShadow = Color(0xFF89A687)
 private val FogBody = Color(0xFFB9D4B5)
@@ -191,6 +194,80 @@ fun fogAnchorPoint(landmarks: List<Landmark>): GeoPoint {
     )
 }
 
+/**
+ * 云纹无缝化处理：横向、纵向各做一次「回绕交叉渐变」。
+ * 原理（以横向为例，输出宽 W2 = W - F）：主段直接取原图列；末尾 F 列与「被裁掉的右侧 F 列」
+ * 线性交叉渐变——输出最末列收敛到原图最右列，平铺回绕到输出首列 = 原图 0/末列相邻关系，
+ * 拼接处像素连续、无界限。纵向对横向结果再做一次，得到四向无缝的可平铺云纹。
+ */
+private fun seamlessTileable(src: android.graphics.Bitmap): android.graphics.Bitmap {
+    val w = src.width
+    val h = src.height
+    val fw = (w * SEAM_FADE_FRAC).toInt().coerceIn(2, w / 2 - 1)
+    val fh = (h * SEAM_FADE_FRAC).toInt().coerceIn(2, h / 2 - 1)
+    val w2 = w - fw
+    val h2 = h - fh
+
+    var pixels = IntArray(w * h)
+    src.getPixels(pixels, 0, w, 0, 0, w, h)
+    var curW = w
+    var curH = h
+
+    // 横向回绕渐变
+    run {
+        val out = IntArray(w2 * curH)
+        for (y in 0 until curH) {
+            val row = y * curW
+            val orow = y * w2
+            for (u in 0 until w2) {
+                val c = pixels[row + u]
+                out[orow + u] = if (u >= w2 - fw) {
+                    val t = (u - (w2 - fw)).toFloat() / fw
+                    blendPixels(c, pixels[row + u + fw], t)
+                } else {
+                    c
+                }
+            }
+        }
+        pixels = out
+        curW = w2
+    }
+
+    // 纵向回绕渐变（对横向结果）
+    run {
+        val out = IntArray(curW * h2)
+        for (v in 0 until h2) {
+            val row = v * curW
+            for (u in 0 until curW) {
+                val c = pixels[row + u]
+                out[row + u] = if (v >= h2 - fh) {
+                    val t = (v - (h2 - fh)).toFloat() / fh
+                    blendPixels(c, pixels[(v + fh) * curW + u], t)
+                } else {
+                    c
+                }
+            }
+        }
+        pixels = out
+        curH = h2
+    }
+
+    val outBmp = android.graphics.Bitmap.createBitmap(curW, curH, android.graphics.Bitmap.Config.ARGB_8888)
+    outBmp.setPixels(pixels, 0, curW, 0, 0, curW, curH)
+    return outBmp
+}
+
+/** 两个 ARGB 像素按权重 t 线性插值（t=0 取 c1，t=1 取 c2） */
+private fun blendPixels(c1: Int, c2: Int, t: Float): Int {
+    val k = (t * 255f).toInt().coerceIn(0, 255)
+    fun lerp(shift: Int): Int {
+        val v1 = c1 ushr shift and 0xFF
+        val v2 = c2 ushr shift and 0xFF
+        return v1 + (v2 - v1) * k / 255
+    }
+    return (lerp(24) shl 24) or (lerp(16) shl 16) or (lerp(8) shl 8) or lerp(0)
+}
+
 @Composable
 internal fun FogOverlay(
     landmarks: List<Landmark>,
@@ -204,12 +281,14 @@ internal fun FogOverlay(
 ) {
     val context = LocalContext.current
 
-    // 云纹：单张贴图，App 生命周期内解码一次
+    // 云纹：单张贴图，App 生命周期内解码一次；解码后做无缝化处理，使平移平铺无拼接缝
     val texture by produceState<ImageBitmap?>(initialValue = null) {
         value = withContext(Dispatchers.IO) {
             runCatching {
                 context.assets.open("fog-cloud-texture.png").use { stream ->
-                    android.graphics.BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                    android.graphics.BitmapFactory.decodeStream(stream)?.let { src ->
+                        seamlessTileable(src).also { src.recycle() }.asImageBitmap()
+                    }
                 }
             }.getOrNull()
         }
@@ -272,24 +351,35 @@ internal fun FogOverlay(
         drawRect(color = FogBody, topLeft = Offset.Zero, size = size)
 
         withTransform({ rotate(frame.bearingDegrees, pivot = frame.originScreen) }) {
-            // 2) 大尺度云影：云纹整张单次放置（非连续采样平铺）——以锚点为中心的固定地面矩形，
-            //    低透明度叠加出自然的大尺度明暗过渡，随地图平移/缩放/旋转（地理锚定）。
-            //    32km 边长远大于任何合理缩放的可视区，云影边缘不可见；露出的也只是均匀基底雾色。
-            val sheetHalfPxX = FOG_SHEET_M / 2f * ppmX
-            val sheetHalfPxY = FOG_SHEET_M / 2f * ppmY
-            drawImage(
-                image = tex,
-                dstOffset = IntOffset(
-                    (frame.originScreen.x - sheetHalfPxX).toInt(),
-                    (frame.originScreen.y - sheetHalfPxY).toInt(),
-                ),
-                dstSize = IntSize(
-                    (FOG_SHEET_M * ppmX).toInt(),
-                    (FOG_SHEET_M * ppmY).toInt(),
-                ),
-                alpha = FOG_SHEET_ALPHA,
-                filterQuality = FilterQuality.Medium,
+            // 2) 云影平铺：云纹已在加载时做「回绕交叉渐变」无缝化处理——贴图左右/上下边界像素连续，
+            //    平移平铺后相邻格自然过渡、无拼接界限；随地图平移/缩放/旋转（地理锚定）。
+            //    覆盖范围取「锚点到屏幕四角最大距离」，旋转后仍盖满全屏。
+            val coverPx = maxOf(
+                hypot(frame.originScreen.x, frame.originScreen.y),
+                hypot(size.width - frame.originScreen.x, frame.originScreen.y),
+                hypot(frame.originScreen.x, size.height - frame.originScreen.y),
+                hypot(size.width - frame.originScreen.x, size.height - frame.originScreen.y),
             )
+            val tilePxX = TEXTURE_TILE_M * ppmX
+            val tilePxY = TEXTURE_TILE_M * ppmY
+            val iMin = floor(-coverPx / tilePxX).toInt() - 1
+            val iMax = ceil(coverPx / tilePxX).toInt() + 1
+            val jMin = floor(-coverPx / tilePxY).toInt() - 1
+            val jMax = ceil(coverPx / tilePxY).toInt() + 1
+            for (i in iMin..iMax) {
+                for (j in jMin..jMax) {
+                    val x = frame.originScreen.x + i * tilePxX
+                    val y = frame.originScreen.y - (j + 1) * tilePxY
+                    if (x > size.width || y > size.height || x + tilePxX < 0 || y + tilePxY < 0) continue
+                    drawImage(
+                        image = tex,
+                        dstOffset = IntOffset(x.toInt(), y.toInt()),
+                        // +1px 消除相邻格之间的取整发丝缝（贴图无缝，重叠 1px 无痕）
+                        dstSize = IntSize(tilePxX.toInt() + 1, tilePxY.toInt() + 1),
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
+            }
 
             // 3) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到整层 alpha 上）
             val maskX = frame.originScreen.x + maskBounds.minEastM.toFloat() * ppmX
