@@ -49,7 +49,7 @@ import kotlin.math.floor
  * 设计（依据 E《README-接入说明.md》）：
  * 1) 视觉 = 单张云纹（fog-cloud-texture.png）按固定地面尺寸平铺，随地图平移/缩放（地理锚定）；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
- *    校外恒 1 → 校界内侧羽化 → 校内未探索 0.35 → 临时视野/历史探索带/已打卡整块按揭雾权重减淡；
+ *    校外恒 1 → 校界内侧宽羽化 → 校内未探索 0.55 → 临时视野/历史探索带/已打卡整块按揭雾权重减淡；
  * 3) 层级：底图 < 云层 < 现有地标及定位标记 < 界面控件（AMap 原生 marker 在本层之下，
  *    可见 marker 由本层开 30dp 小孔透出，演示路径 marker 在本层之上无需开孔）；
  * 4) 校外无底图/业务标记漏出（雾在校外恒不透明）；云上无「未开放区域」文字。
@@ -276,12 +276,29 @@ internal fun FogOverlay(
                 val w = TEXTURE_TILE_M * ppmX
                 val h = TEXTURE_TILE_M * ppmY
                 if (x > size.width || y > size.height || x + w < 0 || y + h < 0) continue
-                drawImage(
-                    image = tex,
-                    dstOffset = IntOffset(x.toInt(), y.toInt()),
-                    dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
-                    filterQuality = FilterQuality.Medium,
-                )
+                // 镜像平铺：按格 (i,j) 奇偶翻转，相邻格边缘像素连续，消除 512m 网格接缝线
+                val flipX = ((i % 2) + 2) % 2 != 0
+                val flipY = ((j % 2) + 2) % 2 != 0
+                if (flipX || flipY) {
+                    withTransform({
+                        translate(x + if (flipX) w else 0f, y + if (flipY) h else 0f)
+                        scale(if (flipX) -1f else 1f, if (flipY) -1f else 1f, pivot = Offset.Zero)
+                    }) {
+                        drawImage(
+                            image = tex,
+                            dstOffset = IntOffset(0, 0),
+                            dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
+                            filterQuality = FilterQuality.Medium,
+                        )
+                    }
+                } else {
+                    drawImage(
+                        image = tex,
+                        dstOffset = IntOffset(x.toInt(), y.toInt()),
+                        dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
             }
         }
 

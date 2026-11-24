@@ -15,19 +15,19 @@ import com.bitse.geotreasure.core.model.CampusRevealBlock
 import com.bitse.geotreasure.core.model.GeoPoint
 
 /**
- * 迷雾 v4（E「连续云层·步行开雾」第二版）调参常量。
- * 依据《README-接入说明.md》：校外雾 alpha 恒 1；校内未探索 0.30–0.40 起调；
- * 校界内侧羽化；临时/历史/已完成分别计算揭雾权重取最大混合；校外全遮挡优先。
+ * 迷雾 v4（E「连续云层·步行开雾」第二版；2026-11-23 按参照效果图调参：0.55/120m/60m）调参常量。
+ * 依据：校外雾 alpha 恒 1；校内未探索半透明（底图隐约可辨）；校界宽羽化无直线感；
+ * 临时/历史/已完成分别计算揭雾权重取最大混合；校外全遮挡优先。
  */
 object FogMaskParams {
-    /** 校内未探索雾不透明度（E 建议 0.30–0.40；验收=能连续辨认主路/路口/湖岸/建筑轮廓） */
-    const val UNEXPLORED_ALPHA = 0.35f
+    /** 校内未探索雾不透明度（参照效果图 2026-11-23 调至 0.55：底图隐约可辨、雾感明显） */
+    const val UNEXPLORED_ALPHA = 0.55f
 
-    /** 校界内侧羽化宽度（米）：界内侧雾从 1 渐落到未探索浓度，避免露出校外底图 */
-    const val BOUNDARY_FEATHER_M = 45f
+    /** 校界内侧羽化宽度（米）：界内雾从 1 渐落到未探索浓度；120m 让校界多边形无直线感（参照图柔和过渡） */
+    const val BOUNDARY_FEATHER_M = 120f
 
-    /** 已打卡整块开雾的边缘过渡宽度（米） */
-    const val COMPLETE_FEATHER_M = 30f
+    /** 已打卡整块开雾的边缘过渡宽度（米）：60m 消除 reveal block 分块边线 */
+    const val COMPLETE_FEATHER_M = 60f
 
     /** 临时视野（实时定位）揭雾半径（米） */
     const val TEMP_VIEW_RADIUS_M = 60.0
