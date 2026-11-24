@@ -40,14 +40,14 @@ import com.bitse.geotreasure.core.model.Landmark
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.floor
-import kotlin.math.hypot
 
 /**
  * P01 探索页 · 迷雾叠加层 v4（E「连续云层·步行开雾」第二版，替代 v3.2 卡通云场）。
  *
  * 设计（依据 E《README-接入说明.md》）：
- * 1) 视觉 = 单张云纹（fog-cloud-texture.png）按固定地面尺寸平铺，随地图平移/缩放/旋转（地理锚定）；
+ * 1) 视觉 = 连续雾面：全屏平涂雾色打底（校外恒不透明，无任何分块）+ 单张云纹「整张单次放置」
+ *    的大尺度柔变（地理锚定 8km 固定地面矩形，不重复采样同一贴图，边缘远离可视区），随地图
+ *    平移/缩放/旋转；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
  *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
@@ -55,8 +55,8 @@ import kotlin.math.hypot
  *    可见 marker 由本层开 30dp 小孔透出，演示路径 marker 在本层之上无需开孔）；
  * 4) 校外无底图/业务标记漏出（雾在校外恒不透明）；云上无「未开放区域」文字。
  *
- * 实现要点：云纹平铺与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
- * 在后台线程重建（打卡/探索记录/定位更新时），每帧仅做两次 drawImage（纹样 + DstIn 遮罩）
+ * 实现要点：云影与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
+ * 在后台线程重建（打卡/探索记录/定位更新时），每帧仅一次云纹 drawImage 与一次 DstIn 遮罩
  * 与少量小孔/飘散动画，开销远低于 v3.2 的逐帧云朵矢量绘制。
  * 打卡反馈：整块点亮由遮罩重建完成，另有 5 朵小云飘散动画保留打卡瞬间反馈。
  */
@@ -70,7 +70,8 @@ private const val PUFF_RISE_M = 140f          // 飘散上升高度（地面米�
 private const val PUFF_SPREAD_M = 260f        // 飘散横向距离（地面米）
 private const val PUFF_CLOUD_M = 90f          // 飘散小云地面尺寸（米）
 private const val MARKER_HOLE_DP = 30f        // 高德路径：marker 透出小孔半径（dp）
-private const val TEXTURE_TILE_M = 512f       // 云纹单格地面尺寸（米，地理锚定平铺）
+private const val FOG_SHEET_M = 8192f         // 云影整张放置的地面边长（米，单次采样不重复平铺）
+private const val FOG_SHEET_ALPHA = 0.55f     // 云影叠加透明度（大尺度自然明暗，无分块）
 
 private val FogShadow = Color(0xFF89A687)
 private val FogBody = Color(0xFFB9D4B5)
@@ -267,60 +268,30 @@ internal fun FogOverlay(
         val ppmX = frame.pxPerMeter.coerceAtLeast(1e-4f)
         val ppmY = frame.pxPerMeterY.coerceAtLeast(1e-4f)
 
-        // 地图旋转（bearing ≠ 0）：把地面坐标系整体绕锚点屏幕坐标旋转到与地图一致。
-        // 无倾斜 + 等比缩放下，投影 = 相似变换（平移 + 旋转 + 缩放），该变换精确复现投影。
-        // 覆盖范围取「锚点到屏幕四角的最大距离」换算成米，保证旋转后仍盖满全屏。
-        val coverRadiusPx = maxOf(
-            hypot(frame.originScreen.x, frame.originScreen.y),
-            hypot(size.width - frame.originScreen.x, frame.originScreen.y),
-            hypot(frame.originScreen.x, size.height - frame.originScreen.y),
-            hypot(size.width - frame.originScreen.x, size.height - frame.originScreen.y),
-        )
+        // 1) 基底：全屏平涂雾色（校外恒不透明的连续雾面；颜色均匀，无需随地图旋转）
+        drawRect(color = FogBody, topLeft = Offset.Zero, size = size)
 
         withTransform({ rotate(frame.bearingDegrees, pivot = frame.originScreen) }) {
-            // 1) 云纹平铺：格 (i,j) 对应地面固定位置，随地图平移/缩放/旋转（地理锚定）
-            val leftM = -coverRadiusPx / ppmX
-            val rightM = coverRadiusPx / ppmX
-            val topM = coverRadiusPx / ppmY
-            val bottomM = -coverRadiusPx / ppmY
-            val iMin = floor(leftM / TEXTURE_TILE_M).toInt()
-            val iMax = floor(rightM / TEXTURE_TILE_M).toInt()
-            val jMin = floor(bottomM / TEXTURE_TILE_M).toInt()
-            val jMax = floor(topM / TEXTURE_TILE_M).toInt()
-            for (i in iMin..iMax) {
-                for (j in jMin..jMax) {
-                    val x = frame.originScreen.x + i * TEXTURE_TILE_M * ppmX
-                    val y = frame.originScreen.y - (j + 1) * TEXTURE_TILE_M * ppmY
-                    val w = TEXTURE_TILE_M * ppmX
-                    val h = TEXTURE_TILE_M * ppmY
-                    if (x > size.width || y > size.height || x + w < 0 || y + h < 0) continue
-                    // 镜像平铺：按格 (i,j) 奇偶翻转，相邻格边缘像素连续，消除 512m 网格接缝线
-                    val flipX = ((i % 2) + 2) % 2 != 0
-                    val flipY = ((j % 2) + 2) % 2 != 0
-                    if (flipX || flipY) {
-                        withTransform({
-                            translate(x + if (flipX) w else 0f, y + if (flipY) h else 0f)
-                            scale(if (flipX) -1f else 1f, if (flipY) -1f else 1f, pivot = Offset.Zero)
-                        }) {
-                            drawImage(
-                                image = tex,
-                                dstOffset = IntOffset(0, 0),
-                                dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
-                                filterQuality = FilterQuality.Medium,
-                            )
-                        }
-                    } else {
-                        drawImage(
-                            image = tex,
-                            dstOffset = IntOffset(x.toInt(), y.toInt()),
-                            dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
-                            filterQuality = FilterQuality.Medium,
-                        )
-                    }
-                }
-            }
+            // 2) 大尺度云影：云纹整张单次放置（非连续采样平铺）——以锚点为中心的固定地面矩形，
+            //    低透明度叠加出自然的大尺度明暗过渡，随地图平移/缩放/旋转（地理锚定）。
+            //    8km 边长远大于可视区，云影边缘不可见；即使极端拉远，露出的也只是均匀基底雾色。
+            val sheetHalfPxX = FOG_SHEET_M / 2f * ppmX
+            val sheetHalfPxY = FOG_SHEET_M / 2f * ppmY
+            drawImage(
+                image = tex,
+                dstOffset = IntOffset(
+                    (frame.originScreen.x - sheetHalfPxX).toInt(),
+                    (frame.originScreen.y - sheetHalfPxY).toInt(),
+                ),
+                dstSize = IntSize(
+                    (FOG_SHEET_M * ppmX).toInt(),
+                    (FOG_SHEET_M * ppmY).toInt(),
+                ),
+                alpha = FOG_SHEET_ALPHA,
+                filterQuality = FilterQuality.Medium,
+            )
 
-            // 2) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到云纹 alpha 上）
+            // 3) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到整层 alpha 上）
             val maskX = frame.originScreen.x + maskBounds.minEastM.toFloat() * ppmX
             val maskY = frame.originScreen.y - maskBounds.maxNorthM.toFloat() * ppmY
             val maskW = (maskBounds.maxEastM - maskBounds.minEastM).toFloat() * ppmX
