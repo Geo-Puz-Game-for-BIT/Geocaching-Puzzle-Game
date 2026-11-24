@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.remote
 
+import com.bitse.geotreasure.core.account.AuthTokenProvider
 import com.bitse.geotreasure.core.checkin.CheckInQueryResult
 import com.bitse.geotreasure.core.model.CheckInChallenge
 import com.bitse.geotreasure.core.model.CheckInReceipt
@@ -36,11 +37,18 @@ class CheckInApiException(
  */
 class CheckInApi(
     private val baseUrl: String,
-    private val authToken: String,
+    private val authProvider: AuthTokenProvider,
     private val client: OkHttpClient = defaultClient(),
     private val gson: Gson = Gson(),
 ) {
     private val rootUrl = baseUrl.trimEnd('/')
+
+    /** 每次请求取当前有效 token，未登录/失效即抛 AUTH_REQUIRED。 */
+    private fun authorizationHeader(): String {
+        val token = authProvider.currentToken()
+            ?: throw CheckInApiException("AUTH_REQUIRED", false, "未登录或会话失效")
+        return "Bearer $token"
+    }
 
     fun uploadPhoto(photoFile: File): UploadedPhoto {
         val body = MultipartBody.Builder()
@@ -50,7 +58,7 @@ class CheckInApi(
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkin-photos")
-                .header("Authorization", "Bearer $authToken")
+                .header("Authorization", authorizationHeader())
                 .post(body)
                 .build(),
         )
@@ -63,7 +71,7 @@ class CheckInApi(
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkin-challenges")
-                .header("Authorization", "Bearer $authToken")
+                .header("Authorization", authorizationHeader())
                 .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build(),
         )
@@ -77,7 +85,7 @@ class CheckInApi(
         val response = execute(
             Request.Builder()
                 .url("$rootUrl/checkins")
-                .header("Authorization", "Bearer $authToken")
+                .header("Authorization", authorizationHeader())
                 .header("Idempotency-Key", idempotencyKey)
                 .post(json.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build(),
@@ -101,7 +109,7 @@ class CheckInApi(
         if (rootUrl.isBlank()) return CheckInQueryResult.Unavailable
         val request = Request.Builder()
             .url("$rootUrl/checkins?attemptId=$attemptId")
-            .header("Authorization", "Bearer $authToken")
+            .header("Authorization", authorizationHeader())
             .get()
             .build()
         return try {

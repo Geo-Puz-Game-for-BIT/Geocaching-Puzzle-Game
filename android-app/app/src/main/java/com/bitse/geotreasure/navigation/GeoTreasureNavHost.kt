@@ -83,6 +83,7 @@ fun GeoTreasureNavHost() {
                     locationProvider = container.locationProvider,
                     faceQualityChecker = container.createFaceQualityChecker(),
                     landmarkRepository = container.landmarkRepository,
+                    accountSession = container.accountSession,
                 ),
             )
             CameraScreen(

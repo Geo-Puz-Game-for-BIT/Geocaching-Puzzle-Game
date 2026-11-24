@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.remote
 
+import com.bitse.geotreasure.core.account.AuthTokenProvider
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.CircularCheckInArea
 import com.bitse.geotreasure.core.model.GeoPoint
@@ -23,7 +24,7 @@ class CloudBaseApiException(
 
 class CloudBaseApiClient(
     baseUrl: String,
-    private val bearerToken: String,
+    private val authProvider: AuthTokenProvider,
     private val connectionFactory: (URL) -> HttpURLConnection = {
         it.openConnection() as HttpURLConnection
     },
@@ -55,7 +56,9 @@ class CloudBaseApiClient(
             connection.connectTimeout = TIMEOUT_MILLIS
             connection.readTimeout = TIMEOUT_MILLIS
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Authorization", "Bearer $bearerToken")
+            val token = authProvider.currentToken()
+                ?: throw CloudBaseApiException("AUTH_REQUIRED", "未登录或会话失效", false)
+            connection.setRequestProperty("Authorization", "Bearer $token")
             val status = connection.responseCode
             val requestId = connection.getHeaderField("X-Request-Id").orEmpty()
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream

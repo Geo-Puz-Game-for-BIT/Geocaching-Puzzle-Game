@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.repository
 
+import com.bitse.geotreasure.core.account.AuthTokenProvider
 import com.bitse.geotreasure.core.common.AppResult
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.CircularCheckInArea
@@ -54,7 +55,7 @@ class CloudBaseLandmarkRepositoryTest {
         CloudBaseLandmarkRepository(
             CloudBaseApiClient(
                 baseUrl = baseUrl,
-                bearerToken = "test-token",
+                authProvider = AuthTokenProvider { "test-token" },
             ),
         )
 

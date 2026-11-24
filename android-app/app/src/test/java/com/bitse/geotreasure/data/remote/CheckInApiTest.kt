@@ -1,5 +1,6 @@
 package com.bitse.geotreasure.data.remote
 
+import com.bitse.geotreasure.core.account.AuthTokenProvider
 import com.bitse.geotreasure.core.checkin.CheckInQueryResult
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
@@ -42,7 +43,7 @@ class CheckInApiTest {
         } else {
             OkHttpClient()
         }
-        return CheckInApi(baseUrl = server.url("/").toString(), authToken = "tok_1", client = client)
+        return CheckInApi(baseUrl = server.url("/").toString(), authProvider = AuthTokenProvider { "tok_1" }, client = client)
     }
 
     private fun receiptJson() = """{"requestId":"req_1","data":{"checkInId":"chk_1","status":"COMPLETED","fragmentGrant":{"fragmentId":"frg_1","puzzleId":"pzl_1","pieceIndex":0,"grantedAt":"2024-01-01T00:00:00Z"}}}"""
@@ -122,7 +123,7 @@ class CheckInApiTest {
     @Test
     fun query_notConfigured_returnsUnavailable() {
         // 未配置 baseUrl 不得返回 NotFound（未配置不能作为「明确未成功」的安全新尝试依据）
-        val api = CheckInApi(baseUrl = "", authToken = "tok_1")
+        val api = CheckInApi(baseUrl = "", authProvider = AuthTokenProvider { "tok_1" })
         val result = api.queryCheckIn("att_1")
         assertEquals(CheckInQueryResult.Unavailable, result)
     }

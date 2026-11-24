@@ -51,6 +51,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.bitse.geotreasure.app.ExplorationProgressStore
+import com.bitse.geotreasure.core.account.AccountCallbackGuard
+import com.bitse.geotreasure.core.account.AccountSession
+import com.bitse.geotreasure.core.account.BusinessActivity
 import com.bitse.geotreasure.core.camera.CameraXManager
 import com.bitse.geotreasure.core.camera.FaceCheckResult
 import com.bitse.geotreasure.core.camera.FaceQualityChecker
@@ -144,6 +147,7 @@ class CameraViewModel(
     private val locationProvider: LocationProvider,
     private val faceQualityChecker: FaceQualityChecker,
     private val landmarkRepository: LandmarkRepository,
+    private val accountSession: AccountSession,
 ) : ViewModel() {
     /** 当前尝试的幂等键。可靠确认旧尝试结束后可原子生成新 ID（R2）。 */
     private var currentAttemptId: String = attemptId
@@ -152,6 +156,10 @@ class CameraViewModel(
     val uiState: StateFlow<CameraUiState> = mutableUiState.asStateFlow()
     private val effectChannel = Channel<CameraEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
+
+    /** 打卡业务活动状态，供 UI 观察「过门过渡/展示是否适宜」。 */
+    private val mutableActivity = MutableStateFlow(BusinessActivity.IDLE)
+    val activity: StateFlow<BusinessActivity> = mutableActivity.asStateFlow()
 
     private var landmark: Landmark? = null
     private var challengeId: String? = null
@@ -460,6 +468,9 @@ class CameraViewModel(
         )
 
         viewModelScope.launch(Dispatchers.IO) {
+            // 旧回调隔离：冻结发起请求时的账号身份，响应时与当前身份比对
+            val binding = accountSession.currentIdentity()
+            mutableActivity.value = BusinessActivity.UPLOADING
             val processed = PhotoCompressor.process(File(photoPath))
             val bitmap = PhotoCompressor.decodeUpright(processed.file.absolutePath)
             if (bitmap == null) {
@@ -487,12 +498,22 @@ class CameraViewModel(
                         )
                     }
                 } catch (e: Throwable) {
-                    onSubmitFailed(e, unknownResult = false)
+                    // 旧回调隔离：上传失败响应也先检查归属，旧账号失败不得污染新账号
+                    if (!AccountCallbackGuard.isStale(binding, accountSession.currentIdentity())) {
+                        onSubmitFailed(e, unknownResult = false)
+                    }
+                    mutableActivity.value = BusinessActivity.IDLE
                     return@launch
                 }
             }
 
+            // 旧回调隔离：上传完成时账号已切换则丢弃（photoId 属旧账号，不得入新账号草稿）
+            if (AccountCallbackGuard.isStale(binding, accountSession.currentIdentity())) {
+                mutableActivity.value = BusinessActivity.IDLE
+                return@launch
+            }
             // 标记已发送：此后冻结内容不可变，重试即查询恢复（不重放）
+            mutableActivity.value = BusinessActivity.SUBMITTING
             requestSent = true
             // C-1：立即持久化「已发送」事实，避免 submit 期间进程被杀后草稿丢失 requestSent
             persistDraft(
@@ -503,7 +524,13 @@ class CameraViewModel(
                 ),
                 uploadState = UploadState.UPLOADED,
             )
-            when (val outcome = submitCoordinator.submit(landmarkId, currentAttemptId, challenge, photoId, location)) {
+            val outcome = submitCoordinator.submit(landmarkId, currentAttemptId, challenge, photoId, location)
+            // 旧回调隔离：响应到达时账号已切换则丢弃，不更新新账号页面、不踢回登录页
+            if (AccountCallbackGuard.isStale(binding, accountSession.currentIdentity())) {
+                mutableActivity.value = BusinessActivity.IDLE
+                return@launch
+            }
+            when (outcome) {
                 is SubmitOutcome.Success -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.ChallengeExpired -> onChallengeExpired(outcome)
@@ -516,7 +543,14 @@ class CameraViewModel(
     private fun recoverAttempt() {
         mutableUiState.update { it.copy(isProcessing = true, errorMessage = null, faceCheckMessage = null) }
         viewModelScope.launch {
-            when (val outcome = submitCoordinator.recover(currentAttemptId)) {
+            val binding = accountSession.currentIdentity()
+            mutableActivity.value = BusinessActivity.QUERYING
+            val outcome = submitCoordinator.recover(currentAttemptId)
+            if (AccountCallbackGuard.isStale(binding, accountSession.currentIdentity())) {
+                mutableActivity.value = BusinessActivity.IDLE
+                return@launch
+            }
+            when (outcome) {
                 is SubmitOutcome.Recovered -> onSuccess(outcome.receipt.checkInId)
                 is SubmitOutcome.Failed ->
                     // F3：终态保证成立前 recover 只返回 unknownResult=true（NotFound 亦未知）；
@@ -577,6 +611,7 @@ class CameraViewModel(
                 localPhoto = path?.let { LocalPhotoRef(it, "image/jpeg", File(it).length()) },
                 uploadState = targetState,
             )
+            mutableActivity.value = if (unknownResult) BusinessActivity.UNKNOWN else BusinessActivity.IDLE
         }
     }
 
@@ -642,6 +677,7 @@ class CameraViewModel(
     /** 挑战过期但旧结果查询失败/未知：保留照片与冻结内容，置 UNKNOWN，仅可同 key 重试。 */
     private fun onChallengeExpiryUnknown() {
         val path = mutableUiState.value.photoPath
+        mutableActivity.value = BusinessActivity.UNKNOWN
         mutableUiState.update {
             it.copy(
                 isProcessing = false,
@@ -658,6 +694,7 @@ class CameraViewModel(
     /** 查询故障/处理中：保持 UNKNOWN，仅可再次查询恢复（R3/R4，不降级为 CAPTURED/FAILED）。 */
     private fun onRecoveryUnknown() {
         val path = mutableUiState.value.photoPath
+        mutableActivity.value = BusinessActivity.UNKNOWN
         mutableUiState.update {
             it.copy(
                 isProcessing = false,
@@ -672,9 +709,13 @@ class CameraViewModel(
     }
 
     private fun onSuccess(checkInId: String) {
+        mutableActivity.value = BusinessActivity.IDLE
         // 只有服务端确认成功后才发碎片 + 清草稿，不因本地拍照成功提前发奖
-        progressStore.markLandmarkCompleted(landmarkId)
-        viewModelScope.launch { draftStore.clear() }
+        // 账号变化前保证「完成集合落盘成功后再清草稿」顺序（P-C-02 整改）
+        viewModelScope.launch {
+            progressStore.markLandmarkCompletedAwait(landmarkId)
+            draftStore.clear()
+        }
         mutableUiState.update { it.copy(isProcessing = false, uploadState = UploadState.CONFIRMED) }
         effectChannel.trySend(CameraEffect.NavigateToResult(checkInId = checkInId, landmarkId = landmarkId))
     }
@@ -718,6 +759,7 @@ class CameraViewModel(
             locationProvider: LocationProvider,
             faceQualityChecker: FaceQualityChecker,
             landmarkRepository: LandmarkRepository,
+            accountSession: AccountSession,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = CameraViewModel(
@@ -731,6 +773,7 @@ class CameraViewModel(
                 locationProvider = locationProvider,
                 faceQualityChecker = faceQualityChecker,
                 landmarkRepository = landmarkRepository,
+                accountSession = accountSession,
             ) as T
         }
     }

@@ -20,8 +20,10 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitse.geotreasure.app.ExplorationProgressStore
 import com.bitse.geotreasure.core.model.CampusZone
 import com.bitse.geotreasure.core.model.LiangxiangTreasureCatalog
+import com.bitse.geotreasure.core.model.LoadState
 import com.bitse.geotreasure.core.model.PuzzleFragmentDefinition
 import com.bitse.geotreasure.core.model.PuzzleRevealMode
 import com.bitse.geotreasure.core.model.PuzzleSectionDefinition
@@ -60,6 +63,8 @@ data class PuzzleUiState(
     val puzzleId: String,
     val revealMode: PuzzleRevealMode = LiangxiangTreasureCatalog.puzzle.defaultRevealMode,
     val ownedFragmentIds: Set<String> = emptySet(),
+    /** 分模块恢复：加载中/失败/成功（含真零）。未加载不得显示成「0 个碎片」。 */
+    val fragmentsLoadState: LoadState<Set<String>> = LoadState.Loading,
 )
 
 /**
@@ -76,18 +81,26 @@ internal fun ownedFragmentIdsFor(completedLandmarkIds: Set<String>): Set<String>
 sealed interface PuzzleAction {
     data class ChangeRevealMode(val revealMode: PuzzleRevealMode) : PuzzleAction
     data class SelectFragment(val fragmentId: String) : PuzzleAction
+
+    /** 分模块恢复：进度加载失败后单独重试，不注销账号、不清零已确认结果。 */
+    data object Retry : PuzzleAction
 }
 
 sealed interface PuzzleEffect
 
-class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore) : ViewModel() {
+class PuzzleViewModel(puzzleId: String, private val progressStore: ExplorationProgressStore) : ViewModel() {
     private val mutableUiState = MutableStateFlow(PuzzleUiState(puzzleId))
     val uiState: StateFlow<PuzzleUiState> = mutableUiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            progressStore.completedLandmarkIds.collect { completedIds ->
-                mutableUiState.update { it.copy(ownedFragmentIds = ownedFragmentIdsFor(completedIds)) }
+            progressStore.completedLandmarkIdsLoadState.collect { loadState ->
+                val ownedIds = (loadState as? LoadState.Success<Set<String>>)?.data
+                    ?.let(::ownedFragmentIdsFor)
+                    ?: emptySet()
+                mutableUiState.update {
+                    it.copy(fragmentsLoadState = loadState, ownedFragmentIds = ownedIds)
+                }
             }
         }
     }
@@ -101,6 +114,8 @@ class PuzzleViewModel(puzzleId: String, progressStore: ExplorationProgressStore)
             is PuzzleAction.SelectFragment -> {
                 if (action.fragmentId !in mutableUiState.value.ownedFragmentIds) return
             }
+
+            PuzzleAction.Retry -> progressStore.retryProgressLoad()
         }
     }
 
@@ -136,33 +151,89 @@ fun PuzzleScreen(viewModel: PuzzleViewModel, onBack: () -> Unit) {
             contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                PuzzleProgressCard(
-                    ownedCount = state.ownedFragmentIds.size,
-                    totalCount = puzzle.fragmentCount,
-                )
+            when (val load = state.fragmentsLoadState) {
+                is LoadState.Loading -> item {
+                    PuzzleLoading()
+                }
+
+                is LoadState.Failure -> item {
+                    PuzzleLoadFailure(
+                        error = load.error,
+                        onRetry = { viewModel.onAction(PuzzleAction.Retry) },
+                    )
+                }
+
+                is LoadState.Success -> {
+                    item {
+                        PuzzleProgressCard(
+                            ownedCount = state.ownedFragmentIds.size,
+                            totalCount = puzzle.fragmentCount,
+                        )
+                    }
+                    item {
+                        RevealModeSelector(
+                            selected = state.revealMode,
+                            onSelected = { viewModel.onAction(PuzzleAction.ChangeRevealMode(it)) },
+                        )
+                    }
+                    items(puzzle.sections, key = { it.id }) { section ->
+                        CampusSection(
+                            section = section,
+                            revealMode = state.revealMode,
+                            ownedFragmentIds = state.ownedFragmentIds,
+                            onFragmentSelected = { viewModel.onAction(PuzzleAction.SelectFragment(it)) },
+                        )
+                    }
+                    item {
+                        Text(
+                            text = "当前 12 个坐标用于开发演示。正式开放打卡前，需要逐点完成实地测量、拍照许可和安全检查。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
-            item {
-                RevealModeSelector(
-                    selected = state.revealMode,
-                    onSelected = { viewModel.onAction(PuzzleAction.ChangeRevealMode(it)) },
-                )
-            }
-            items(puzzle.sections, key = { it.id }) { section ->
-                CampusSection(
-                    section = section,
-                    revealMode = state.revealMode,
-                    ownedFragmentIds = state.ownedFragmentIds,
-                    onFragmentSelected = { viewModel.onAction(PuzzleAction.SelectFragment(it)) },
-                )
-            }
-            item {
-                Text(
-                    text = "当前 12 个坐标用于开发演示。正式开放打卡前，需要逐点完成实地测量、拍照许可和安全检查。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        }
+    }
+}
+
+@Composable
+private fun PuzzleLoading() {
+    Card {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            CircularProgressIndicator()
+            Text(
+                text = "正在加载拼图进度…",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PuzzleLoadFailure(error: String, onRetry: () -> Unit) {
+    Card {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "拼图进度加载失败",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+            )
+            Button(onClick = onRetry) { Text("重试") }
         }
     }
 }
