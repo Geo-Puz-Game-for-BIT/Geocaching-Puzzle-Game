@@ -41,12 +41,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.floor
+import kotlin.math.hypot
 
 /**
  * P01 探索页 · 迷雾叠加层 v4（E「连续云层·步行开雾」第二版，替代 v3.2 卡通云场）。
  *
  * 设计（依据 E《README-接入说明.md》）：
- * 1) 视觉 = 单张云纹（fog-cloud-texture.png）按固定地面尺寸平铺，随地图平移/缩放（地理锚定）；
+ * 1) 视觉 = 单张云纹（fog-cloud-texture.png）按固定地面尺寸平铺，随地图平移/缩放/旋转（地理锚定）；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
  *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
@@ -165,11 +166,17 @@ private class HoleAnim {
     val puff = Animatable(0f)
 }
 
-/** 迷雾地理锚定帧：锚点屏幕坐标 + 当前缩放下的每米像素数（纵向可单独指定，演示路径各向异性投影用） */
+/**
+ * 迷雾地理锚定帧：锚点屏幕坐标 + 当前缩放下的每米像素数（纵向可单独指定，演示路径各向异性投影用）。
+ * bearingDegrees = 地理东向在屏幕上的方向角（度，顺时针；地图未旋转时为 0）。
+ * 高德路径实测自「锚点→正东参考点」的屏幕向量，随旋转手势实时更新；
+ * FogOverlay 用它把云纹平铺与遮罩整体绕锚点旋转，使迷雾始终「套在地图上」。
+ */
 data class FogGeoFrame(
     val originScreen: Offset,
     val pxPerMeter: Float,
     val pxPerMeterY: Float = pxPerMeter,
+    val bearingDegrees: Float = 0f,
 )
 
 /** 迷雾地理锚点：全部地标的包围盒中心；空表时回退良乡校区近似中心 */
@@ -260,60 +267,72 @@ internal fun FogOverlay(
         val ppmX = frame.pxPerMeter.coerceAtLeast(1e-4f)
         val ppmY = frame.pxPerMeterY.coerceAtLeast(1e-4f)
 
-        // 1) 云纹平铺：格 (i,j) 对应地面固定位置，随地图平移/缩放（地理锚定）
-        val leftM = -frame.originScreen.x / ppmX
-        val rightM = (size.width - frame.originScreen.x) / ppmX
-        val topM = frame.originScreen.y / ppmY
-        val bottomM = (frame.originScreen.y - size.height) / ppmY
-        val iMin = floor(leftM / TEXTURE_TILE_M).toInt()
-        val iMax = floor(rightM / TEXTURE_TILE_M).toInt()
-        val jMin = floor(bottomM / TEXTURE_TILE_M).toInt()
-        val jMax = floor(topM / TEXTURE_TILE_M).toInt()
-        for (i in iMin..iMax) {
-            for (j in jMin..jMax) {
-                val x = frame.originScreen.x + i * TEXTURE_TILE_M * ppmX
-                val y = frame.originScreen.y - (j + 1) * TEXTURE_TILE_M * ppmY
-                val w = TEXTURE_TILE_M * ppmX
-                val h = TEXTURE_TILE_M * ppmY
-                if (x > size.width || y > size.height || x + w < 0 || y + h < 0) continue
-                // 镜像平铺：按格 (i,j) 奇偶翻转，相邻格边缘像素连续，消除 512m 网格接缝线
-                val flipX = ((i % 2) + 2) % 2 != 0
-                val flipY = ((j % 2) + 2) % 2 != 0
-                if (flipX || flipY) {
-                    withTransform({
-                        translate(x + if (flipX) w else 0f, y + if (flipY) h else 0f)
-                        scale(if (flipX) -1f else 1f, if (flipY) -1f else 1f, pivot = Offset.Zero)
-                    }) {
+        // 地图旋转（bearing ≠ 0）：把地面坐标系整体绕锚点屏幕坐标旋转到与地图一致。
+        // 无倾斜 + 等比缩放下，投影 = 相似变换（平移 + 旋转 + 缩放），该变换精确复现投影。
+        // 覆盖范围取「锚点到屏幕四角的最大距离」换算成米，保证旋转后仍盖满全屏。
+        val coverRadiusPx = maxOf(
+            hypot(frame.originScreen.x, frame.originScreen.y),
+            hypot(size.width - frame.originScreen.x, frame.originScreen.y),
+            hypot(frame.originScreen.x, size.height - frame.originScreen.y),
+            hypot(size.width - frame.originScreen.x, size.height - frame.originScreen.y),
+        )
+
+        withTransform({ rotate(frame.bearingDegrees, pivot = frame.originScreen) }) {
+            // 1) 云纹平铺：格 (i,j) 对应地面固定位置，随地图平移/缩放/旋转（地理锚定）
+            val leftM = -coverRadiusPx / ppmX
+            val rightM = coverRadiusPx / ppmX
+            val topM = coverRadiusPx / ppmY
+            val bottomM = -coverRadiusPx / ppmY
+            val iMin = floor(leftM / TEXTURE_TILE_M).toInt()
+            val iMax = floor(rightM / TEXTURE_TILE_M).toInt()
+            val jMin = floor(bottomM / TEXTURE_TILE_M).toInt()
+            val jMax = floor(topM / TEXTURE_TILE_M).toInt()
+            for (i in iMin..iMax) {
+                for (j in jMin..jMax) {
+                    val x = frame.originScreen.x + i * TEXTURE_TILE_M * ppmX
+                    val y = frame.originScreen.y - (j + 1) * TEXTURE_TILE_M * ppmY
+                    val w = TEXTURE_TILE_M * ppmX
+                    val h = TEXTURE_TILE_M * ppmY
+                    if (x > size.width || y > size.height || x + w < 0 || y + h < 0) continue
+                    // 镜像平铺：按格 (i,j) 奇偶翻转，相邻格边缘像素连续，消除 512m 网格接缝线
+                    val flipX = ((i % 2) + 2) % 2 != 0
+                    val flipY = ((j % 2) + 2) % 2 != 0
+                    if (flipX || flipY) {
+                        withTransform({
+                            translate(x + if (flipX) w else 0f, y + if (flipY) h else 0f)
+                            scale(if (flipX) -1f else 1f, if (flipY) -1f else 1f, pivot = Offset.Zero)
+                        }) {
+                            drawImage(
+                                image = tex,
+                                dstOffset = IntOffset(0, 0),
+                                dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
+                                filterQuality = FilterQuality.Medium,
+                            )
+                        }
+                    } else {
                         drawImage(
                             image = tex,
-                            dstOffset = IntOffset(0, 0),
+                            dstOffset = IntOffset(x.toInt(), y.toInt()),
                             dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
                             filterQuality = FilterQuality.Medium,
                         )
                     }
-                } else {
-                    drawImage(
-                        image = tex,
-                        dstOffset = IntOffset(x.toInt(), y.toInt()),
-                        dstSize = IntSize(w.toInt() + 1, h.toInt() + 1),
-                        filterQuality = FilterQuality.Medium,
-                    )
                 }
             }
-        }
 
-        // 2) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到云纹 alpha 上）
-        val maskX = frame.originScreen.x + maskBounds.minEastM.toFloat() * ppmX
-        val maskY = frame.originScreen.y - maskBounds.maxNorthM.toFloat() * ppmY
-        val maskW = (maskBounds.maxEastM - maskBounds.minEastM).toFloat() * ppmX
-        val maskH = (maskBounds.maxNorthM - maskBounds.minNorthM).toFloat() * ppmY
-        drawImage(
-            image = maskImage,
-            dstOffset = IntOffset(maskX.toInt(), maskY.toInt()),
-            dstSize = IntSize(maskW.toInt(), maskH.toInt()),
-            filterQuality = FilterQuality.Low,
-            blendMode = BlendMode.DstIn,
-        )
+            // 2) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到云纹 alpha 上）
+            val maskX = frame.originScreen.x + maskBounds.minEastM.toFloat() * ppmX
+            val maskY = frame.originScreen.y - maskBounds.maxNorthM.toFloat() * ppmY
+            val maskW = (maskBounds.maxEastM - maskBounds.minEastM).toFloat() * ppmX
+            val maskH = (maskBounds.maxNorthM - maskBounds.minNorthM).toFloat() * ppmY
+            drawImage(
+                image = maskImage,
+                dstOffset = IntOffset(maskX.toInt(), maskY.toInt()),
+                dstSize = IntSize(maskW.toInt(), maskH.toInt()),
+                filterQuality = FilterQuality.Low,
+                blendMode = BlendMode.DstIn,
+            )
+        }
 
         // 3) 高德路径：marker 在本层之下，可见 marker 开小孔透出水滴
         val markerHoleRadius = MARKER_HOLE_DP.dp.toPx()

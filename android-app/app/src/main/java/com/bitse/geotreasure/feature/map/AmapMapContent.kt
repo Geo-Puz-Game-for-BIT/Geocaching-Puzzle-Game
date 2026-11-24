@@ -72,7 +72,8 @@ fun AmapMapContent(
             }
         }
         onMarkerScreens(screens)
-        // 地理锚定帧：锚点 = 地标包围盒中心；pxPerMeter 用东向 500m 参考点实测投影求出
+        // 地理锚定帧：锚点 = 地标包围盒中心；pxPerMeter 用东向 500m 参考点实测投影求出；
+        // bearingDegrees = 该东向参考向量的屏幕方向角（地图旋转手势会实时改变它，迷雾随之旋转）
         val anchor = fogAnchorPoint(latestState.landmarks)
         val origin = adapter.screenPoint(anchor) ?: return
         val radLat = Math.toRadians(anchor.latitude)
@@ -81,12 +82,18 @@ fun AmapMapContent(
             longitude = anchor.longitude + 500.0 / (111_320.0 * cos(radLat)),
         )
         val eastScreen = adapter.screenPoint(east) ?: return
-        val metersPx = kotlin.math.hypot(
-            (eastScreen.first - origin.first).toDouble(),
-            (eastScreen.second - origin.second).toDouble(),
-        ) / 500.0
+        val dxEast = eastScreen.first - origin.first
+        val dyEast = eastScreen.second - origin.second
+        val metersPx = kotlin.math.hypot(dxEast.toDouble(), dyEast.toDouble()) / 500.0
         if (metersPx > 1e-5) {
-            onFogFrame(FogGeoFrame(Offset(origin.first, origin.second), metersPx.toFloat()))
+            val bearingDeg = Math.toDegrees(kotlin.math.atan2(dyEast.toDouble(), dxEast.toDouble())).toFloat()
+            onFogFrame(
+                FogGeoFrame(
+                    Offset(origin.first, origin.second),
+                    metersPx.toFloat(),
+                    bearingDegrees = bearingDeg,
+                ),
+            )
         }
     }
 
