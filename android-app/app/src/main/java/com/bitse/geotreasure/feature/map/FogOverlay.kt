@@ -43,16 +43,17 @@ import kotlinx.coroutines.withContext
 import kotlin.math.floor
 
 /**
- * P01 探索页 · 迷雾叠加层 v6.6（程序化连续噪声雾面，彻底弃用云纹贴图）。
+ * P01 探索页 · 迷雾叠加层 v6.7（程序化积云雾面：域扭曲 fBm + 密度梯度光照，参照 E 云层参考图）。
  *
- * 设计（真机迭代定案：校外雾必须是「一整片连续的雾」，不得有任何分块/平移拼接感）：
- * 1) 视觉 = 程序化分形噪声雾面，不使用任何贴图、不平移、不拼接：
+ * 设计（真机迭代定案：连续无分块 + 有积云层次感）：
+ * 1) 视觉 = 程序化「积云」雾面，不使用任何贴图、不平移、不拼接：
  *    - Android 13+（API 33）：AGSL RuntimeShader 在 GPU 上逐像素按「地理米制坐标」计算
- *      value-noise fBm（5 倍频）——定义域无穷大，数学上不存在重复采样，任意缩放/平移/旋转
- *      都是一片连续整体雾，细节从 ~600m 大尺度到 ~20m 细纹连续过渡；
- *    - 更早版本回退：启动时后台程序化生成一张 12km 噪声图（非照片贴图，边缘融入雾色）
+ *      域扭曲 fBm（大尺度噪声场卷曲细节噪声 → 云块自然成团、缝隙蜿蜒），再做
+ *      密度梯度光照（沿光照方向再采样一次密度差 → 云顶受光高光、云隙深影），
+ *      颜色三段映射（深影 → 雾体 → 奶白高光）对齐 E 参考图的层次感；
+ *      定义域无穷大、数学上零重复，任意缩放/平移/旋转都是一片连续整体雾；
+ *    - 更早版本回退：启动时后台程序化生成一张 12km 噪声图（同款数学与配色），
  *      单次地理锚定放置，无平移无拼接；
- *    全屏雾色打底保证任意缩放级别全域覆盖；地理锚定随地图平移/缩放/旋转；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
  *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
@@ -62,7 +63,7 @@ import kotlin.math.floor
  *
  * 实现要点：噪声雾面与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
  * 在后台线程重建（打卡/探索记录/定位更新时）；着色器路径每帧仅一次全屏 shader 矩形
- * 与一次 DstIn 遮罩，开销远低于 v3.2 的逐帧云朵矢量绘制。
+ * 与一次 DstIn 遮罩（每次密度采样 = 2 次 5 倍频 fBm，主采样+光照共 4 次 fBm）。
  * 打卡反馈：整块点亮由遮罩重建完成，另有 5 朵小云飘散动画保留打卡瞬间反馈。
  */
 
@@ -75,15 +76,19 @@ private const val PUFF_RISE_M = 140f          // 飘散上升高度（地面米�
 private const val PUFF_SPREAD_M = 260f        // 飘散横向距离（地面米）
 private const val PUFF_CLOUD_M = 90f          // 飘散小云地面尺寸（米）
 private const val MARKER_HOLE_DP = 30f        // 高德路径：marker 透出小孔半径（dp）
-private const val NOISE_BASE_WAVE_M = 600f   // 噪声基频波长（米），细节逐倍频到 ~20m
+private const val NOISE_BASE_WAVE_M = 480f   // 噪声基频波长（米），细节逐倍频到 ~30m
 private const val NOISE_SHEET_M = 12288f     // 回退噪声图地面边长（米，单次放置不拼接）
-private const val NOISE_SHEET_PX = 1280      // 回退噪声图边长像素（~9.6m/px）
+private const val NOISE_SHEET_PX = 1024      // 回退噪声图边长像素（~12m/px）
 
 /**
- * AGSL 逐像素噪声雾面着色器（API 33+）：以「地理米制坐标」为输入计算 5 倍频 value-noise fBm。
- * 定义域无穷大、无周期——彻底消除平移平铺的分块感；颜色按噪声值在
- * 深影色/雾体色/高光色之间平滑映射，与回退路径的 Kotlin 生成器同款视觉。
+ * AGSL 逐像素积云雾面着色器（API 33+），参照 E《fog-cloud-texture.png》视觉特征：
+ * ①域扭曲：w = fbm(低频场)，base = fbm(p + 1.6·(w-½)) → 云块自然成团；
+ * ②穹顶单元：billow = 1-|2·fbm₃-1|（低频、共享扭曲场）与 base 按 0.58/0.42 混合 →
+ *   圆润积云穹顶 + 云隙深缝网络（参数经 Python 离屏渲染对照 E 图校准：
+ *   密度分布 p15/p50/p85 ≈ 0.52/0.63/0.72 即三段颜色阈值）；
+ * ③密度梯度光照：沿光照方向（地理西北）偏移 ~70m 再采样密度，差值 → 云顶受光高光。
  * fragCoord = 旋转后局部屏幕坐标（与 uOrigin/uPpm 同一坐标系），故随地图平移/缩放/旋转。
+ * 定义域无穷大、无周期——彻底无分块；每次密度采样 = 2×fbm₅ + 1×fbm₃，主采样+光照共 26 次 vnoise。
  */
 private const val FOG_NOISE_AGSL = """
 uniform float2 uOrigin;
@@ -106,7 +111,7 @@ float vnoise(float2 p) {
                mix(hash21(i + float2(0.0, 1.0)), hash21(i + float2(1.0, 1.0)), u.x), u.y);
 }
 
-float fbm(float2 p) {
+float fbm5(float2 p) {
     float v = 0.0;
     float a = 0.5;
     for (int k = 0; k < 5; k++) {
@@ -117,18 +122,45 @@ float fbm(float2 p) {
     return v;
 }
 
+float fbm3(float2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int k = 0; k < 3; k++) {
+        v += a * vnoise(p);
+        p = p * 2.02 + float2(19.19, 7.33);
+        a *= 0.5;
+    }
+    return v;
+}
+
+// 云密度场：低频噪声场做域扭曲，平滑 fBm 大结构 + 低频 billow 穹顶单元
+float density(float2 p) {
+    float w = fbm5(p * 0.55 + float2(31.7, 11.3));
+    float dw = w - 0.5;
+    float base = fbm5(p + 1.6 * dw);
+    float domeN = fbm3(p * 0.9 + 1.1 * dw + float2(7.7, 3.1));
+    return 0.58 * base + 0.42 * (1.0 - abs(2.0 * domeN - 1.0));
+}
+
 half4 main(float2 fragCoord) {
     float2 geo = (fragCoord - uOrigin) / uPpm;
-    float n = fbm(geo / 600.0);
-    float3 low = mix(uShadow, uBody, 0.45);
-    float3 c = mix(low, uHighlight, smoothstep(0.30, 0.82, n));
+    float2 p = geo / 480.0;
+    float d = density(p);
+    // 光照：地理西北方向采光（局部坐标系 y 向下=南），偏移量约 70m
+    float dl = density(p + float2(-0.45, -0.60) * 0.14);
+    float shade = clamp(0.5 + (d - dl) * 2.8, 0.0, 1.0);
+    // 三段映射（阈值 = 密度分布 p15/p50/p85）：云隙深影 → 雾体 → 奶白高光
+    float3 c = mix(uShadow, uBody, smoothstep(0.52, 0.63, d));
+    c = mix(c, uHighlight, smoothstep(0.72, 0.84, d) * shade);
+    c = mix(c, uShadow * 0.82, (1.0 - smoothstep(0.40, 0.52, d)) * 0.75);
     return half4(c.r, c.g, c.b, 1.0);
 }
 """
 
-private val FogShadow = Color(0xFF89A687)
-private val FogBody = Color(0xFFB9D4B5)
-private val FogHighlight = Color(0xFFE6F1E2)
+// 配色参照 E《fog-cloud-texture.png》：云隙深鼠尾草绿阴影 / 雾体 / 云顶奶白高光
+private val FogShadow = Color(0xFF7C9068)
+private val FogBody = Color(0xFFC2CFA9)
+private val FogHighlight = Color(0xFFF4EFDC)
 
 private data class FogEllipse(val cx: Float, val cy: Float, val rx: Float, val ry: Float, val alpha: Float)
 private data class FogSpark(val cx: Float, val cy: Float, val r: Float, val alpha: Float)
@@ -271,18 +303,30 @@ private fun vnoise2(px: Float, py: Float): Float {
 }
 
 /** 5 倍频 fBm（输入单位 = 基频波长个数；与 AGSL 同款倍频步进） */
-private fun fbm2(px: Float, py: Float): Float {
+private fun fbm2(px: Float, py: Float, octaves: Int = 5): Float {
     var v = 0f
     var amp = 0.5f
     var x = px
     var y = py
-    repeat(5) {
+    repeat(octaves) {
         v += amp * vnoise2(x, y)
         x = x * 2.02f + 19.19f
         y = y * 2.02f + 7.33f
         amp *= 0.5f
     }
     return v
+}
+
+/**
+ * 云密度场：低频噪声场做域扭曲，平滑 fBm 大结构 + 低频 billow 穹顶单元
+ * （与 AGSL density() 完全同款；阈值 0.52/0.63/0.72 经离屏渲染对照 E 图校准）
+ */
+private fun density2(px: Float, py: Float): Float {
+    val w = fbm2(px * 0.55f + 31.7f, py * 0.55f + 11.3f)
+    val dw = w - 0.5f
+    val base = fbm2(px + 1.6f * dw, py + 1.6f * dw)
+    val domeN = fbm2(px * 0.9f + 1.1f * dw + 7.7f, py * 0.9f + 1.1f * dw + 3.1f, octaves = 3)
+    return 0.58f * base + 0.42f * (1f - kotlin.math.abs(2f * domeN - 1f))
 }
 
 private fun sstep(x: Float): Float {
@@ -295,7 +339,8 @@ private fun lerpf(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 /**
  * 回退路径（API < 33）：程序化生成一张 [NOISE_SHEET_PX]² 噪声图（非照片贴图），
  * 覆盖 [NOISE_SHEET_M] 米地面矩形，单次地理锚定放置、绝不平移拼接。
- * 颜色映射与 AGSL 同款；边缘 22% 径向淡入雾体色，图外即均匀雾色，过渡无痕。
+ * 域扭曲 fBm + billow 穹顶 + 密度梯度光照 + 三段颜色映射，与 AGSL 着色器同款积云视觉；
+ * 边缘 22% 径向淡入雾体色，图外即均匀雾色，过渡无痕。
  */
 private fun makeNoiseSheet(): ImageBitmap {
     val px = NOISE_SHEET_PX
@@ -304,6 +349,7 @@ private fun makeNoiseSheet(): ImageBitmap {
     val sr = FogShadow.red; val sg = FogShadow.green; val sb = FogShadow.blue
     val br = FogBody.red; val bg = FogBody.green; val bb = FogBody.blue
     val hr = FogHighlight.red; val hg = FogHighlight.green; val hb = FogHighlight.blue
+    val dSrk = sr * 0.82f; val dSgk = sg * 0.82f; val dSbk = sb * 0.82f
     val pixels = IntArray(px * px)
     var idx = 0
     for (v in 0 until px) {
@@ -312,11 +358,22 @@ private fun makeNoiseSheet(): ImageBitmap {
         for (u in 0 until px) {
             val eastW = (-half + u * metersPerPx) / NOISE_BASE_WAVE_M
             val nx = u / (px - 1f) * 2f - 1f
-            val n = fbm2(eastW, northW)
-            val t = sstep((n - 0.30f) / 0.52f)
-            var r = lerpf(lerpf(sr, br, 0.45f), hr, t)
-            var g = lerpf(lerpf(sg, bg, 0.45f), hg, t)
-            var b = lerpf(lerpf(sb, bb, 0.45f), hb, t)
+            val d = density2(eastW, northW)
+            // 光照：向地理西北（东 -0.063 / 北 +0.084 个波长单位）偏移采样，与 AGSL 一致
+            val dl = density2(eastW - 0.45f * 0.14f, northW + 0.60f * 0.14f)
+            val shade = (0.5f + (d - dl) * 2.8f).coerceIn(0f, 1f)
+            val mass = sstep((d - 0.52f) / 0.11f)
+            var r = lerpf(sr, br, mass)
+            var g = lerpf(sg, bg, mass)
+            var b = lerpf(sb, bb, mass)
+            val top = sstep((d - 0.72f) / 0.12f) * shade
+            r = lerpf(r, hr, top)
+            g = lerpf(g, hg, top)
+            b = lerpf(b, hb, top)
+            val crev = (1f - sstep((d - 0.40f) / 0.12f)) * 0.75f
+            r = lerpf(r, dSrk, crev)
+            g = lerpf(g, dSgk, crev)
+            b = lerpf(b, dSbk, crev)
             // 边缘径向淡入雾体色（图外=均匀雾色，无可见图界）
             val rr = kotlin.math.sqrt(nx * nx + ny * ny)
             val edge = sstep((rr - 0.78f) / 0.22f)
