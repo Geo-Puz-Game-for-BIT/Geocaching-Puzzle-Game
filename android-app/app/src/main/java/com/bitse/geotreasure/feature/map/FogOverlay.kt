@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -40,16 +40,18 @@ import com.bitse.geotreasure.core.model.Landmark
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.hypot
 
 /**
- * P01 探索页 · 迷雾叠加层 v4（E「连续云层·步行开雾」第二版，替代 v3.2 卡通云场）。
+ * P01 探索页 · 迷雾叠加层 v6.6（程序化连续噪声雾面，彻底弃用云纹贴图）。
  *
- * 设计（依据 E《README-接入说明.md》并按真机反馈迭代）：
- * 1) 视觉 = 连续雾面：云纹在加载时做「回绕交叉渐变」无缝化处理（左右/上下边界像素连续），
- *    校外用平移平铺补充雾面——相邻格像素级连续、无拼接界限，按云纹纹理自然过渡；
+ * 设计（真机迭代定案：校外雾必须是「一整片连续的雾」，不得有任何分块/平移拼接感）：
+ * 1) 视觉 = 程序化分形噪声雾面，不使用任何贴图、不平移、不拼接：
+ *    - Android 13+（API 33）：AGSL RuntimeShader 在 GPU 上逐像素按「地理米制坐标」计算
+ *      value-noise fBm（5 倍频）——定义域无穷大，数学上不存在重复采样，任意缩放/平移/旋转
+ *      都是一片连续整体雾，细节从 ~600m 大尺度到 ~20m 细纹连续过渡；
+ *    - 更早版本回退：启动时后台程序化生成一张 12km 噪声图（非照片贴图，边缘融入雾色）
+ *      单次地理锚定放置，无平移无拼接；
  *    全屏雾色打底保证任意缩放级别全域覆盖；地理锚定随地图平移/缩放/旋转；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
@@ -58,9 +60,9 @@ import kotlin.math.hypot
  *    可见 marker 由本层开 30dp 小孔透出，演示路径 marker 在本层之上无需开孔）；
  * 4) 校外无底图/业务标记漏出（雾在校外恒不透明）；云上无「未开放区域」文字。
  *
- * 实现要点：云纹平铺与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
- * 在后台线程重建（打卡/探索记录/定位更新时），每帧仅若干次云纹 drawImage 与一次 DstIn 遮罩
- * 与少量小孔/飘散动画，开销远低于 v3.2 的逐帧云朵矢量绘制。
+ * 实现要点：噪声雾面与遮罩共用同一地面坐标系（锚点 + 每米像素），遮罩按状态变化
+ * 在后台线程重建（打卡/探索记录/定位更新时）；着色器路径每帧仅一次全屏 shader 矩形
+ * 与一次 DstIn 遮罩，开销远低于 v3.2 的逐帧云朵矢量绘制。
  * 打卡反馈：整块点亮由遮罩重建完成，另有 5 朵小云飘散动画保留打卡瞬间反馈。
  */
 
@@ -73,8 +75,56 @@ private const val PUFF_RISE_M = 140f          // 飘散上升高度（地面米�
 private const val PUFF_SPREAD_M = 260f        // 飘散横向距离（地面米）
 private const val PUFF_CLOUD_M = 90f          // 飘散小云地面尺寸（米）
 private const val MARKER_HOLE_DP = 30f        // 高德路径：marker 透出小孔半径（dp）
-private const val TEXTURE_TILE_M = 512f       // 云纹单格地面尺寸（米，地理锚定平铺）
-private const val SEAM_FADE_FRAC = 1f / 6f    // 无缝化回绕交叉渐变占比（各边）
+private const val NOISE_BASE_WAVE_M = 600f   // 噪声基频波长（米），细节逐倍频到 ~20m
+private const val NOISE_SHEET_M = 12288f     // 回退噪声图地面边长（米，单次放置不拼接）
+private const val NOISE_SHEET_PX = 1280      // 回退噪声图边长像素（~9.6m/px）
+
+/**
+ * AGSL 逐像素噪声雾面着色器（API 33+）：以「地理米制坐标」为输入计算 5 倍频 value-noise fBm。
+ * 定义域无穷大、无周期——彻底消除平移平铺的分块感；颜色按噪声值在
+ * 深影色/雾体色/高光色之间平滑映射，与回退路径的 Kotlin 生成器同款视觉。
+ * fragCoord = 旋转后局部屏幕坐标（与 uOrigin/uPpm 同一坐标系），故随地图平移/缩放/旋转。
+ */
+private const val FOG_NOISE_AGSL = """
+uniform float2 uOrigin;
+uniform float2 uPpm;
+uniform float3 uShadow;
+uniform float3 uBody;
+uniform float3 uHighlight;
+
+float hash21(float2 p) {
+    float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float vnoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash21(i), hash21(i + float2(1.0, 0.0)), u.x),
+               mix(hash21(i + float2(0.0, 1.0)), hash21(i + float2(1.0, 1.0)), u.x), u.y);
+}
+
+float fbm(float2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int k = 0; k < 5; k++) {
+        v += a * vnoise(p);
+        p = p * 2.02 + float2(19.19, 7.33);
+        a *= 0.5;
+    }
+    return v;
+}
+
+half4 main(float2 fragCoord) {
+    float2 geo = (fragCoord - uOrigin) / uPpm;
+    float n = fbm(geo / 600.0);
+    float3 low = mix(uShadow, uBody, 0.45);
+    float3 c = mix(low, uHighlight, smoothstep(0.30, 0.82, n));
+    return half4(c.r, c.g, c.b, 1.0);
+}
+"""
 
 private val FogShadow = Color(0xFF89A687)
 private val FogBody = Color(0xFFB9D4B5)
@@ -194,78 +244,94 @@ fun fogAnchorPoint(landmarks: List<Landmark>): GeoPoint {
     )
 }
 
-/**
- * 云纹无缝化处理：横向、纵向各做一次「回绕交叉渐变」。
- * 原理（以横向为例，输出宽 W2 = W - F）：主段直接取原图列；末尾 F 列与「被裁掉的右侧 F 列」
- * 线性交叉渐变——输出最末列收敛到原图最右列，平铺回绕到输出首列 = 原图 0/末列相邻关系，
- * 拼接处像素连续、无界限。纵向对横向结果再做一次，得到四向无缝的可平铺云纹。
- */
-private fun seamlessTileable(src: android.graphics.Bitmap): android.graphics.Bitmap {
-    val w = src.width
-    val h = src.height
-    val fw = (w * SEAM_FADE_FRAC).toInt().coerceIn(2, w / 2 - 1)
-    val fh = (h * SEAM_FADE_FRAC).toInt().coerceIn(2, h / 2 - 1)
-    val w2 = w - fw
-    val h2 = h - fh
+// —— 程序化噪声（回退路径，API < 33）：与 AGSL 着色器同款 fBm 数学 —— //
 
-    var pixels = IntArray(w * h)
-    src.getPixels(pixels, 0, w, 0, 0, w, h)
-    var curW = w
-    var curH = h
-
-    // 横向回绕渐变
-    run {
-        val out = IntArray(w2 * curH)
-        for (y in 0 until curH) {
-            val row = y * curW
-            val orow = y * w2
-            for (u in 0 until w2) {
-                val c = pixels[row + u]
-                out[orow + u] = if (u >= w2 - fw) {
-                    val t = (u - (w2 - fw)).toFloat() / fw
-                    blendPixels(c, pixels[row + u + fw], t)
-                } else {
-                    c
-                }
-            }
-        }
-        pixels = out
-        curW = w2
-    }
-
-    // 纵向回绕渐变（对横向结果）
-    run {
-        val out = IntArray(curW * h2)
-        for (v in 0 until h2) {
-            val row = v * curW
-            for (u in 0 until curW) {
-                val c = pixels[row + u]
-                out[row + u] = if (v >= h2 - fh) {
-                    val t = (v - (h2 - fh)).toFloat() / fh
-                    blendPixels(c, pixels[(v + fh) * curW + u], t)
-                } else {
-                    c
-                }
-            }
-        }
-        pixels = out
-        curH = h2
-    }
-
-    val outBmp = android.graphics.Bitmap.createBitmap(curW, curH, android.graphics.Bitmap.Config.ARGB_8888)
-    outBmp.setPixels(pixels, 0, curW, 0, 0, curW, curH)
-    return outBmp
+/** 整数格点哈希 → [0,1)（fBm 的 value 噪声格点值） */
+private fun hash2i(ix: Int, iy: Int): Float {
+    var h = ix * 374761393 + iy * 668265263
+    h = h xor (h ushr 13)
+    h *= 1274126177
+    h = h xor (h ushr 16)
+    return (h and 0xFFFF) / 65535f
 }
 
-/** 两个 ARGB 像素按权重 t 线性插值（t=0 取 c1，t=1 取 c2） */
-private fun blendPixels(c1: Int, c2: Int, t: Float): Int {
-    val k = (t * 255f).toInt().coerceIn(0, 255)
-    fun lerp(shift: Int): Int {
-        val v1 = c1 ushr shift and 0xFF
-        val v2 = c2 ushr shift and 0xFF
-        return v1 + (v2 - v1) * k / 255
+/** value-noise：格点哈希双线性插值 + smoothstep 缓动 */
+private fun vnoise2(px: Float, py: Float): Float {
+    val ix = floor(px).toInt()
+    val iy = floor(py).toInt()
+    val fx = px - ix
+    val fy = py - iy
+    val ux = fx * fx * (3f - 2f * fx)
+    val uy = fy * fy * (3f - 2f * fy)
+    val a = hash2i(ix, iy)
+    val b = hash2i(ix + 1, iy)
+    val c = hash2i(ix, iy + 1)
+    val d = hash2i(ix + 1, iy + 1)
+    return (a * (1f - ux) + b * ux) * (1f - uy) + (c * (1f - ux) + d * ux) * uy
+}
+
+/** 5 倍频 fBm（输入单位 = 基频波长个数；与 AGSL 同款倍频步进） */
+private fun fbm2(px: Float, py: Float): Float {
+    var v = 0f
+    var amp = 0.5f
+    var x = px
+    var y = py
+    repeat(5) {
+        v += amp * vnoise2(x, y)
+        x = x * 2.02f + 19.19f
+        y = y * 2.02f + 7.33f
+        amp *= 0.5f
     }
-    return (lerp(24) shl 24) or (lerp(16) shl 16) or (lerp(8) shl 8) or lerp(0)
+    return v
+}
+
+private fun sstep(x: Float): Float {
+    val t = x.coerceIn(0f, 1f)
+    return t * t * (3f - 2f * t)
+}
+
+private fun lerpf(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+/**
+ * 回退路径（API < 33）：程序化生成一张 [NOISE_SHEET_PX]² 噪声图（非照片贴图），
+ * 覆盖 [NOISE_SHEET_M] 米地面矩形，单次地理锚定放置、绝不平移拼接。
+ * 颜色映射与 AGSL 同款；边缘 22% 径向淡入雾体色，图外即均匀雾色，过渡无痕。
+ */
+private fun makeNoiseSheet(): ImageBitmap {
+    val px = NOISE_SHEET_PX
+    val metersPerPx = NOISE_SHEET_M / px
+    val half = NOISE_SHEET_M / 2f
+    val sr = FogShadow.red; val sg = FogShadow.green; val sb = FogShadow.blue
+    val br = FogBody.red; val bg = FogBody.green; val bb = FogBody.blue
+    val hr = FogHighlight.red; val hg = FogHighlight.green; val hb = FogHighlight.blue
+    val pixels = IntArray(px * px)
+    var idx = 0
+    for (v in 0 until px) {
+        val northW = (half - v * metersPerPx) / NOISE_BASE_WAVE_M
+        val ny = v / (px - 1f) * 2f - 1f
+        for (u in 0 until px) {
+            val eastW = (-half + u * metersPerPx) / NOISE_BASE_WAVE_M
+            val nx = u / (px - 1f) * 2f - 1f
+            val n = fbm2(eastW, northW)
+            val t = sstep((n - 0.30f) / 0.52f)
+            var r = lerpf(lerpf(sr, br, 0.45f), hr, t)
+            var g = lerpf(lerpf(sg, bg, 0.45f), hg, t)
+            var b = lerpf(lerpf(sb, bb, 0.45f), hb, t)
+            // 边缘径向淡入雾体色（图外=均匀雾色，无可见图界）
+            val rr = kotlin.math.sqrt(nx * nx + ny * ny)
+            val edge = sstep((rr - 0.78f) / 0.22f)
+            r = lerpf(r, br, edge)
+            g = lerpf(g, bg, edge)
+            b = lerpf(b, bb, edge)
+            pixels[idx++] = (255 shl 24) or
+                ((r * 255f).toInt().coerceIn(0, 255) shl 16) or
+                ((g * 255f).toInt().coerceIn(0, 255) shl 8) or
+                (b * 255f).toInt().coerceIn(0, 255)
+        }
+    }
+    val bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+    bmp.setPixels(pixels, 0, px, 0, 0, px, px)
+    return bmp.asImageBitmap()
 }
 
 @Composable
@@ -279,18 +345,23 @@ internal fun FogOverlay(
     geoFrame: FogGeoFrame? = null,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
+    // 噪声着色器（API 33+）：GPU 逐像素按地理坐标计算 fBm，无贴图无重复；编译失败自动回退
+    val noiseShader = remember {
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                android.graphics.RuntimeShader(FOG_NOISE_AGSL)
+            } else {
+                null
+            }
+        }.getOrNull()
+    }
 
-    // 云纹：单张贴图，App 生命周期内解码一次；解码后做无缝化处理，使平移平铺无拼接缝
-    val texture by produceState<ImageBitmap?>(initialValue = null) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                context.assets.open("fog-cloud-texture.png").use { stream ->
-                    android.graphics.BitmapFactory.decodeStream(stream)?.let { src ->
-                        seamlessTileable(src).also { src.recycle() }.asImageBitmap()
-                    }
-                }
-            }.getOrNull()
+    // 回退噪声图（API < 33）：启动时后台程序化生成一次（非贴图，无平移拼接）
+    val noiseSheet by produceState<ImageBitmap?>(initialValue = null) {
+        if (android.os.Build.VERSION.SDK_INT < 33) {
+            value = withContext(Dispatchers.Default) {
+                runCatching { makeNoiseSheet() }.getOrNull()
+            }
         }
     }
 
@@ -341,7 +412,6 @@ internal fun FogOverlay(
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
     ) {
         val frame = geoFrame ?: return@Canvas
-        val tex = texture ?: return@Canvas
         val maskState = mask ?: return@Canvas
         val (maskImage, maskBounds) = maskState
         val ppmX = frame.pxPerMeter.coerceAtLeast(1e-4f)
@@ -351,34 +421,35 @@ internal fun FogOverlay(
         drawRect(color = FogBody, topLeft = Offset.Zero, size = size)
 
         withTransform({ rotate(frame.bearingDegrees, pivot = frame.originScreen) }) {
-            // 2) 云影平铺：云纹已在加载时做「回绕交叉渐变」无缝化处理——贴图左右/上下边界像素连续，
-            //    平移平铺后相邻格自然过渡、无拼接界限；随地图平移/缩放/旋转（地理锚定）。
-            //    覆盖范围取「锚点到屏幕四角最大距离」，旋转后仍盖满全屏。
-            val coverPx = maxOf(
-                hypot(frame.originScreen.x, frame.originScreen.y),
-                hypot(size.width - frame.originScreen.x, frame.originScreen.y),
-                hypot(frame.originScreen.x, size.height - frame.originScreen.y),
-                hypot(size.width - frame.originScreen.x, size.height - frame.originScreen.y),
-            )
-            val tilePxX = TEXTURE_TILE_M * ppmX
-            val tilePxY = TEXTURE_TILE_M * ppmY
-            val iMin = floor(-coverPx / tilePxX).toInt() - 1
-            val iMax = ceil(coverPx / tilePxX).toInt() + 1
-            val jMin = floor(-coverPx / tilePxY).toInt() - 1
-            val jMax = ceil(coverPx / tilePxY).toInt() + 1
-            for (i in iMin..iMax) {
-                for (j in jMin..jMax) {
-                    val x = frame.originScreen.x + i * tilePxX
-                    val y = frame.originScreen.y - (j + 1) * tilePxY
-                    if (x > size.width || y > size.height || x + tilePxX < 0 || y + tilePxY < 0) continue
-                    drawImage(
-                        image = tex,
-                        dstOffset = IntOffset(x.toInt(), y.toInt()),
-                        // +1px 消除相邻格之间的取整发丝缝（贴图无缝，重叠 1px 无痕）
-                        dstSize = IntSize(tilePxX.toInt() + 1, tilePxY.toInt() + 1),
-                        filterQuality = FilterQuality.Medium,
-                    )
+            // 2) 连续噪声雾面：不使用任何贴图、不平移、不拼接。
+            //    API 33+：AGSL 逐像素按地理米制坐标计算 fBm（定义域无穷大，数学上零重复）；
+            //    更早版本：启动时程序化生成的单张噪声图（12km 地理锚定矩形，边缘融入雾色）。
+            //    两者都以「锚点处地理东=局部屏幕 x / 北=局部屏幕 -y」为输入，随地图平移/缩放/旋转。
+            if (noiseShader != null) {
+                val s = noiseShader!!
+                s.setFloatUniform("uOrigin", frame.originScreen.x, frame.originScreen.y)
+                s.setFloatUniform("uPpm", ppmX, ppmY)
+                s.setFloatUniform("uShadow", FogShadow.red, FogShadow.green, FogShadow.blue)
+                s.setFloatUniform("uBody", FogBody.red, FogBody.green, FogBody.blue)
+                s.setFloatUniform("uHighlight", FogHighlight.red, FogHighlight.green, FogHighlight.blue)
+                val brush = object : ShaderBrush() {
+                    override fun createShader(size: Size): android.graphics.Shader = s
                 }
+                drawRect(brush = brush, topLeft = Offset.Zero, size = size)
+            } else if (noiseSheet != null) {
+                val halfM = NOISE_SHEET_M / 2f
+                drawImage(
+                    image = noiseSheet!!,
+                    dstOffset = IntOffset(
+                        (frame.originScreen.x - halfM * ppmX).toInt(),
+                        (frame.originScreen.y - halfM * ppmY).toInt(),
+                    ),
+                    dstSize = IntSize(
+                        (NOISE_SHEET_M * ppmX).toInt(),
+                        (NOISE_SHEET_M * ppmY).toInt(),
+                    ),
+                    filterQuality = FilterQuality.Medium,
+                )
             }
 
             // 3) 遮罩：校外恒 1 / 校内羽化与揭雾（DstIn 乘到整层 alpha 上）
