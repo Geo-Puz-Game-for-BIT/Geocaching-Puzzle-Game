@@ -45,9 +45,9 @@ import kotlinx.coroutines.withContext
  * P01 探索页 · 迷雾叠加层 v4（E「连续云层·步行开雾」第二版，替代 v3.2 卡通云场）。
  *
  * 设计（依据 E《README-接入说明.md》）：
- * 1) 视觉 = 连续雾面：全屏平涂雾色打底（校外恒不透明，无任何分块）+ 单张云纹「整张单次放置」
- *    的大尺度柔变（地理锚定 8km 固定地面矩形，不重复采样同一贴图，边缘远离可视区），随地图
- *    平移/缩放/旋转；
+ * 1) 视觉 = 连续雾面：全屏平涂雾色打底（校外恒不透明，无任何分块，全域覆盖任意缩放级别）+
+ *    单张云纹「整张单次放置」的大尺度柔变（地理锚定 32km 固定地面矩形，不重复采样同一贴图，
+ *    边缘远离可视区），随地图平移/缩放/旋转；
  * 2) 透明度由软件计算的 ALPHA_8 遮罩逐点决定（见 [FogMaskBuilder]）：
  *    校外恒 1 → 校界带大半径模糊渐变（无分区线）→ 校内统一朦胧半透明 0.50 →
  *    已打卡地标/临时视野/历史探索带按揭雾权重径向减淡；
@@ -70,7 +70,7 @@ private const val PUFF_RISE_M = 140f          // 飘散上升高度（地面米�
 private const val PUFF_SPREAD_M = 260f        // 飘散横向距离（地面米）
 private const val PUFF_CLOUD_M = 90f          // 飘散小云地面尺寸（米）
 private const val MARKER_HOLE_DP = 30f        // 高德路径：marker 透出小孔半径（dp）
-private const val FOG_SHEET_M = 8192f         // 云影整张放置的地面边长（米，单次采样不重复平铺）
+private const val FOG_SHEET_M = 32768f        // 云影整张放置的地面边长（米，单次采样不重复平铺）
 private const val FOG_SHEET_ALPHA = 0.55f     // 云影叠加透明度（大尺度自然明暗，无分块）
 
 private val FogShadow = Color(0xFF89A687)
@@ -274,7 +274,7 @@ internal fun FogOverlay(
         withTransform({ rotate(frame.bearingDegrees, pivot = frame.originScreen) }) {
             // 2) 大尺度云影：云纹整张单次放置（非连续采样平铺）——以锚点为中心的固定地面矩形，
             //    低透明度叠加出自然的大尺度明暗过渡，随地图平移/缩放/旋转（地理锚定）。
-            //    8km 边长远大于可视区，云影边缘不可见；即使极端拉远，露出的也只是均匀基底雾色。
+            //    32km 边长远大于任何合理缩放的可视区，云影边缘不可见；露出的也只是均匀基底雾色。
             val sheetHalfPxX = FOG_SHEET_M / 2f * ppmX
             val sheetHalfPxY = FOG_SHEET_M / 2f * ppmY
             drawImage(
@@ -301,6 +301,33 @@ internal fun FogOverlay(
                 dstOffset = IntOffset(maskX.toInt(), maskY.toInt()),
                 dstSize = IntSize(maskW.toInt(), maskH.toInt()),
                 filterQuality = FilterQuality.Low,
+                blendMode = BlendMode.DstIn,
+            )
+            // 遮罩位图只覆盖地标包围盒+填充的范围，而 DstIn 会把图外区域乘 0（雾消失）。
+            // 在遮罩矩形四周补画 ×1 区域，保证任意缩放级别下全屏校外雾恒不透明（全域覆盖）。
+            val stripLen = size.width + size.height + maskW + maskH
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(maskX - stripLen, maskY - stripLen),
+                size = Size(maskW + 2 * stripLen, stripLen),
+                blendMode = BlendMode.DstIn,
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(maskX - stripLen, maskY + maskH),
+                size = Size(maskW + 2 * stripLen, stripLen),
+                blendMode = BlendMode.DstIn,
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(maskX - stripLen, maskY),
+                size = Size(stripLen, maskH),
+                blendMode = BlendMode.DstIn,
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(maskX + maskW, maskY),
+                size = Size(stripLen, maskH),
                 blendMode = BlendMode.DstIn,
             )
         }
